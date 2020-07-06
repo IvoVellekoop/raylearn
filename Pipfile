@@ -10,6 +10,7 @@ torch = "*"
 jupyterlab = "*"
 matplotlib = "*"
 sympy = "*"
+jupyterlab-git = "*"
 
 [requires]
 python_version = "3.8"
