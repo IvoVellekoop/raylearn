@@ -12,6 +12,8 @@ matplotlib = "*"
 sympy = "*"
 jupyterlab-git = "*"
 tqdm = "*"
+scipy = "*"
+numpy = "*"
 
 [requires]
 python_version = "3.8"
