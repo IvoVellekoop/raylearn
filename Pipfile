@@ -6,11 +6,11 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
-torch = "*"
+torch = {version = "1.6.0", sys_platform = "!= 'win32'"}
+win_pytorch = {file = "https://download.pytorch.org/whl/cu102/torch-1.6.0-cp38-cp38-win_amd64.whl", sys_platform = "== 'win32'"}
 jupyterlab = "*"
 matplotlib = "*"
 sympy = "*"
-jupyterlab-git = "*"
 tqdm = "*"
 scipy = "*"
 numpy = "*"
