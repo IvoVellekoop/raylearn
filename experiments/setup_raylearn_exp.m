@@ -11,6 +11,7 @@ addrepo(fullfile(maindir, 'hardware'))
 
 % Setup hardware
 setup_cam
+setup_slm
 setup_steppermotor
 fprintf('\n')
 

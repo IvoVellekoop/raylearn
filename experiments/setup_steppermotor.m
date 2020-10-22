@@ -7,7 +7,7 @@ comport = 'COM4';
 baudrate = 9600;
 cam_mot_id = 6210;                      % ID of the Zaber T-LSM050A
 cam_mot_index = 2;                      % Daisy chain index
-mot_cam_target_speed = 3000;
+mot_cam_target_speed = 4000;
 
 mot_cam = Zaber(Serial(comport, baudrate), cam_mot_index);
 mot_cam.setTargetSpeed(mot_cam_target_speed);

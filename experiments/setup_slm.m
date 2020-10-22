@@ -1,11 +1,10 @@
 %% connect to SLM
-LUTlocation = 'PCT/Experiments/LUT.mat';
+LUTlocation = fullfile(repodir, 'Experiments/LUT.mat');
 disp(['Loading SLM Lookup Table from ' LUTlocation])
-mfilepath = fileparts(mfilename('fullpath'));
-load(fullfile(mfilepath, '../..', LUTlocation));
+load(LUTlocation);
 
 disp('Connecting to SLM...')
-displayPort = 2;
+displayPort = 3;                    % Check this number every time after restarting!
 slm = SLM(displayPort);
 slm.setData(0,0);
 slm.update;
