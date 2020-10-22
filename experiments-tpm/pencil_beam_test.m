@@ -10,10 +10,11 @@ N_diameter = 8;                     % number of segments on SLM diameter
 % Set background grating
 [NxSLM, NySLM] = size(slm.getPixels);
 slm.setRect(bg_patch_id, [0 0 1 1]);
-slm.setData(bg_patch_id, bg_grating('blaze', 4, 0, 255, NySLM));
+slm.setData(bg_patch_id, bg_grating('blaze', -12, 0, 255, NySLM)');
+slm.update
 
 % Set pencil beam segment
-[rects, N] = BlockedCircleSegments(N_diameter, diameter, slm_offset_x, slm_offset_y, 0, 1);
+[rects, N] = BlockedCircleSegments(N_diameter, diameter, slm_offset_x, slm_offset_y, 0, 3);
 
 for n = 1:N
     slm.setRect(segment_patch_id, rects(n,:));
@@ -23,10 +24,8 @@ for n = 1:N
 end
 
 
-slm.setData(bg_patch_id, bg_grating('blaze', -100, 0, 255, NySLM)); slm.update
-
 %% Move galvos
-X = 0;
+X = -0.091;
 Y = 0;
 outputSingleScan(daqs, [X,Y]);
 
