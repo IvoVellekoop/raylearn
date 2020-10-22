@@ -17,9 +17,9 @@
 
 %% check which devices need to be connected for the experiment
 if ~exist('active_devices','var')
-    active_devices = struct;
+    error('Specify which devices to activate with a struct named ''active_devices''.')
 end
-active_devices = setDefaultDevices(active_devices);
+
 
 %% connect to SLM
 if active_devices.slm
@@ -34,67 +34,47 @@ if active_devices.slm
     % setup SLM
     [slm, sopt] = SLMsetup(lambda,sopt);
     slm.setData(1,0); slm.update;
-    fprintf('Initialized SLM with ?=%.1f\n', lambda)
+    fprintf('Initialized SLM with \x3BB=%.1f\n', lambda)
 end
 
 %% connect to SLM camera
-if active_devices.cam_slm
-    clear copt2; clear cam_slm;
-    copt2.ExposureTime = 1/60*10^6;
-    copt2.Id = 'Camera/22797787:Basler';
-    copt2.Width = 1024;
-    copt2.Height = 1024;
-    cam_slm = Camera(copt2);
+if active_devices.cam_ft
+    copt_ft.ExposureTime = 1/60*10^6;
+    copt_ft.Id = 'Camera/22436863:Basler';
+    copt_ft.Width = 1024;
+    copt_ft.Height = 1024;
+    cam_ft = Camera(copt_ft);
     
     % set camera ROI to center of sensor
-    copt2.OffsetX = (cam_slm.get('WidthMax') - copt2.Width)/2+35;
-    copt2.OffsetY = (cam_slm.get('HeightMax') - copt2.Height)/2+10;
-    cam_slm.setROI([copt2.OffsetX, copt2.OffsetY, copt2.Width, copt2.Height]);
+    copt_ft.OffsetX = (cam_ft.get('WidthMax') - copt_ft.Width)/2+35;
+    copt_ft.OffsetY = (cam_ft.get('HeightMax') - copt_ft.Height)/2+10;
+    cam_ft.setROI([copt_ft.OffsetX, copt_ft.OffsetY, copt_ft.Width, copt_ft.Height]);
     
     % set axes of image plane (after demagnification)
-    copt2.dx = 5.5*(200/100);                  % pixel_size at image plane (in um)
-    copt2.cam_x = copt2.dx*(-copt2.Width/2+1:copt2.Width/2);
-    copt2.cam_y = copt2.dx*(-copt2.Height/2+1:copt2.Height/2);
+    copt_ft.dx = 5.5*(200/100);                  % pixel_size at image plane (in um)
+    copt_ft.cam_x = copt_ft.dx*(-copt_ft.Width/2+1:copt_ft.Width/2);
+    copt_ft.cam_y = copt_ft.dx*(-copt_ft.Height/2+1:copt_ft.Height/2);
+    fprintf('Initialized Fourier Plane Camera\n')
 end
 
 %% connect to SLM camera
-if active_devices.cam_slm
-    clear copt2; clear cam_slm;
-    copt2.ExposureTime = 1/60*10^6;
-    copt2.Id = 'Camera/22241376:Basler';
-    copt2.Width = 1024;
-    copt2.Height = 1024;
-    cam_slm = Camera(copt2);
+if active_devices.cam_img
+    copt_img.ExposureTime = 1/60*10^6;
+    copt_img.Id = 'Camera/22241376:Basler';
+    copt_img.Width = 1024;
+    copt_img.Height = 1024;
+    cam_img = Camera(copt_img);
     
     % set camera ROI to center of sensor
-    copt2.OffsetX = (cam_slm.get('WidthMax') - copt2.Width)/2+35;
-    copt2.OffsetY = (cam_slm.get('HeightMax') - copt2.Height)/2+10;
-    cam_slm.setROI([copt2.OffsetX, copt2.OffsetY, copt2.Width, copt2.Height]);
+    copt_img.OffsetX = (cam_img.get('WidthMax') - copt_img.Width)/2+35;
+    copt_img.OffsetY = (cam_img.get('HeightMax') - copt_img.Height)/2+10;
+    cam_img.setROI([copt_img.OffsetX, copt_img.OffsetY, copt_img.Width, copt_img.Height]);
     
     % set axes of image plane (after demagnification)
-    copt2.dx = 5.5*(200/100);                  % pixel_size at image plane (in um)
-    copt2.cam_x = copt2.dx*(-copt2.Width/2+1:copt2.Width/2);
-    copt2.cam_y = copt2.dx*(-copt2.Height/2+1:copt2.Height/2);
-end
-
-%% connect to SLM camera
-if active_devices.cam_slm
-    clear copt2; clear cam_slm;
-    copt2.ExposureTime = 1/60*10^6;
-    copt2.Id = 'Camera/22241376:Basler';
-    copt2.Width = 1024;
-    copt2.Height = 1024;
-    cam_slm = Camera(copt2);
-    
-    % set camera ROI to center of sensor
-    copt2.OffsetX = (cam_slm.get('WidthMax') - copt2.Width)/2+35;
-    copt2.OffsetY = (cam_slm.get('HeightMax') - copt2.Height)/2+10;
-    cam_slm.setROI([copt2.OffsetX, copt2.OffsetY, copt2.Width, copt2.Height]);
-    
-    % set axes of image plane (after demagnification)
-    copt2.dx = 5.5*(200/100);                  % pixel_size at image plane (in um)
-    copt2.cam_x = copt2.dx*(-copt2.Width/2+1:copt2.Width/2);
-    copt2.cam_y = copt2.dx*(-copt2.Height/2+1:copt2.Height/2);
+    copt_img.dx = 5.5*(200/100);                  % pixel_size at image plane (in um)
+    copt_img.cam_x = copt_img.dx*(-copt_img.Width/2+1:copt_img.Width/2);
+    copt_img.cam_y = copt_img.dx*(-copt_img.Height/2+1:copt_img.Height/2);
+    fprintf('Initialized Image Plane Camera\n')
 end
 
 
@@ -102,6 +82,7 @@ end
 if active_devices.pmt_gain
     pmt_gain = daq.createSession('ni');
     addAnalogInputChannel(pmt_gain,'Dev3', 1, 'Voltage');
+    fprintf('Initialized PMT gain readout\n')
 end
 
 %% connect to sample stage
@@ -116,6 +97,7 @@ if active_devices.sample_stage
     z2.travel_range = 4.25e4+[-12.5e3, 12.5e3]; 
     disp(['Current position Motor 1: ',num2str(z1.getPosition())]);
     disp(['Current position Motor 2: ',num2str(z2.getPosition())]);
+    fprintf('Initialized sample stage\n')
 end
 
 %% Power monitor
@@ -124,6 +106,10 @@ end
 f_power = @(Pbs)(-5.3780e-07*lambda.^2+7.6990e-04*lambda+-0.0490)*Pbs;
 
 %% Connect to Galvos
-daqs = daq.createSession('ni');
-daqs.addAnalogOutputChannel('Dev3', 'ao0', 'Voltage');
-daqs.addAnalogOutputChannel('Dev3', 'ao1', 'Voltage');
+if active_devices.galvos
+    daqs = daq.createSession('ni');
+    daqs.addAnalogOutputChannel('Dev3', 'ao0', 'Voltage');
+    daqs.addAnalogOutputChannel('Dev3', 'ao1', 'Voltage');
+    fprintf('Initialized Galvo Mirrors\n')
+end
+
