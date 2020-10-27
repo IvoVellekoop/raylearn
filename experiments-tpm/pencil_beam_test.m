@@ -14,7 +14,7 @@ slm.setData(bg_patch_id, bg_grating('blaze', -12, 0, 255, NySLM)');
 slm.update
 
 % Set pencil beam segment
-[rects, N] = BlockedCircleSegments(N_diameter, diameter, slm_offset_x, slm_offset_y, 0, 3);
+[rects, N] = BlockedCircleSegments(N_diameter, diameter, slm_offset_x, slm_offset_y, 0, 0.03);
 
 for n = 1:N
     slm.setRect(segment_patch_id, rects(n,:));

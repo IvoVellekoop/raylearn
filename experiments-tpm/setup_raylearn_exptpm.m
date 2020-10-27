@@ -5,7 +5,6 @@ addpath(fileparts(fileparts(mfilename('fullpath'))))   % Parent dir
 dirconfig_raylearn
 
 %% Add repo paths
-addrepo(fullfile(maindir, 'utilities'))
 addrepo(fullfile(maindir, 'raylearn'))
 addrepo(fullfile(maindir, 'hardware'))
 

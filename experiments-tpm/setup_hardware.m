@@ -46,8 +46,8 @@ if active_devices.cam_ft
     cam_ft = Camera(copt_ft);
     
     % set camera ROI to center of sensor
-    copt_ft.OffsetX = (cam_ft.get('WidthMax') - copt_ft.Width)/2+35;
-    copt_ft.OffsetY = (cam_ft.get('HeightMax') - copt_ft.Height)/2+10;
+    copt_ft.OffsetX = (cam_ft.get('WidthMax') - copt_ft.Width)/2;
+    copt_ft.OffsetY = (cam_ft.get('HeightMax') - copt_ft.Height)/2;
     cam_ft.setROI([copt_ft.OffsetX, copt_ft.OffsetY, copt_ft.Width, copt_ft.Height]);
     
     % set axes of image plane (after demagnification)
@@ -66,8 +66,8 @@ if active_devices.cam_img
     cam_img = Camera(copt_img);
     
     % set camera ROI to center of sensor
-    copt_img.OffsetX = (cam_img.get('WidthMax') - copt_img.Width)/2+35;
-    copt_img.OffsetY = (cam_img.get('HeightMax') - copt_img.Height)/2+10;
+    copt_img.OffsetX = (cam_img.get('WidthMax') - copt_img.Width)/2;
+    copt_img.OffsetY = (cam_img.get('HeightMax') - copt_img.Height)/2;
     cam_img.setROI([copt_img.OffsetX, copt_img.OffsetY, copt_img.Width, copt_img.Height]);
     
     % set axes of image plane (after demagnification)
