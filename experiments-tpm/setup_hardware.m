@@ -26,7 +26,7 @@ if active_devices.slm
     clear sopt;
     
     % SLM options
-    lambda = 700;                           % laser wavelength (in nm)
+    lambda = 690;                           % laser wavelength (in nm)
     sopt.slm_patch = 1;                     % patch number used for wavefront correction
     sopt.N_diameter = 18;                   % number of segments along the diagonal of the SLM pattern
     sopt.displayPort = 1;
