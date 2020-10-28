@@ -122,12 +122,14 @@ end
 % Script path, revision and date&time
 p.script_name = mfilename('fullpath');
 [~, p.script_version] = system(['git --git-dir="' repodir '\.git" rev-parse HEAD']);
+[~, p.git_diff] = system(['git --git-dir="' repodir '\.git" diff']);
 p.save_time = now;
 
 % Save
-savedir = [expdatadir '\raylearn-data\TPM\'];
+savedir = [localdatadir '\raylearn-data\TPM\'];
+mkdir(savedir)
 savepath = fullfile(savedir, 'raylearn_pencil_beams_%s_%s_%f.mat', p.samplename, date, now);
 fprintf('\nSaving to %s\n', savepath)
 save(savepath, '-v7.3',...
     'darkframe_ft', 'darkframe_img', 'frames_ft', 'frames_img',...
-    'p', 'copt_ft', 'copt_img')
+    'p', 'sopt', 'copt_ft', 'copt_img')
