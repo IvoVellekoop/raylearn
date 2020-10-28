@@ -11,37 +11,40 @@ if doreset
 end
 
 %% Settings
-p.samplename = 'newsample';
-doshowcams = 1;                     % Show what the cameras see
+p.samplename = 'empty';
+doshowcams = 1;                     % Toggle show what the cameras see
 dosave = 1;                         % Toggle savings
+dochecksamplename = 0;              % Toggle console sample name check
 
 % SLM Settings
-p.ppp = 12;                         % Pixels per period for the grating. Should match Galvo setting!
-p.segmentsize_pix = 4 * p.ppp;      % Segment width in pixels
-p.N_diameter = 8;                   % Number of segments across SLM diameter
+p.ppp = -12;                        % Pixels per period for the grating. Should match Galvo setting!
+p.segmentsize_pix = 5 * p.ppp;      % Segment width in pixels
+p.N_diameter = 4;                   % Number of segments across SLM diameter
 p.beamdiameter = 0.60;              % Diameter of circular SLM segment set (relative coords)
 p.slm_offset_x = 0.00;              % Horizontal offset of rectangle SLM geometry (relative coords)
 p.slm_offset_y = 0.00;              % Vertical offset of rectangle SLM geometry (relative coords)
 p.segment_patch_id = 2;             % Pencil Beam segment SLM patch ID
 
 % Galvo Mirror settings
-p.GalvoXcenter = -0.091;            % Galvo center x
-p.GalvoYcenter = 0;                 % Galvo center y
-p.GalvoXmax = 0.015;                % Galvo center to outer, x
-p.GalvoYmax = 0.015;                % Galvo center to outer, y
-p.GalvoNX = 5;                      % Number of Galvo steps, x
-p.GalvoNY = 5;                      % Number of Galvo steps, y
+p.GalvoXcenter = -0.11;             % Galvo center x
+p.GalvoYcenter = 0.03;              % Galvo center y
+p.GalvoXmax = 0.01;                 % Galvo center to outer, x
+p.GalvoYmax = 0.01;                 % Galvo center to outer, y
+p.GalvoNX = 3;                      % Number of Galvo steps, x
+p.GalvoNY = 3;                      % Number of Galvo steps, y
 
 % Ask if samplename is correct
-fprintf('\nSample name set to <strong>%s</strong>. Is this correct?\nPress Enter to continue...\n', p.samplename)
-pause
+if dochecksamplename
+    fprintf('\nSample name set to <strong>%s</strong>. Is this correct?\nPress Enter to continue...\n', p.samplename)
+    pause
+end
 
 
 %% Compute constants
 % Compute segment size in relative coords
 
-% [p.NxSLM, p.NySLM] = size(slm.getPixels);                 % Retrieve SLM size in pixels
-p.NySLM = 1080;
+[p.NxSLM, p.NySLM] = size(slm.getPixels);                 % Retrieve SLM size in pixels
+% p.NySLM = 500;  %%% Use only for debugging, when SLM is unavailable
 p.segmentwidth = p.segmentsize_pix / p.NySLM;               % Segment width in relative coords
 p.segmentheight = p.segmentwidth;                           % Segment height in relative coords
 
@@ -59,9 +62,9 @@ p.blaze(mask_outside_circle) = 0;                           % Set pixels outside
 % Create set of Galvo tilts
 p.galvoXs1d = linspace(p.GalvoXcenter-p.GalvoXmax, p.GalvoXcenter+p.GalvoXmax, p.GalvoNX);
 p.galvoYs1d = linspace(p.GalvoYcenter-p.GalvoYmax, p.GalvoYcenter+p.GalvoYmax, p.GalvoNY);
-[galvoXsq, galvoYsq] = single(meshgrid(p.galvoXs1d, p.galvoYs1d));
-p.galvoXs = galvoXsq(:);
-p.galvoYs = galvoYsq(:);
+[galvoXsq, galvoYsq] = meshgrid(p.galvoXs1d, p.galvoYs1d);
+p.galvoXs = single(galvoXsq(:));
+p.galvoYs = single(galvoYsq(:));
 G = p.GalvoNX * p.GalvoNY;
 
 %% Initialize arrays
@@ -80,18 +83,24 @@ cam_img.trigger;
 darkframe_img = cam_img.getData;                            % Image Plane camera dark frame
 
 if dosave
-    savepath = preparesave(p, sprintf('raylearn_dark_frames'));
-    save(savepath, '-v7.3',...
-        'darkframe_ft', 'darkframe_img', 'p', 'sopt', 'copt_ft', 'copt_img')
+    p = preparesave(p, dirs, sprintf('raylearn_dark_frames'));
+    save(p.savepath, '-v7.3', 'darkframe_ft', 'darkframe_img', 'p', 'sopt', 'copt_ft', 'copt_img')
 end
 
 
 %% Main measurement loop
 slm.setData(p.segment_patch_id, p.blaze);
 
+if doshowcams                       % Spawn wide figure
+    figure; plot(0,0);
+    fig_resize(400, 2.5);
+end
+
+starttime = now;
+
 for n = 1:N                         % Loop over SLM segments
     for g = 1:G                     % Loop over Galvo tilts
-        outputSingleScan(daqs, [p.galvoXs, p.galvoYs]);   % Set Galvo Mirror
+        outputSingleScan(daqs, [p.galvoXs(g), p.galvoYs(g)]);   % Set Galvo Mirror
         pause(0.01)
     
         % Incoming angle of pencil beam: set SLM segment
@@ -112,13 +121,13 @@ for n = 1:N                         % Loop over SLM segments
             subplot(1,2,1)
             imagesc(frame_ft)
             saturation_ft = 100 * max(frame_ft,[],'all') / 65520;   % 12bit -> 2^16 - 2^4 = 65520
-            title(sprintf('Fourier Plane Cam\nsaturation = %.0f%%', saturation_ft))
+            title(sprintf('Fourier Plane Cam | Segment %i/%i\nsaturation = %.0f%%', n, N, saturation_ft))
             colorbar
 
             subplot(1,2,2)
             imagesc(frame_img)
             saturation_img = 100 * max(frame_img,[],'all') / 65520; % 12bit -> 2^16 - 2^4 = 65520
-            title(sprintf('Image Plane Cam\nsaturation = %.0f%%', saturation_img))
+            title(sprintf('Image Plane Cam | Galvo tilt %i/%i\nsaturation = %.0f%%', g, G, saturation_img))
             colorbar
         end
     
@@ -129,6 +138,8 @@ for n = 1:N                         % Loop over SLM segments
         p = preparesave(p, dirs, sprintf('raylearn_pencil_beam_%i', n));
         save(p.savepath, '-v7.3', 'frames_ft', 'frames_img', 'n', 'p', 'sopt', 'copt_ft', 'copt_img')
     end
+    
+    eta(n, N, starttime, 'console', 'Measuring pencil beams...', 0);
 end
 
 
@@ -144,6 +155,6 @@ function p = preparesave(p, dirs, prefix)
     % Save
     savedir = [dirs.localdata '\raylearn-data\TPM\' date '-' p.samplename];
     try mkdir(savedir); catch 'MATLAB:MKDIR:DirectoryExists'; end
-    p.savepath = fullfile(savedir, '%s_%f_%s.mat', prefix, now, p.samplename);
+    p.savepath = fullfile(savedir, sprintf('%s_%f_%s.mat', prefix, now, p.samplename));
     fprintf('\nSaving to %s\n', p.savepath)
 end
