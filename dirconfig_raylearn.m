@@ -20,10 +20,10 @@ mfilearray = strsplit(string(mfilename('fullpath')), filesep);
 
 
 % Directory variables
-maindir = char(join(mfilearray(1:end-2), filesep));       % Allprojects dir
-repodir = char(join(mfilearray(1:end-1), filesep));       % repo directory
-simdatadir = fullfile(char(repodir), 'SimulationData');   % Simulation Data
-expdatadir = fullfile(char(repodir), 'ExperimentalData'); % Experimental Data
-localdatadir = fullfile(char(repodir), 'LocalData');      % Local Data
+dirs.main = char(join(mfilearray(1:end-2), filesep));         % Allprojects dir
+dirs.repo = char(join(mfilearray(1:end-1), filesep));         % repo directory
+dirs.simdata = fullfile(char(dirs.repo), 'SimulationData');   % Simulation Data
+dirs.expdata = fullfile(char(dirs.repo), 'ExperimentalData'); % Experimental Data
+dirs.localdata = fullfile(char(dirs.repo), 'LocalData');      % Local Data
 % expdatadir = '//ad.utwente.nl/TNW/BMPI/Users/Daniel Cox/ExperimentalData';
 
