@@ -5,8 +5,8 @@ addpath(fileparts(fileparts(mfilename('fullpath'))))   % Parent dir
 dirconfig_raylearn
 
 %% Add repo paths
-addrepo(fullfile(maindir, 'raylearn'))
-addrepo(fullfile(maindir, 'hardware'))
+addrepo(fullfile(dirs.main, 'raylearn'))
+addrepo(fullfile(dirs.main, 'hardware'))
 
 %% Setup hardware
 active_devices.slm = true;

@@ -3,7 +3,7 @@
 % with various angles and record the outgoing pencil beams.
 
 %% Reset variables and hardware connections
-doreset = 0;
+doreset = 1;
 
 if doreset
     close all; clear; clc
@@ -12,7 +12,8 @@ end
 
 %% Settings
 p.samplename = 'newsample';
-showcams = 1;                       % Show what the cameras see
+doshowcams = 1;                     % Show what the cameras see
+dosave = 1;                         % Toggle savings
 
 % SLM Settings
 p.ppp = 12;                         % Pixels per period for the grating. Should match Galvo setting!
@@ -49,7 +50,7 @@ xblaze = linspace(-1,1,p.segmentsize_pix);                  % Create x coords fo
 yblaze = xblaze';                                           % Create x coords for segment pixels
 blazeradius = (p.segmentsize_pix+1) / p.segmentsize_pix;    % Radius from center to borderpixel edge
 mask_outside_circle = (xblaze.^2+yblaze.^2) > blazeradius;  % Mask for pixels outside circle
-p.blaze = bg_grating('blaze', -p.ppp, 0, 255, p.segmentsize_pix)' * ones(1, p.segmentsize_pix); % Blaze grating
+p.blaze = single(bg_grating('blaze', -p.ppp, 0, 255, p.segmentsize_pix)' * ones(1, p.segmentsize_pix));
 p.blaze(mask_outside_circle) = 0;                           % Set pixels outside circle to 0
 
 % Create set of SLM segment rectangles within circle
@@ -58,14 +59,14 @@ p.blaze(mask_outside_circle) = 0;                           % Set pixels outside
 % Create set of Galvo tilts
 p.galvoXs1d = linspace(p.GalvoXcenter-p.GalvoXmax, p.GalvoXcenter+p.GalvoXmax, p.GalvoNX);
 p.galvoYs1d = linspace(p.GalvoYcenter-p.GalvoYmax, p.GalvoYcenter+p.GalvoYmax, p.GalvoNY);
-[galvoXsq, galvoYsq] = meshgrid(p.galvoXs1d, p.galvoYs1d);
+[galvoXsq, galvoYsq] = single(meshgrid(p.galvoXs1d, p.galvoYs1d));
 p.galvoXs = galvoXsq(:);
 p.galvoYs = galvoYsq(:);
 G = p.GalvoNX * p.GalvoNY;
 
 %% Initialize arrays
-frames_ft  = zeros(copt_img.Width, copt_img.Height, N, G, 'single');
-frames_img = zeros(copt_img.Width, copt_img.Height, N, G, 'single');
+frames_ft  = zeros(copt_img.Width, copt_img.Height, G, 'single');
+frames_img = zeros(copt_img.Width, copt_img.Height, G, 'single');
 
 
 %% Capture dark frames
@@ -77,6 +78,13 @@ cam_ft.trigger;
 darkframe_ft = cam_ft.getData;                              % Fourier Plane camera dark frame
 cam_img.trigger;
 darkframe_img = cam_img.getData;                            % Image Plane camera dark frame
+
+if dosave
+    savepath = preparesave(p, sprintf('raylearn_dark_frames'));
+    save(savepath, '-v7.3',...
+        'darkframe_ft', 'darkframe_img', 'p', 'sopt', 'copt_ft', 'copt_img')
+end
+
 
 %% Main measurement loop
 slm.setData(p.segment_patch_id, p.blaze);
@@ -100,7 +108,7 @@ for n = 1:N                         % Loop over SLM segments
         frames_img(:,:,n,g) = frame_img;
 
         % Show what's on the cameras and check for overexposure
-        if showcams
+        if doshowcams
             subplot(1,2,1)
             imagesc(frame_ft)
             saturation_ft = 100 * max(frame_ft,[],'all') / 65520;   % 12bit -> 2^16 - 2^4 = 65520
@@ -115,21 +123,27 @@ for n = 1:N                         % Loop over SLM segments
         end
     
     end
+    
+    if dosave
+        % Save that stuff! Save for each segment position separately to prevent massive files
+        p = preparesave(p, dirs, sprintf('raylearn_pencil_beam_%i', n));
+        save(p.savepath, '-v7.3', 'frames_ft', 'frames_img', 'n', 'p', 'sopt', 'copt_ft', 'copt_img')
+    end
 end
 
 
-%% Save that stuff!
-% Script path, revision and date&time
-p.script_name = mfilename('fullpath');
-[~, p.script_version] = system(['git --git-dir="' repodir '\.git" rev-parse HEAD']);
-[~, p.git_diff] = system(['git --git-dir="' repodir '\.git" diff']);
-p.save_time = now;
+%% Subfunctions
 
-% Save
-savedir = [localdatadir '\raylearn-data\TPM\'];
-mkdir(savedir)
-savepath = fullfile(savedir, 'raylearn_pencil_beams_%s_%s_%f.mat', p.samplename, date, now);
-fprintf('\nSaving to %s\n', savepath)
-save(savepath, '-v7.3',...
-    'darkframe_ft', 'darkframe_img', 'frames_ft', 'frames_img',...
-    'p', 'sopt', 'copt_ft', 'copt_img')
+function p = preparesave(p, dirs, prefix)
+    % Script path, revision and date&time
+    p.script_name = mfilename('fullpath');
+    [~, p.script_version] = system(['git --git-dir="' dirs.repo '\.git" rev-parse HEAD']);
+    [~, p.git_diff] = system(['git --git-dir="' dirs.repo '\.git" diff']);
+    p.save_time = now;
+
+    % Save
+    savedir = [dirs.localdata '\raylearn-data\TPM\' date '-' p.samplename];
+    try mkdir(savedir); catch 'MATLAB:MKDIR:DirectoryExists'; end
+    p.savepath = fullfile(savedir, '%s_%f_%s.mat', prefix, now, p.samplename);
+    fprintf('\nSaving to %s\n', p.savepath)
+end
