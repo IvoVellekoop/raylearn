@@ -1,4 +1,4 @@
-doreset = 0;
+doreset = 1;
 
 if doreset
     close all; clear; clc
@@ -19,21 +19,11 @@ slm.setRect(bg_patch_id, [0 0 1 1]);
 slm.setData(bg_patch_id, bg_grating('blaze', -12, 0, 255, NySLM)');
 slm.update
 
-% % Set pencil beam segment
-% [rects, N] = BlockedCircleSegments(N_diameter, diameter, slm_offset_x, slm_offset_y, 0, 0.03);
-% 
-% for n = 1:N
-%     slm.setRect(segment_patch_id, rects(n,:));
-%     slm.setData(segment_patch_id, 0);
-%     slm.update
-%     pause(0.5)
-% end
-
 
 %% Move galvos
 % X = -0.14;  % left
 % X = -0.08;  % right
-X = -0.11; % center
+X = -0.11*1.0; % center
 % Y = 0.08; % bottom
 % Y = -0.02; % top
 Y = 0.03; % center

@@ -3,7 +3,7 @@
 % with various angles and record the outgoing pencil beams.
 
 %% Reset variables and hardware connections
-doreset = 1;
+doreset = 0;
 
 if doreset
     close all; clear; clc
@@ -28,10 +28,9 @@ p.segment_patch_id = 2;             % Pencil Beam segment SLM patch ID
 % Galvo Mirror settings
 p.GalvoXcenter = -0.11;             % Galvo center x
 p.GalvoYcenter = 0.03;              % Galvo center y
-p.GalvoXmax = 0.01;                 % Galvo center to outer, x
-p.GalvoYmax = 0.01;                 % Galvo center to outer, y
-p.GalvoNX = 3;                      % Number of Galvo steps, x
-p.GalvoNY = 3;                      % Number of Galvo steps, y
+p.GalvoRadius = 0.25;               % Galvo scan radius: from center to outer
+p.GalvoNX = 15;                      % Number of Galvo steps, x
+p.GalvoNY = 15;                      % Number of Galvo steps, y
 
 % Ask if samplename is correct
 if dochecksamplename
@@ -60,12 +59,14 @@ p.blaze(mask_outside_circle) = 0;                           % Set pixels outside
 [p.rects, N] = BlockedCircleSegments(p.N_diameter, p.beamdiameter, p.slm_offset_x, p.slm_offset_y, p.segmentwidth, p.segmentheight);
 
 % Create set of Galvo tilts
-p.galvoXs1d = linspace(p.GalvoXcenter-p.GalvoXmax, p.GalvoXcenter+p.GalvoXmax, p.GalvoNX);
-p.galvoYs1d = linspace(p.GalvoYcenter-p.GalvoYmax, p.GalvoYcenter+p.GalvoYmax, p.GalvoNY);
+p.galvoXs1d = linspace(p.GalvoXcenter-p.GalvoRadius, p.GalvoXcenter+p.GalvoRadius, p.GalvoNX);
+p.galvoYs1d = linspace(p.GalvoYcenter-p.GalvoRadius, p.GalvoYcenter+p.GalvoRadius, p.GalvoNY);
 [galvoXsq, galvoYsq] = meshgrid(p.galvoXs1d, p.galvoYs1d);
-p.galvoXs = single(galvoXsq(:));
-p.galvoYs = single(galvoYsq(:));
+galvo_scan_mask = ((galvoXsq-p.GalvoXcenter).^2 + (galvoYsq-p.GalvoYcenter).^2 <= p.GalvoRadius.^2);
+p.galvoXs = single(galvoXsq(galvo_scan_mask));
+p.galvoYs = single(galvoYsq(galvo_scan_mask));
 G = p.GalvoNX * p.GalvoNY;
+
 
 %% Initialize arrays
 frames_ft  = zeros(copt_img.Width, copt_img.Height, G, 'single');
@@ -101,7 +102,7 @@ starttime = now;
 for n = 1:N                         % Loop over SLM segments
     for g = 1:G                     % Loop over Galvo tilts
         outputSingleScan(daqs, [p.galvoXs(g), p.galvoYs(g)]);   % Set Galvo Mirror
-        pause(0.01)
+        pause(0.005)
     
         % Incoming angle of pencil beam: set SLM segment
         slm.setRect(p.segment_patch_id, p.rects(n,:));
