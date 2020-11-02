@@ -28,9 +28,9 @@ p.segment_patch_id = 2;             % Pencil Beam segment SLM patch ID
 % Galvo Mirror settings
 p.GalvoXcenter = -0.11;             % Galvo center x
 p.GalvoYcenter = 0.04;              % Galvo center y
-p.GalvoRadius = 0.015;              % Galvo scan radius: from center to outer
-p.GalvoNX = 7;                      % Number of Galvo steps, x
-p.GalvoNY = 7;                      % Number of Galvo steps, y
+p.GalvoRadius = 0.015*0;              % Galvo scan radius: from center to outer
+p.GalvoNX = 1;                      % Number of Galvo steps, x
+p.GalvoNY = 1;                      % Number of Galvo steps, y
 
 % Ask if samplename is correct
 if dochecksamplename
@@ -73,15 +73,15 @@ frames_ft  = zeros(copt_img.Width, copt_img.Height, N, G, 'single');
 frames_img = zeros(copt_img.Width, copt_img.Height, N, G, 'single');
 
 
-%% Capture dark frames
-outputSingleScan(daqs, [p.GalvoXcenter, p.GalvoYcenter]);   % Set Galvo
-slm.setData(p.segment_patch_id, 0);                         % Set SLM segment pixels to 0
-slm.update;
-
-cam_ft.trigger;
-darkframe_ft = cam_ft.getData;                              % Fourier Plane camera dark frame
-cam_img.trigger;
-darkframe_img = cam_img.getData;                            % Image Plane camera dark frame
+% %% Capture dark frames
+% outputSingleScan(daqs, [p.GalvoXcenter, p.GalvoYcenter]);   % Set Galvo
+% slm.setData(p.segment_patch_id, 0);                         % Set SLM segment pixels to 0
+% slm.update;
+% 
+% cam_ft.trigger;
+% darkframe_ft = cam_ft.getData;                              % Fourier Plane camera dark frame
+% cam_img.trigger;
+% darkframe_img = cam_img.getData;                            % Image Plane camera dark frame
 
 
 %% Main measurement loop
