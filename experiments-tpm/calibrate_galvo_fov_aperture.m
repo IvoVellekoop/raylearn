@@ -16,11 +16,11 @@ bg_patch_id = 2;                    % Background grating Patch ID
 
 % Galvo Mirror settings
 p.GalvoXcenter = single(-0.11);     % Galvo center x
-p.GalvoYcenter = single(0.03);      % Galvo center y
-p.GalvoXmax    = single(0.10);      % Galvo center to outer, x
+p.GalvoYcenter = single(0.04);      % Galvo center y
+p.GalvoXmax    = single(0.08);      % Galvo center to outer, x
 p.GalvoYmax    = single(0.04);      % Galvo center to outer, y
-p.GalvoNX      = single(75);        % Number of Galvo steps, x
-p.GalvoNY      = single(35);        % Number of Galvo steps, y
+p.GalvoNX      = single(64);        % Number of Galvo steps, x
+p.GalvoNY      = single(32);        % Number of Galvo steps, y
 
 %% Initialization
 % Set background grating

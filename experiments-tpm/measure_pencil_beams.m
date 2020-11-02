@@ -11,15 +11,15 @@ if doreset
 end
 
 %% Settings
-p.samplename = 'empty';
-doshowcams = 1;                     % Toggle show what the cameras see
+p.samplename = '2x170um';
+doshowcams = 0;                     % Toggle show what the cameras see
 dosave = 1;                         % Toggle savings
 dochecksamplename = 0;              % Toggle console sample name check
 
 % SLM Settings
-p.ppp = -12;                        % Pixels per period for the grating. Should match Galvo setting!
-p.segmentsize_pix = 5 * p.ppp;      % Segment width in pixels
-p.N_diameter = 4;                   % Number of segments across SLM diameter
+p.ppp = 12;                         % Pixels per period for the grating. Should match Galvo setting!
+p.segmentsize_pix = 6 * p.ppp;      % Segment width in pixels
+p.N_diameter = 9;                   % Number of segments across SLM diameter
 p.beamdiameter = 0.60;              % Diameter of circular SLM segment set (relative coords)
 p.slm_offset_x = 0.00;              % Horizontal offset of rectangle SLM geometry (relative coords)
 p.slm_offset_y = 0.00;              % Vertical offset of rectangle SLM geometry (relative coords)
@@ -27,10 +27,10 @@ p.segment_patch_id = 2;             % Pencil Beam segment SLM patch ID
 
 % Galvo Mirror settings
 p.GalvoXcenter = -0.11;             % Galvo center x
-p.GalvoYcenter = 0.03;              % Galvo center y
-p.GalvoRadius = 0.25;               % Galvo scan radius: from center to outer
-p.GalvoNX = 15;                      % Number of Galvo steps, x
-p.GalvoNY = 15;                      % Number of Galvo steps, y
+p.GalvoYcenter = 0.04;              % Galvo center y
+p.GalvoRadius = 0.015;              % Galvo scan radius: from center to outer
+p.GalvoNX = 7;                      % Number of Galvo steps, x
+p.GalvoNY = 7;                      % Number of Galvo steps, y
 
 % Ask if samplename is correct
 if dochecksamplename
@@ -42,7 +42,7 @@ end
 %% Compute constants
 % Compute segment size in relative coords
 
-[p.NxSLM, p.NySLM] = size(slm.getPixels);                 % Retrieve SLM size in pixels
+[p.NxSLM, p.NySLM] = size(slm.getPixels);                   % Retrieve SLM size in pixels
 % p.NySLM = 500;  %%% Use only for debugging, when SLM is unavailable
 p.segmentwidth = p.segmentsize_pix / p.NySLM;               % Segment width in relative coords
 p.segmentheight = p.segmentwidth;                           % Segment height in relative coords
@@ -65,12 +65,12 @@ p.galvoYs1d = linspace(p.GalvoYcenter-p.GalvoRadius, p.GalvoYcenter+p.GalvoRadiu
 galvo_scan_mask = ((galvoXsq-p.GalvoXcenter).^2 + (galvoYsq-p.GalvoYcenter).^2 <= p.GalvoRadius.^2);
 p.galvoXs = single(galvoXsq(galvo_scan_mask));
 p.galvoYs = single(galvoYsq(galvo_scan_mask));
-G = p.GalvoNX * p.GalvoNY;
+G = numel(p.galvoXs);
 
 
 %% Initialize arrays
-frames_ft  = zeros(copt_img.Width, copt_img.Height, G, 'single');
-frames_img = zeros(copt_img.Width, copt_img.Height, G, 'single');
+frames_ft  = zeros(copt_img.Width, copt_img.Height, N, G, 'single');
+frames_img = zeros(copt_img.Width, copt_img.Height, N, G, 'single');
 
 
 %% Capture dark frames
@@ -83,11 +83,6 @@ darkframe_ft = cam_ft.getData;                              % Fourier Plane came
 cam_img.trigger;
 darkframe_img = cam_img.getData;                            % Image Plane camera dark frame
 
-if dosave
-    p = preparesave(p, dirs, sprintf('raylearn_dark_frames'));
-    save(p.savepath, '-v7.3', 'darkframe_ft', 'darkframe_img', 'p', 'sopt', 'copt_ft', 'copt_img')
-end
-
 
 %% Main measurement loop
 slm.setData(p.segment_patch_id, p.blaze);
@@ -98,9 +93,11 @@ if doshowcams                       % Spawn wide figure
 end
 
 starttime = now;
-
-for n = 1:N                         % Loop over SLM segments
+NG = N*G;
+ng = 0;
+for n = 1:N                        % Loop over SLM segments
     for g = 1:G                     % Loop over Galvo tilts
+        ng = ng+1;                  % Counter for ETA
         outputSingleScan(daqs, [p.galvoXs(g), p.galvoYs(g)]);   % Set Galvo Mirror
         pause(0.005)
     
@@ -131,16 +128,15 @@ for n = 1:N                         % Loop over SLM segments
             title(sprintf('Image Plane Cam | Galvo tilt %i/%i\nsaturation = %.0f%%', g, G, saturation_img))
             colorbar
         end
-    
+        
+        eta(ng, NG, starttime, 'console', sprintf('Measuring pencil beams...\nSegment: %i/%i, Tilt: %i/%i',n,N,g,G), 0);
     end
-    
-    if dosave
-        % Save that stuff! Save for each segment position separately to prevent massive files
-        p = preparesave(p, dirs, sprintf('raylearn_pencil_beam_%i', n));
-        save(p.savepath, '-v7.3', 'frames_ft', 'frames_img', 'n', 'p', 'sopt', 'copt_ft', 'copt_img')
-    end
-    
-    eta(n, N, starttime, 'console', 'Measuring pencil beams...', 0);
+end
+
+if dosave
+    % Save that stuff! Save for each segment position separately to prevent massive files
+    p = preparesave(p, dirs, sprintf('raylearn_pencil_beam'));
+    save(p.savepath, '-v7.3', 'frames_ft', 'frames_img', 'darkframe_ft', 'darkframe_img', 'n', 'p', 'sopt', 'copt_ft', 'copt_img')
 end
 
 
