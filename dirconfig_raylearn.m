@@ -28,3 +28,23 @@ dirs.expdata = fullfile(char(dirs.repo), 'ExperimentalData'); % Experimental Dat
 dirs.localdata = 'C:\LocalData\';      % Local Data
 % expdatadir = '//ad.utwente.nl/TNW/BMPI/Users/Daniel Cox/ExperimentalData';
 
+
+%% Add repo paths
+addrepo(fullfile(dirs.main, 'raylearn'))
+addrepo(fullfile(dirs.main, 'utilities'))
+addrepo(fullfile(dirs.main, 'hardware'))
+
+fprintf('\n')
+
+%% Subfunctions
+
+function addrepo(basepath)
+    % addrepo
+    % Add given directory to path with subdirectories, but exclude any .git
+    % (sub)directories, after checking whether it exists.
+    assert(isfolder(basepath), sprintf('The repository %s could not be found.', basepath))
+    path = genpath(basepath);                       % Generate path as normal
+    filteredpath = regexprep(path, '[^;]*\.git[^;]*;', ''); % Exclude */.git/*
+    addpath(filteredpath);                          % Add to path
+    fprintf('Found repo %s.\n', basepath)
+end
