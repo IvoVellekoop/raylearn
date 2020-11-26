@@ -56,7 +56,7 @@ p.blaze = single(bg_grating('blaze', -p.ppp, 0, 255, p.segmentsize_pix)' * ones(
 p.blaze(mask_outside_circle) = 0;                           % Set pixels outside circle to 0
 
 % Create set of SLM segment rectangles within circle
-[p.rects, N] = BlockedCircleSegments(p.N_diameter, p.beamdiameter, p.slm_offset_x, p.slm_offset_y, p.segmentwidth, p.segmentheight);
+[p.rects, S] = BlockedCircleSegments(p.N_diameter, p.beamdiameter, p.slm_offset_x, p.slm_offset_y, p.segmentwidth, p.segmentheight);
 
 % Create set of Galvo tilts
 p.galvoXs1d = linspace(p.GalvoXcenter-p.GalvoRadius, p.GalvoXcenter+p.GalvoRadius, p.GalvoNX);
@@ -69,8 +69,8 @@ G = numel(p.galvoXs);
 
 
 %% Initialize arrays
-frames_ft  = zeros(copt_img.Width, copt_img.Height, N, G, 'single');
-frames_img = zeros(copt_img.Width, copt_img.Height, N, G, 'single');
+frames_ft  = zeros(copt_img.Width, copt_img.Height, S, G, 'single');
+frames_img = zeros(copt_img.Width, copt_img.Height, S, G, 'single');
 
 
 % %% Capture dark frames
@@ -93,33 +93,33 @@ if doshowcams                       % Spawn wide figure
 end
 
 starttime = now;
-NG = N*G;
-ng = 0;
-for n = 1:N                        % Loop over SLM segments
+SG = S*G;
+sg = 0;                             % Counter for double loop
+for s = 1:S                         % Loop over SLM segments
     for g = 1:G                     % Loop over Galvo tilts
-        ng = ng+1;                  % Counter for ETA
+        sg = sg+1;                  % Counter for ETA
         outputSingleScan(daqs, [p.galvoXs(g), p.galvoYs(g)]);   % Set Galvo Mirror
         pause(0.005)
     
         % Incoming angle of pencil beam: set SLM segment
-        slm.setRect(p.segment_patch_id, p.rects(n,:));
+        slm.setRect(p.segment_patch_id, p.rects(s,:));
         slm.update
 
         % Capture camera frames
         cam_ft.trigger;
         frame_ft = single(cam_ft.getData);
-        frames_ft(:,:,n,g) = frame_ft;
+        frames_ft(:,:,s,g) = frame_ft;
 
         cam_img.trigger;
         frame_img = single(cam_img.getData);
-        frames_img(:,:,n,g) = frame_img;
+        frames_img(:,:,s,g) = frame_img;
 
         % Show what's on the cameras and check for overexposure
         if doshowcams
             subplot(1,2,1)
             imagesc(frame_ft)
             saturation_ft = 100 * max(frame_ft,[],'all') / 65520;   % 12bit -> 2^16 - 2^4 = 65520
-            title(sprintf('Fourier Plane Cam | Segment %i/%i\nsaturation = %.0f%%', n, N, saturation_ft))
+            title(sprintf('Fourier Plane Cam | Segment %i/%i\nsaturation = %.0f%%', s, S, saturation_ft))
             colorbar
 
             subplot(1,2,2)
@@ -129,14 +129,15 @@ for n = 1:N                        % Loop over SLM segments
             colorbar
         end
         
-        eta(ng, NG, starttime, 'console', sprintf('Measuring pencil beams...\nSegment: %i/%i, Tilt: %i/%i',n,N,g,G), 0);
+        eta(sg, SG, starttime, 'cmd',...
+            sprintf('Measuring pencil beams...\nSegment: %i/%i, Tilt: %i/%i',s,S,g,G), 0);
     end
 end
 
 if dosave
     % Save that stuff! Save for each segment position separately to prevent massive files
     p = preparesave(p, dirs, sprintf('raylearn_pencil_beam'));
-    save(p.savepath, '-v7.3', 'frames_ft', 'frames_img', 'darkframe_ft', 'darkframe_img', 'n', 'p', 'sopt', 'copt_ft', 'copt_img')
+    save(p.savepath, '-v7.3', 'frames_ft', 'frames_img', 'darkframe_ft', 'darkframe_img', 's', 'p', 'sopt', 'copt_ft', 'copt_img')
 end
 
 
