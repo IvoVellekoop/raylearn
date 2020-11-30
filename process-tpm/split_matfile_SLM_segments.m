@@ -16,26 +16,34 @@ function split_matfile_SLM_segments(matfilepath, savedir)
     warning('off', 'MATLAB:MKDIR:DirectoryExists');
     try mkdir(savedir); catch 'MATLAB:MKDIR:DirectoryExists'; end   % Create savedir if needed
 
-    numchars = fprintf('Loading input file...\n%s.mat', infilename);
-    load(matfilepath, 'frames_ft', 'frames_img', 'copt_ft', 'copt_img', 'sopt', 'p'); % Load data
-    [~,~,S,~] = size(frames_ft);                                    % Number of segments
-
+    numchars = 0;
+    load(matfilepath, 'copt_ft', 'copt_img', 'sopt', 'p');          % Load metadata
+    inputfile = matfile(matfilepath);                               % Create matfile object
+    [~,~,S,G] = size(inputfile, 'frames_img');                      % Number of segments
+    
+    if G < 1
+        % Note: For some corrupt files, an empty dimension might be reported
+        warning('Empty array in %s\nCorrupt file?', matfilepath);
+        return
+    end
+    
     % Loop over segments
-    starttime = now;
     for s = 1:S
         % Construct output path
         outfilename = sprintf('%s_%03i.mat', infilename, s);
         savepath = fullfile(savedir, outfilename);
         
-        % Print writing progress
+        % Print progress
         fprintf(repmat('\b', [1 numchars]))
-        numchars = fprintf('Output file %i/%i\n%s', s, S, outfilename);
+        numchars = fprintf('Output file %i/%i\n%s\n', s, S, outfilename);
         
         % Extract segment data
-        frames_galvo_ft  = frames_ft(:,:,s,:);
-        frames_galvo_img = frames_img(:,:,s,:);
+        frames_slmslice_ft  = inputfile.frames_ft(:,:,s,1:G);
+        frames_slmslice_img = inputfile.frames_img(:,:,s,1:G);
         
-        % Save the extracted data
-        save(savepath, '-v7.3', 's', 'frames_galvo_ft', 'frames_galvo_img', 'copt_ft', 'copt_img', 'sopt', 'p');
+        % Save the extracted data and metadata
+        save(savepath, '-v7.3', 's', 'frames_slmslice_ft', 'frames_slmslice_img',...
+            'copt_ft', 'copt_img', 'sopt', 'p');
     end
 end
+
