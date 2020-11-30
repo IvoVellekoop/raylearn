@@ -9,6 +9,7 @@ addpath(fileparts(fileparts(mfilename('fullpath'))))   % Parent dir
 dirconfig_raylearn
 
 % Settings
+chunksize_bytes = 5e8;              % Maximum chunk loading size
 inputpattern = 'F:\ScientificData\raylearn-data\TPM\pencil-beams-raw\*\raylearn_pencil_beam*.mat';
 outputgroupfolder = 'F:\ScientificData\raylearn-data\TPM\pencil-beams-split';
 consoletext = 'Splitting data files...';
@@ -38,7 +39,7 @@ for f = 1:F
     bytesdone = bytesdone + filelist(f).bytes;
     
     % Split the file
-    split_matfile_SLM_segments(matfilepath, savedir)
+    split_matfile_SLM_segments(matfilepath, savedir, chunksize_bytes)
     
     eta(bytesdone, bytestotal, starttime, 'cmd', sprintf('%s\nFiles done: %i/%i', consoletext, f, F), 0);
 end

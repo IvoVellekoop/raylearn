@@ -1,5 +1,5 @@
 % Split file by SLM segments
-function split_matfile_SLM_segments(matfilepath, savedir, numchunks)
+function split_matfile_SLM_segments(matfilepath, savedir, chunksize_bytes)
     % Split file by SLM segments
     %
     % Some measurement data is packed into one big file. This function splits it up and saves
@@ -25,25 +25,25 @@ function split_matfile_SLM_segments(matfilepath, savedir, numchunks)
         return
     end
 
-    
-    chunksize = ceil(S/numchunks);                                  % Size of an array chunk
+    totalsize_bytes = 2 * Nx*Ny*G*S * 4;                            % Total size of the arrays
+    chunksize = max(1, floor(S*chunksize_bytes/totalsize_bytes));   % Size of an array chunk
+    numchunks = ceil(S / chunksize);                                % Number of chunks
     s = 1;                                                          % Segment number
     
     % Loop over chunks
     for c = 1:numchunks
-        % Load data chunk
-        
-        chunkend = min(s+chunksize-1, S);                               % Index of chunk end
-        thischunksize = length(s:chunkend);                             % Size of this chunk
-        bytestr = bytes2str(Nx*Ny*G*thischunksize*4, '%.0f');           % Formatted char array
+        % Prepare chunk loading
+        chunk = s:min(s+chunksize-1, S);                            % Index of chunk end
+        thischunksize = length(chunk);                              % Size of this chunk
+        bytestr = bytes2str(2*Nx*Ny*G*thischunksize*4, '%.0f');     % Formatted char array
         numchars = numchars + fprintf('Loading chunk (%s) %i/%i...\n', bytestr, c, numchunks);
         
-        frames_chunk_ft  = inputfile.frames_ft(:, :, s:chunkend, 1:G);  % Load chunk ft frames
-        frames_chunk_img = inputfile.frames_img(:,:, s:chunkend, 1:G);  % Load chunk img frames
+        % Load data chunk
+        frames_chunk_ft  = inputfile.frames_ft(:, :, chunk, 1:G);   % Load chunk ft frames
+        frames_chunk_img = inputfile.frames_img(:,:, chunk, 1:G);   % Load chunk img frames
         
         
-        for sc = 1:thischunksize
-    
+        for sc = 1:thischunksize    
             % Construct output path
             outfilename = sprintf('%s_%03i.mat', infilename, s);
             savepath = fullfile(savedir, outfilename);
@@ -64,4 +64,3 @@ function split_matfile_SLM_segments(matfilepath, savedir, numchunks)
         end
     end
 end
-
