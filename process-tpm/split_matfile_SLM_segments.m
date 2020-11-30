@@ -1,5 +1,5 @@
 % Split file by SLM segments
-function split_matfile_SLM_segments(matfilepath, savedir, consoletext)
+function split_matfile_SLM_segments(matfilepath, savedir)
     % Split file by SLM segments
     %
     % Some measurement data is packed into one big file. This function splits it up and saves
@@ -12,37 +12,30 @@ function split_matfile_SLM_segments(matfilepath, savedir, consoletext)
     %
     % Requires: eta function from the utilities repo.
     
-    if nargin < 3
-        consoletext = 'Split mat file SLM segments';
-    end
-    
-    [~, filename, ~] = fileparts(matfilepath);
-    try mkdir(savedir); catch 'MATLAB:MKDIR:DirectoryExists'; end       % Create savedir if needed
+    [~, infilename, ~] = fileparts(matfilepath);
+    warning('off', 'MATLAB:MKDIR:DirectoryExists');
+    try mkdir(savedir); catch 'MATLAB:MKDIR:DirectoryExists'; end   % Create savedir if needed
 
-    for plane = ["ft", "img"]                       % Do this for both conjugated camera planes
-        frames_plane = strcat('frames_', plane);
-        copt_plane = strcat('copt_', plane);
-        
-        V = load(matfilepath, frames_plane, copt_plane, 'sopt', 'p');   % Load data as struct
-        [~,~,S,~] = size(V.(frames_plane));                             % Number of segments
-        copt = V.(copt_plane);                                          % Camera options
-        sopt = V.sopt;                                                  % SLM options
-        p = V.p;                                                        % Other parameters
+    numchars = fprintf('Loading input file...\n%s.mat', infilename);
+    load(matfilepath, 'frames_ft', 'frames_img', 'copt_ft', 'copt_img', 'sopt', 'p'); % Load data
+    [~,~,S,~] = size(frames_ft);                                    % Number of segments
 
-        % Loop over segments
-        starttime = now;
-        for s = 1:S
-            frames_galvo = V.(frames_plane)(:,:,s,:);                   % Extract segment data
-            savepath = fullfile(savedir, ...
-                sprintf('%s_%s_%03i.mat', filename, plane, s));         % Output folder
-            save(savepath, 'frames_galvo', 's', 'copt', 'sopt', 'p', 'plane'); % Save
-            
-            % Estimated Time for Arrival
-            eta(s, S, starttime, 'console',...
-                sprintf('%s\nSplitting file: %s\nPlane: %s\nOutput file: %s',...
-                consoletext, matfilepath, plane, savepath), 0);
-        end
+    % Loop over segments
+    starttime = now;
+    for s = 1:S
+        % Construct output path
+        outfilename = sprintf('%s_%03i.mat', infilename, s);
+        savepath = fullfile(savedir, outfilename);
         
-        clear V                                                         % Free up memory instead of downloading more RAM
+        % Print writing progress
+        fprintf(repmat('\b', [1 numchars]))
+        numchars = fprintf('Output file %i/%i\n%s', s, S, outfilename);
+        
+        % Extract segment data
+        frames_galvo_ft  = frames_ft(:,:,s,:);
+        frames_galvo_img = frames_img(:,:,s,:);
+        
+        % Save the extracted data
+        save(savepath, '-v7.3', 's', 'frames_galvo_ft', 'frames_galvo_img', 'copt_ft', 'copt_img', 'sopt', 'p');
     end
 end
