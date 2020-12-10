@@ -1,4 +1,4 @@
-function [col, row, threshold, framemask] =...
+function [col, row, threshold, framemask, found] =...
     extract_pencil_position_from_frame(frame, meanthreshfactor, bgcornersize, percentile, percentilefactor, medfiltsize)
     % Extract Pencil Position
     % Extract the column and row of the center of a pencil beam spot in an image. A threshold
@@ -33,9 +33,10 @@ function [col, row, threshold, framemask] =...
     
     if any(framemask, 'all')        % Check if anything > threshold
         [col, row] = img_center_of_mass(framemask .* frame);
+        found = true;
     else
-        warning('Could not find beam spot above threshold.')
         col = NaN;
         row = NaN;
+        found = false;
     end
 end
