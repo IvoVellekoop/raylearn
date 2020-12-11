@@ -30,8 +30,8 @@ ky = cam_ft_row(:)  * 4/camsize_pix - 2;
 %% Create basis polynomial functions
 % Create coordinate arrays for x,y,kx,ky
 
-for npowers = 1:6
-% for npowers = 5
+% for npowers = 1:7
+for npowers = 6
 
     % Create 1D arrays containing 1, x, x^2, ..., 1, y, y^2, ..., 1, kx, kx^2, ...
     % npowers = 6;                                    % Polynomial powers (including 0)
@@ -92,22 +92,22 @@ for npowers = 1:6
     %% Create test data from coefficients
     Yslm_gt = repmat(p.rects(:,1), [size(cam_ft_col, 2) 1]);
     Yslm_cf   = xykxky_cam_basis_fit \ Yslm_gt(fitset);                 % Compute coefficients
-    Yslm_fit  = xykxky_cam_basis_fit  * Yslm_cf;                % Compute fit
+    Yslm_fit  = xykxky_cam_basis  * Yslm_cf;                % Compute fit
     Yslm_test = xykxky_cam_basis_test * Yslm_cf;
 
     Xslm_gt = repmat(p.rects(:,2), [size(cam_ft_row, 2) 1]);
     Xslm_cf   = xykxky_cam_basis_fit \ Xslm_gt(fitset);                 % Compute coefficients
-    Xslm_fit  = xykxky_cam_basis_fit  * Xslm_cf;                % Compute fit
+    Xslm_fit  = xykxky_cam_basis  * Xslm_cf;                % Compute fit
     Xslm_test = xykxky_cam_basis_test * Xslm_cf;
 
     Ygalvo_gt = repelem(p.galvoYs, size(cam_img_col, 1));
     Ygalvo_cf   = xykxky_cam_basis_fit \ Ygalvo_gt(fitset);                 % Compute coefficients
-    Ygalvo_fit  = xykxky_cam_basis_fit * Ygalvo_cf;                % Compute fit
+    Ygalvo_fit  = xykxky_cam_basis * Ygalvo_cf;                % Compute fit
     Ygalvo_test = xykxky_cam_basis_test * Ygalvo_cf;
 
     Xgalvo_gt = repelem(p.galvoXs, size(cam_img_row, 1));
     Xgalvo_cf   = xykxky_cam_basis_fit \ Xgalvo_gt(fitset);                 % Compute coefficients
-    Xgalvo_fit  = xykxky_cam_basis_fit  * Xgalvo_cf;                % Compute fit
+    Xgalvo_fit  = xykxky_cam_basis  * Xgalvo_cf;                % Compute fit
     Xgalvo_test = xykxky_cam_basis_test * Xgalvo_cf;                % Compute test
 
     %% Test
@@ -125,7 +125,7 @@ semilogy(Ygalvo_NRMSE, '.-')
 semilogy(Xgalvo_NRMSE, '.-')
 hold off
 title(sprintf('STD-Normalized Root Mean Square Error\nTest set size: %.0f%%', test_percentage))
-legend('Yslm', 'Xslm', 'Ygalvo', 'Xgalvo')
+legend({'Yslm', 'Xslm', 'Ygalvo', 'Xgalvo'}, 'Location', 'Best')
 xlabel('polynomial powers per dimension')
 ylabel('NRMSE')
 
