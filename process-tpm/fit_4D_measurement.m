@@ -31,6 +31,7 @@ ky = cam_ft_row(:)  * 4/camsize_pix - 2;
 % Create coordinate arrays for x,y,kx,ky
 
 for npowers = 1:6
+% for npowers = 5
 
     % Create 1D arrays containing 1, x, x^2, ..., 1, y, y^2, ..., 1, kx, kx^2, ...
     % npowers = 6;                                    % Polynomial powers (including 0)
@@ -110,10 +111,10 @@ for npowers = 1:6
     Xgalvo_test = xykxky_cam_basis_test * Xgalvo_cf;                % Compute test
 
     %% Test
-    Yslm_NRMSE(npowers)   = sqrt(mean((Yslm_test   - Yslm_gt(testset)).^2))   / mean(abs(Yslm_gt(testset)));
-    Xslm_NRMSE(npowers)   = sqrt(mean((Xslm_test   - Xslm_gt(testset)).^2))   / mean(abs(Xslm_gt(testset)));
-    Ygalvo_NRMSE(npowers) = sqrt(mean((Ygalvo_test - Ygalvo_gt(testset)).^2)) / mean(abs(Ygalvo_gt(testset)));
-    Xgalvo_NRMSE(npowers) = sqrt(mean((Xgalvo_test - Xgalvo_gt(testset)).^2)) / mean(abs(Xgalvo_gt(testset)));
+    Yslm_NRMSE(npowers)   = sqrt(mean((Yslm_test   - Yslm_gt(testset)).^2))   / std(Yslm_gt(testset));
+    Xslm_NRMSE(npowers)   = sqrt(mean((Xslm_test   - Xslm_gt(testset)).^2))   / std(Xslm_gt(testset));
+    Ygalvo_NRMSE(npowers) = sqrt(mean((Ygalvo_test - Ygalvo_gt(testset)).^2)) / std(Ygalvo_gt(testset));
+    Xgalvo_NRMSE(npowers) = sqrt(mean((Xgalvo_test - Xgalvo_gt(testset)).^2)) / std(Xgalvo_gt(testset));
 end
 
 figure
@@ -123,82 +124,91 @@ semilogy(Xslm_NRMSE, '.-')
 semilogy(Ygalvo_NRMSE, '.-')
 semilogy(Xgalvo_NRMSE, '.-')
 hold off
-title(sprintf('Normalized Root Mean Square Error\nTest set size: %.0f%%', test_percentage))
+title(sprintf('STD-Normalized Root Mean Square Error\nTest set size: %.0f%%', test_percentage))
 legend('Yslm', 'Xslm', 'Ygalvo', 'Xgalvo')
 xlabel('polynomial powers per dimension')
 ylabel('NRMSE')
 
-% %% Plot
-% % close all
+%% Plot
+% close all
+
+% Scatter plot matrix
+figure
+set(0, 'DefaultAxesFontSize', 14)
+[~, ax] = plotmatrix([x y kx ky], [Xgalvo_gt Ygalvo_gt Xslm_gt Yslm_gt]);
+title('Correlations')
+
+ax(1,1).YLabel.String='Xgalvo';
+ax(2,1).YLabel.String='Ygalvo';
+ax(3,1).YLabel.String='Xslm';
+ax(4,1).YLabel.String='Yslm';
+
+ax(4,1).XLabel.String='x';
+ax(4,2).XLabel.String='y';
+ax(4,3).XLabel.String='k_x';
+ax(4,4).XLabel.String='k_y';
+
+% Scatter plot kx & ky
+figure
+plot(cam_ft_row', cam_ft_col', '.')
+title('Fourier plane points')
+axis image
+xlabel('row coordinate (pix)')
+ylabel('column coordinate (pix)')
+
+% Scatter plot x & y
+figure
+plot(cam_img_row', cam_img_col', '.')
+title('Image plane points')
+axis image
+xlabel('row coordinate (pix)')
+ylabel('column coordinate (pix)')
+
+% Plot slices of fit data vs ground truth
+figure
+subplot(1,2,1)
+plot(Xgalvo_fit, Ygalvo_fit, '+b')
+hold on
+plot(Xgalvo_gt, Ygalvo_gt, 'or')
+axis image
+title('Fit Galvo')
+xlabel('Xgalvo')
+ylabel('Ygalvo')
+legend('Fit', 'Ground Truth')
+hold off
+
+subplot(1,2,2)
+plot(Xslm_fit, Yslm_fit, '+b')
+hold on
+plot(Xslm_gt, Yslm_gt, 'or')
+axis image
+title('Fit SLM')
+xlabel('Xslm')
+ylabel('Yslm')
+legend('Fit', 'Ground Truth')
+hold off
+
+% Plot bar graphs of coefficients
+figure
+hbar = bar(Yslm_cf);    % Create bar plot
+title('Y_{SLM} coefficients')
+xlabel('index')
+ylabel('coefficient')
+% Get the data for all the bars that were plotted
+xbar = get(hbar,'XData');
+ybar = get(hbar,'YData');
+for i = 1:length(xbar) % Loop over each bar
+    if abs(Yslm_cf(i)) > 0.4*mean(abs(Yslm_cf))
+        htext = text(xbar(i),ybar(i),orderlabels{i});          % Add text label
+        set(htext,'VerticalAlignment','middle',...  % Adjust properties
+                  'HorizontalAlignment','center')
+    end
+end
+
+
+% figure(3)
+% xfit  = linspace(min(x), max(x), 100);
+% yfit  = mean(y);
+% kxfit = mean(kx);
+% kyfit = mean(ky);
 % 
-% % Scatter plot matrix
-% figure
-% set(0, 'DefaultAxesFontSize', 14)
-% [~, ax] = plotmatrix([x y kx ky], [Xgalvo_gt Ygalvo_gt Xslm_gt Yslm_gt]);
-% title('Correlations')
-% 
-% ax(1,1).YLabel.String='Xgalvo';
-% ax(2,1).YLabel.String='Ygalvo';
-% ax(3,1).YLabel.String='Xslm';
-% ax(4,1).YLabel.String='Yslm';
-% 
-% ax(4,1).XLabel.String='x';
-% ax(4,2).XLabel.String='y';
-% ax(4,3).XLabel.String='k_x';
-% ax(4,4).XLabel.String='k_y';
-% 
-% % Scatter plot x & y
-% figure
-% plot(cam_img_row', cam_img_col', '.')
-% title('Image plane points')
-% xlabel('row coordinate (pix)')
-% ylabel('column coordinate (pix)')
-% 
-% % Plot slices of fit data vs ground truth
-% figure
-% subplot(1,2,1)
-% plot(Xgalvo_fit, Ygalvo_fit, '+b')
-% hold on
-% plot(Xgalvo_gt, Ygalvo_gt, 'or')
-% axis image
-% title('Fit Galvo')
-% xlabel('Xgalvo')
-% ylabel('Ygalvo')
-% legend('Fit', 'Ground Truth')
-% hold off
-% 
-% subplot(1,2,2)
-% plot(Xslm_fit, Yslm_fit, '+b')
-% hold on
-% plot(Xslm_gt, Yslm_gt, 'or')
-% axis image
-% title('Fit SLM')
-% xlabel('Xslm')
-% ylabel('Yslm')
-% legend('Fit', 'Ground Truth')
-% hold off
-% 
-% % Plot bar graphs of coefficients
-% figure
-% hbar = bar(Yslm_cf);    % Create bar plot
-% title('Y_{SLM} coefficients')
-% xlabel('index')
-% ylabel('coefficient')
-% % Get the data for all the bars that were plotted
-% xbar = get(hbar,'XData');
-% ybar = get(hbar,'YData');
-% for i = 1:length(xbar) % Loop over each bar
-%     if abs(Yslm_cf(i)) > 0.4*mean(abs(Yslm_cf))
-%         htext = text(xbar(i),ybar(i),orderlabels{i});          % Add text label
-%         set(htext,'VerticalAlignment','middle',...  % Adjust properties
-%                   'HorizontalAlignment','center')
-%     end
-% end
-% 
-% 
-% % figure(3)
-% % xfit  = linspace(min(x), max(x), 100);
-% % yfit  = mean(y);
-% % kxfit = mean(kx);
-% % kyfit = mean(ky);
-% % 
