@@ -9,7 +9,7 @@ if forcereset || ~exist('cam_img_row', 'var')
     addpath(fileparts(fileparts(mfilename('fullpath'))))   % Parent dir
     dirconfig_raylearn
 
-    load(fullfile(dirs.localdata, 'pencil-beam-positions/03-Nov-2020-empty/raylearn_pencil_beam_738098.472397_empty.mat'));
+%     load(fullfile(dirs.localdata, 'pencil-beam-positions/03-Nov-2020-empty/raylearn_pencil_beam_738098.472397_empty.mat'));
     load /home/daniel/d/ScientificData/raylearn-data/TPM/pencil-beam-positions/03-Nov-2020-empty/raylearn_pencil_beam_738098.472397_empty.mat
 %     load F:\ScientificData\raylearn-data\TPM\pencil-beam-positions\03-Nov-2020-empty\raylearn_pencil_beam_738098.472397_empty.mat
 end
@@ -93,14 +93,14 @@ for npowers = 4
 
 
     %% Prepare interpolation data
-%     index_xslm = 6;
-    index_yslm = 5;
+    index_xslm = 6;
+    index_yslm = 6;
     index_xgalvo = 4;
     index_ygalvo = 3;
     
     % Select a 1D slice from the 4D dataset
     selection = false(sz);
-    selection(:,  index_yslm, index_xgalvo, index_ygalvo) = true;
+    selection(index_xslm,  :, index_xgalvo, index_ygalvo) = true;
     
     x_select  = x_grid(selection);
     y_select  = y_grid(selection);
@@ -209,6 +209,7 @@ for npowers = 4
     Ygalvo_fit_interp = xykxky_interp_basis * Ygalvo_cf;
     Xgalvo_fit_interp = xykxky_interp_basis * Xgalvo_cf;
     
+    figure
     plot(interppoints, Xgalvo_fit_interp, '.-'); hold on
     plot(gridpoints, Xgalvo_gt_select, 'o'); hold off
     
