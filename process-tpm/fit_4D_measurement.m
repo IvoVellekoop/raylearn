@@ -1,16 +1,17 @@
 %% Test to fit 4D polynomial, to model camera coords to SLM/Galvo coords
 
-doreset = 0;
+forcereset = 0;
 
-if doreset
+if forcereset || ~exist('cam_img_row', 'var')
     close all; clc; clear
 
     % Define location paths
     addpath(fileparts(fileparts(mfilename('fullpath'))))   % Parent dir
     dirconfig_raylearn
 
-%     load(fullfile(dirs.localdata, 'pencil-beam-positions/03-Nov-2020-empty/raylearn_pencil_beam_738098.472397_empty.mat'));
-    load F:\ScientificData\raylearn-data\TPM\pencil-beam-positions\03-Nov-2020-empty\raylearn_pencil_beam_738098.472397_empty.mat
+    load(fullfile(dirs.localdata, 'pencil-beam-positions/03-Nov-2020-empty/raylearn_pencil_beam_738098.472397_empty.mat'));
+    load /home/daniel/d/ScientificData/raylearn-data/TPM/pencil-beam-positions/03-Nov-2020-empty/raylearn_pencil_beam_738098.472397_empty.mat
+%     load F:\ScientificData\raylearn-data\TPM\pencil-beam-positions\03-Nov-2020-empty\raylearn_pencil_beam_738098.472397_empty.mat
 end
 
 %% Load SLM and Galvo coordinates
@@ -21,7 +22,7 @@ Xgalvo_gt = repelem(p.galvoXs, size(cam_img_row, 1));
 
 
 %%
-test_percentage = 20;
+test_percentage = 10;
 camsize_pix = 1024;
 Npoints = numel(cam_ft_col);
 randorder = randperm(Npoints);
@@ -66,7 +67,7 @@ index_xslm = 6;
 index_yslm = 5;
 index_xgalvo = 3;
 index_ygalvo = 3;
-plot(squeeze(Xgalvo_gt_grid(index_xslm,index_yslm,:,index_ygalvo))', squeeze(kx_grid(index_xslm,index_yslm,:,index_ygalvo))', '.-')
+% plot(squeeze(Xgalvo_gt_grid(index_xslm,index_yslm,:,index_ygalvo))', squeeze(kx_grid(index_xslm,index_yslm,:,index_ygalvo))', '.-')
 %%%%
 
 %% 
@@ -93,23 +94,50 @@ for npowers = 4
 
     %% Prepare interpolation data
 %     index_xslm = 6;
-%     index_yslm = 5;
-%     index_xgalvo = 3;
-%     index_ygalvo = 3;
-%     x_grid(index_xslm, index_yslm, : ,index_ygalvo)
+    index_yslm = 5;
+    index_xgalvo = 4;
+    index_ygalvo = 3;
     
-%     Ninterppoints = 100;
-%     xint  = linspace(min(x),  max(x),  Ninterppoints);
-%     yint  = linspace(min(y),  max(y),  Ninterppoints);
-%     kxint = linspace(min(kx), max(kx), Ninterppoints);
-%     kyint = linspace(min(ky), max(ky), Ninterppoints);
-%     
-%     xintpowers  =  xint.^powers;
-%     yintpowers  =  yint.^powers;
-%     kxpowers = kx.^powers;
-%     kypowers = ky.^powers;
-%     
-%     xykxky_interp_basis = zeros(Npoints, npowers.^4);
+    % Select a 1D slice from the 4D dataset
+    selection = false(sz);
+    selection(:,  index_yslm, index_xgalvo, index_ygalvo) = true;
+    
+    x_select  = x_grid(selection);
+    y_select  = y_grid(selection);
+    kx_select = kx_grid(selection);
+    ky_select = ky_grid(selection);
+    
+    Xslm_gt_select = Xslm_gt_grid(selection);
+    Yslm_gt_select = Yslm_gt_grid(selection);
+    Xgalvo_gt_select = Xgalvo_gt_grid(selection);
+    Ygalvo_gt_select = Ygalvo_gt_grid(selection);
+    
+    % Create grid points and query points for interpolation
+    Ninterppoints = 100;                                        % Number of query points for interpolation
+    gridpoints = 1:numel(x_select);                             % Points where the values are defined
+    interppoints = linspace(1, numel(x_select), Ninterppoints); % Query points where we want to interpolate the value
+    
+    % Interpolate camera coordinate points
+    x_interp  = interp1(gridpoints, x_select,  interppoints)';
+    y_interp  = interp1(gridpoints, y_select,  interppoints)';
+    kx_interp = interp1(gridpoints, kx_select, interppoints)';
+    ky_interp = interp1(gridpoints, ky_select, interppoints)';
+    
+    %%%%
+    plot(interppoints, kx_interp, '.-');
+    hold on
+    plot(gridpoints, kx_select, 'o');
+    hold off
+    title('Interpolation check')
+    %%%%
+    
+    % Compute powers of interpolated camera points
+    x_interp_powers  =  x_interp.^powers;
+    y_interp_powers  =  y_interp.^powers;
+    kx_interp_powers = kx_interp.^powers;
+    ky_interp_powers = ky_interp.^powers;
+    
+    xykxky_interp_basis = zeros(Ninterppoints, npowers.^4);
 
 
     %% Loop over all powers in x,y,kx,ky
@@ -124,7 +152,9 @@ for npowers = 4
                 for kypow = kypowers
                     % Add 4D polynomial to set of basis functions
                     xykxky_cam_basis(:, m) = xpow .* ypow .* kxpow .* kypow;
-    %                 xykxky_interp_basis(:, m) = 
+                    xykxky_interp_basis(:, m) =...
+                        x_interp_powers(:,px+1) .* y_interp_powers(:,py+1) .*...
+                        kx_interp_powers(:,pkx+1) .* ky_interp_powers(:,pky+1);
 
                     orderlabels{m} = sprintf("x^%iy^%ik_x^%ik_y^%i", px, py, pkx, pky);
                     m = m+1;
@@ -165,13 +195,23 @@ for npowers = 4
     Xgalvo_NRMSE(npowers) = sqrt(mean((Xgalvo_test - Xgalvo_gt(testset)).^2)) / std(Xgalvo_gt(testset));
     
     
-    %% Select 1D lines for analyzing overfitting %%%%
-    Xline_condition = (Yslm_gt==0) & (Xslm_gt==0) & (Ygalvo_gt<0.0401) & (Ygalvo_gt>0.0399);
-    Xgalvo_1D = Xgalvo_gt(Xline_condition);
-    x_1D  = x(Xline_condition);
-    kx_1D = kx(Xline_condition);
-    figure; plot(x_1D, Xgalvo_1D, '.-')
-    figure; plot(kx_1D, Xgalvo_1D, '.-')
+%     %% Select 1D lines for analyzing overfitting %%%%
+%     Xline_condition = (Yslm_gt==0) & (Xslm_gt==0) & (Ygalvo_gt<0.0401) & (Ygalvo_gt>0.0399);
+%     Xgalvo_1D = Xgalvo_gt(Xline_condition);
+%     x_1D  = x(Xline_condition);
+%     kx_1D = kx(Xline_condition);
+%     figure; plot(x_1D, Xgalvo_1D, '.-')
+%     figure; plot(kx_1D, Xgalvo_1D, '.-')
+    
+    %%
+    Yslm_fit_interp = xykxky_interp_basis * Yslm_cf;
+    Xslm_fit_interp = xykxky_interp_basis * Xslm_cf;
+    Ygalvo_fit_interp = xykxky_interp_basis * Ygalvo_cf;
+    Xgalvo_fit_interp = xykxky_interp_basis * Xgalvo_cf;
+    
+    plot(interppoints, Xgalvo_fit_interp, '.-'); hold on
+    plot(gridpoints, Xgalvo_gt_select, 'o'); hold off
+    
 end
 
 
