@@ -10,8 +10,8 @@ if forcereset || ~exist('cam_img_row', 'var')
     dirconfig_raylearn
 
 %     load(fullfile(dirs.localdata, 'pencil-beam-positions/03-Nov-2020-empty/raylearn_pencil_beam_738098.472397_empty.mat'));
-    load /home/daniel/d/ScientificData/raylearn-data/TPM/pencil-beam-positions/03-Nov-2020-empty/raylearn_pencil_beam_738098.472397_empty.mat
-%     load F:\ScientificData\raylearn-data\TPM\pencil-beam-positions\03-Nov-2020-empty\raylearn_pencil_beam_738098.472397_empty.mat
+%     load /home/daniel/d/ScientificData/raylearn-data/TPM/pencil-beam-positions/03-Nov-2020-empty/raylearn_pencil_beam_738098.472397_empty.mat
+    load F:\ScientificData\raylearn-data\TPM\pencil-beam-positions\03-Nov-2020-empty\raylearn_pencil_beam_738098.472397_empty.mat
 end
 
 %% Load SLM and Galvo coordinates
@@ -70,14 +70,52 @@ index_ygalvo = 3;
 % plot(squeeze(Xgalvo_gt_grid(index_xslm,index_yslm,:,index_ygalvo))', squeeze(kx_grid(index_xslm,index_yslm,:,index_ygalvo))', '.-')
 %%%%
 
-%% 
 
+%% Prepare interpolation data
+index_xslm = 5;
+index_yslm = 6;
+index_xgalvo = 4;
+index_ygalvo = 3;
+
+% Select a 1D slice from the 4D dataset
+selection = false(sz);
+selection(index_xslm,  :, index_xgalvo, index_ygalvo) = true;
+
+x_select  = x_grid(selection);
+y_select  = y_grid(selection);
+kx_select = kx_grid(selection);
+ky_select = ky_grid(selection);
+
+Xslm_gt_select = Xslm_gt_grid(selection);
+Yslm_gt_select = Yslm_gt_grid(selection);
+Xgalvo_gt_select = Xgalvo_gt_grid(selection);
+Ygalvo_gt_select = Ygalvo_gt_grid(selection);
+
+% Create grid points and query points for interpolation
+Ninterppoints = 100;                                        % Number of query points for interpolation
+gridpoints = 1:numel(x_select);                             % Points where the values are defined
+interppoints = linspace(1, numel(x_select), Ninterppoints); % Query points where we want to interpolate the value
+
+% Interpolate camera coordinate points
+x_interp  = interp1(gridpoints, x_select,  interppoints)';
+y_interp  = interp1(gridpoints, y_select,  interppoints)';
+kx_interp = interp1(gridpoints, kx_select, interppoints)';
+ky_interp = interp1(gridpoints, ky_select, interppoints)';
+
+%%%%
+figure(1)
+plot(interppoints, kx_interp, '.-');
+hold on
+plot(gridpoints, kx_select, 'o');
+hold off
+title('Interpolation check')
+%%%%
 
 %% Create basis polynomial functions
 % Create coordinate arrays for x,y,kx,ky
 
-% for npowers = 1:7
-for npowers = 4
+% for npowers = 1:4
+for npowers = 2
 
     % Create 1D arrays containing 1, x, x^2, ..., 1, y, y^2, ..., 1, kx, kx^2, ...
     % npowers = 6;                                    % Polynomial powers (including 0)
@@ -92,45 +130,6 @@ for npowers = 4
     xykxky_cam_basis = zeros(Npoints, npowers.^4);  % Initialize basis
 
 
-    %% Prepare interpolation data
-    index_xslm = 6;
-    index_yslm = 6;
-    index_xgalvo = 4;
-    index_ygalvo = 3;
-    
-    % Select a 1D slice from the 4D dataset
-    selection = false(sz);
-    selection(index_xslm,  :, index_xgalvo, index_ygalvo) = true;
-    
-    x_select  = x_grid(selection);
-    y_select  = y_grid(selection);
-    kx_select = kx_grid(selection);
-    ky_select = ky_grid(selection);
-    
-    Xslm_gt_select = Xslm_gt_grid(selection);
-    Yslm_gt_select = Yslm_gt_grid(selection);
-    Xgalvo_gt_select = Xgalvo_gt_grid(selection);
-    Ygalvo_gt_select = Ygalvo_gt_grid(selection);
-    
-    % Create grid points and query points for interpolation
-    Ninterppoints = 100;                                        % Number of query points for interpolation
-    gridpoints = 1:numel(x_select);                             % Points where the values are defined
-    interppoints = linspace(1, numel(x_select), Ninterppoints); % Query points where we want to interpolate the value
-    
-    % Interpolate camera coordinate points
-    x_interp  = interp1(gridpoints, x_select,  interppoints)';
-    y_interp  = interp1(gridpoints, y_select,  interppoints)';
-    kx_interp = interp1(gridpoints, kx_select, interppoints)';
-    ky_interp = interp1(gridpoints, ky_select, interppoints)';
-    
-    %%%%
-    plot(interppoints, kx_interp, '.-');
-    hold on
-    plot(gridpoints, kx_select, 'o');
-    hold off
-    title('Interpolation check')
-    %%%%
-    
     % Compute powers of interpolated camera points
     x_interp_powers  =  x_interp.^powers;
     y_interp_powers  =  y_interp.^powers;
@@ -212,12 +211,15 @@ for npowers = 4
     figure
     plot(interppoints, Xgalvo_fit_interp, '.-'); hold on
     plot(gridpoints, Xgalvo_gt_select, 'o'); hold off
+    title('Fit in between grid points')
+    xlabel('index')
+    legend({'Fit', 'Ground Truth'}, 'Location', 'Best')
     
 end
 
 
 
-doplot = 0;
+doplot = 1;
 if doplot
     figure
     semilogy(Yslm_NRMSE, '.-')
