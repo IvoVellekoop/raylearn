@@ -36,11 +36,10 @@ kx = cam_ft_col(:);
 ky = cam_ft_row(:);
 
 
-
+%% kx&ky-plane around average x&y
 Nquery = 40;
 [x_query, y_query, kx_query, ky_query] = ...
     ndgrid(mean(x), mean(y), linspace(min(kx), max(kx), Nquery), linspace(min(ky), max(ky), Nquery));
-
 
 tic
 [Xslm_interp, Yslm_interp, Xgalvo_interp, Ygalvo_interp] = ...
@@ -48,26 +47,105 @@ tic
     [x_query(:) y_query(:) kx_query(:) ky_query(:)]);
 toc
 
+%% Plot kx&ky-surface
+XData = reshape(kx_query, [Nquery, Nquery]);
+YData = reshape(ky_query, [Nquery, Nquery]);
+
+figure(1)
+subplot(2,2,1)
+surf(XData, YData, reshape(Xslm_interp, [Nquery, Nquery]))
+xlabel('kx (pixels)'); ylabel('ky (pixels)')
+title('Xslm')
+
+subplot(2,2,2)
+surf(XData, YData, reshape(Yslm_interp, [Nquery, Nquery]))
+xlabel('kx (pixels)'); ylabel('ky (pixels)')
+title('Yslm')
+
+subplot(2,2,3)
+surf(XData, YData, reshape(Xgalvo_interp, [Nquery, Nquery]))
+xlabel('kx (pixels)'); ylabel('ky (pixels)')
+title('Xgalvo')
+
+subplot(2,2,4)
+surf(XData, YData, reshape(Ygalvo_interp, [Nquery, Nquery]))
+xlabel('kx (pixels)'); ylabel('ky (pixels)')
+title('Ygalvo')
+
+
+
+%% x&y-plane around average kx&ky
+Nquery = 40;
+[x_query, y_query, kx_query, ky_query] = ...
+    ndgrid(linspace(min(x), max(x), Nquery), linspace(min(y), max(y), Nquery), mean(kx), mean(ky));
+
 tic
-Xslm_interp_orig = griddatan([x, y, kx, ky], Xslm_gt, [x_query(:) y_query(:) kx_query(:) ky_query(:)]);
-Yslm_interp_orig = griddatan([x, y, kx, ky], Yslm_gt, [x_query(:) y_query(:) kx_query(:) ky_query(:)]);
-Xgalvo_interp_orig = griddatan([x, y, kx, ky], Xgalvo_gt, [x_query(:) y_query(:) kx_query(:) ky_query(:)]);
-Ygalvo_interp_orig = griddatan([x, y, kx, ky], Ygalvo_gt, [x_query(:) y_query(:) kx_query(:) ky_query(:)]);
+[Xslm_interp, Yslm_interp, Xgalvo_interp, Ygalvo_interp] = ...
+    griddatan_4Doutput([x, y, kx, ky], Xslm_gt, Yslm_gt, Xgalvo_gt, Ygalvo_gt,...
+    [x_query(:) y_query(:) kx_query(:) ky_query(:)]);
 toc
 
+%% Plot x&y-surface
+XData = reshape(x_query, [Nquery, Nquery]);
+YData = reshape(y_query, [Nquery, Nquery]);
 
-isequaln(Xslm_interp_orig, Xslm_interp)
-isequaln(Yslm_interp_orig, Yslm_interp)
-isequaln(Xgalvo_interp_orig, Xgalvo_interp)
-isequaln(Ygalvo_interp_orig, Ygalvo_interp)
+figure(2)
+subplot(2,2,1)
+surf(XData, YData, reshape(Xslm_interp, [Nquery, Nquery]))
+xlabel('x (pixels)'); ylabel('y (pixels)')
+title('Xslm')
+
+subplot(2,2,2)
+surf(XData, YData, reshape(Yslm_interp, [Nquery, Nquery]))
+xlabel('x (pixels)'); ylabel('y (pixels)')
+title('Yslm')
+
+subplot(2,2,3)
+surf(XData, YData, reshape(Xgalvo_interp, [Nquery, Nquery]))
+xlabel('x (pixels)'); ylabel('y (pixels)')
+title('Xgalvo')
+
+subplot(2,2,4)
+surf(XData, YData, reshape(Ygalvo_interp, [Nquery, Nquery]))
+xlabel('x (pixels)'); ylabel('y (pixels)')
+title('Ygalvo')
 
 
 
+%% y&kx-plane around average x&ky
+Nquery = 40;
+[x_query, y_query, kx_query, ky_query] = ...
+    ndgrid(mean(x), linspace(min(y), max(y), Nquery), linspace(min(kx), max(kx), Nquery), mean(ky));
 
+tic
+[Xslm_interp, Yslm_interp, Xgalvo_interp, Ygalvo_interp] = ...
+    griddatan_4Doutput([x, y, kx, ky], Xslm_gt, Yslm_gt, Xgalvo_gt, Ygalvo_gt,...
+    [x_query(:) y_query(:) kx_query(:) ky_query(:)]);
+toc
 
+%% Plot y&kx-surface
+XData = reshape(y_query, [Nquery, Nquery]);
+YData = reshape(kx_query, [Nquery, Nquery]);
 
+figure(3)
+subplot(2,2,1)
+surf(XData, YData, reshape(Xslm_interp, [Nquery, Nquery]))
+xlabel('y (pixels)'); ylabel('kx (pixels)')
+title('Xslm')
 
+subplot(2,2,2)
+surf(XData, YData, reshape(Yslm_interp, [Nquery, Nquery]))
+xlabel('y (pixels)'); ylabel('kx (pixels)')
+title('Yslm')
 
+subplot(2,2,3)
+surf(XData, YData, reshape(Xgalvo_interp, [Nquery, Nquery]))
+xlabel('y (pixels)'); ylabel('kx (pixels)')
+title('Xgalvo')
 
+subplot(2,2,4)
+surf(XData, YData, reshape(Ygalvo_interp, [Nquery, Nquery]))
+xlabel('y (pixels)'); ylabel('kx (pixels)')
+title('Ygalvo')
 
 
