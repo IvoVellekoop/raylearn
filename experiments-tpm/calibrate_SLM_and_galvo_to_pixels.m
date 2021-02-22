@@ -2,6 +2,7 @@
 % The SLM and Galvo can both translate the beam in the image plane
 % Both will be calibrated here
 doreset = 0;
+dosave = 0;
 
 %% Reset variables and hardware connections
 if doreset
@@ -76,15 +77,17 @@ end
 outputSingleScan(daqs, [0, 0]);                         % Reset Galvos
 
 %% Save
-script_name = mfilename('fullpath');
-[~, script_version] = system(['git --git-dir="' repodir '\.git" rev-parse HEAD']);
-save_time = now;
+if dosave
+    script_name = mfilename('fullpath');
+    [~, script_version] = system(['git --git-dir="' dirs.repo '\.git" rev-parse HEAD']);
+    save_time = now;
 
-savedir = [expdatadir '\raylearn-data\TPM\'];
-savepath = fullfile(savedir, 'raylearn_calibration_SLM_Galvo_raw.mat');
-fprintf('\nSaving to %s\n', savepath)
-save(savepath, '-v7.3',...
-    'framesSLMbg', 'framesSLMx', 'framesSLMy', 'framesGalvox', 'framesGalvoy',...
-    'ppps', 'XYs', 'Xconst', 'Yconst',...
-    'copt_ft', 'copt_img', 'script_name', 'script_version', 'save_time')
+    savedir = [expdatadir '\raylearn-data\TPM\'];
+    savepath = fullfile(savedir, 'raylearn_calibration_SLM_Galvo_raw.mat');
+    fprintf('\nSaving to %s\n', savepath)
+    save(savepath, '-v7.3',...
+        'framesSLMbg', 'framesSLMx', 'framesSLMy', 'framesGalvox', 'framesGalvoy',...
+        'ppps', 'XYs', 'Xconst', 'Yconst',...
+        'copt_ft', 'copt_img', 'script_name', 'script_version', 'save_time')
+end
 
