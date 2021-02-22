@@ -1,4 +1,4 @@
-function [rects, N] = BlockedCircleSegments(Nd, D, cx, cy, segmentwidth, segmentheight, vis)
+function [rects, N, inside_circle_mask] = BlockedCircleSegments(Nd, D, cx, cy, segmentwidth, segmentheight, vis)
 % Computes rectangles of segments of a block geometry. Each
 % segment is a square region with its center inside the circle
 % with diameter D and center cx, cy.
@@ -86,11 +86,11 @@ y  = linspace(cy-coutery, cy+coutery, Nd);
 r2 = (X - cx).^2 + (Y - cy).^2;
 
 % Check which gridpoints lie inside circle
-inside_circle = (r2 <= R^2);
+inside_circle_mask = (r2 <= R^2);
 
 % Select gridpoints inside circle and create 1D array
-Xin = X(inside_circle);
-Yin = Y(inside_circle);
+Xin = X(inside_circle_mask);
+Yin = Y(inside_circle_mask);
 rcx = Xin(:);
 rcy = Yin(:);
 
