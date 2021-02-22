@@ -26,7 +26,7 @@ if active_devices.slm
     clear sopt;
     
     % SLM options
-    lambda = 690;                           % laser wavelength (in nm)
+    lambda = 720;                           % laser wavelength (in nm)
     sopt.slm_patch = 1;                     % patch number used for wavefront correction
     sopt.N_diameter = 18;                   % number of segments along the diagonal of the SLM pattern
     sopt.displayPort = 1;
@@ -37,12 +37,13 @@ if active_devices.slm
     fprintf('Initialized SLM with \x3BB=%.1f\n', lambda)
 end
 
-%% connect to SLM camera
+%% Connect to Fourier Plane Camera
 if active_devices.cam_ft
     copt_ft.ExposureTime = 1/60*10^6;
-    copt_ft.Id = 'Camera/22436863:Basler';
-    copt_ft.Width = 1024;
-    copt_ft.Height = 1024;
+    copt_ft.Id = 'Camera/22797787:Basler';
+
+    copt_ft.Width = 1088;
+    copt_ft.Height = 1088;
     cam_ft = Camera(copt_ft);
     
     % set camera ROI to center of sensor
@@ -57,12 +58,12 @@ if active_devices.cam_ft
     fprintf('Initialized Fourier Plane Camera\n')
 end
 
-%% connect to SLM camera
+%% Connect to Image Plane Camera
 if active_devices.cam_img
     copt_img.ExposureTime = 1/60*10^6;
     copt_img.Id = 'Camera/22241376:Basler';
-    copt_img.Width = 1024;
-    copt_img.Height = 1024;
+    copt_img.Width = 1088;
+    copt_img.Height = 1088;
     cam_img = Camera(copt_img);
     
     % set camera ROI to center of sensor
@@ -108,8 +109,8 @@ f_power = @(Pbs)(-5.3780e-07*lambda.^2+7.6990e-04*lambda+-0.0490)*Pbs;
 %% Connect to Galvos
 if active_devices.galvos
     daqs = daq.createSession('ni');
-    daqs.addAnalogOutputChannel('Dev3', 'ao0', 'Voltage');
-    daqs.addAnalogOutputChannel('Dev3', 'ao1', 'Voltage');
+    daqs.addAnalogOutputChannel('Dev4', 'ao2', 'Voltage');
+    daqs.addAnalogOutputChannel('Dev4', 'ao3', 'Voltage');
     fprintf('Initialized Galvo Mirrors\n')
 end
 
