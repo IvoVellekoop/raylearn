@@ -35,7 +35,7 @@ slm.t_idle = 2;                         % time for SLM to start responding to ne
 slm.t_settle = 2;                       % time for SLM settle to new value (in number of vsyncs)
 
 % set beam center coordinates and diameter
-sopt.cx = 0.027;
+sopt.cx = 0.027;       %%%% should these go in a separate variable? they're not slm options
 sopt.cy = 0.01;
 sopt.diameter = 0.95;
 

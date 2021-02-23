@@ -63,10 +63,11 @@ p.blaze(mask_outside_circle) = 0;                           % Set pixels outside
 p.inside_circle_mask = inside_circle_mask;
 
 % Create set of Galvo tilts
-% (Make a grid that's 5% smaller than 
+% (Make a grid that's 5% smaller than the defined radius, to make it fit)
 p.galvoXs1d = linspace(p.GalvoXcenter-p.GalvoRadius*0.95, p.GalvoXcenter+p.GalvoRadius*0.95, p.GalvoNX);
 p.galvoYs1d = linspace(p.GalvoYcenter-p.GalvoRadius*0.95, p.GalvoYcenter+p.GalvoRadius*0.95, p.GalvoNY);
 [galvoXsq, galvoYsq] = meshgrid(p.galvoXs1d, p.galvoYs1d);
+% Create circular mask to pick grid points
 p.galvo_scan_mask = ((galvoXsq-p.GalvoXcenter).^2 + (galvoYsq-p.GalvoYcenter).^2 <= p.GalvoRadius.^2);
 p.galvoXs = single(galvoXsq(p.galvo_scan_mask));
 p.galvoYs = single(galvoYsq(p.galvo_scan_mask));
@@ -92,10 +93,27 @@ if doshowcams                       % Spawn wide figure
     fig_resize(400, 2.5);
 end
 
+if dosave
+    % Script path, revision and date&time
+    p.script_name = mfilename('fullpath');
+    [~, p.script_version] = system(['git --git-dir="' dirs.repo '\.git" rev-parse HEAD']);
+    [~, p.git_diff] = system(['git --git-dir="' dirs.repo '\.git" diff']);
+    p.save_time = now;
+
+    % Create save directory
+    filenameprefix = 'raylearn_pencil_beam';
+    p.savename = sprintf('%s_%f_%s', filenameprefix, now, p.samplename);
+    p.savedir = fullfile([dirs.localdata '\raylearn-data\TPM\' date '-' p.samplename], p.savename);
+    try mkdir(p.savedir); catch 'MATLAB:MKDIR:DirectoryExists'; end
+    fprintf('\nSaving to %s\n', p.savedir)
+end
+
 starttime = now;
 SG = S*G;
 sg = 0;
 for s = 1:S                        % Loop over SLM segments
+    %%%% I want to switch to 4D indexing at some point. When I implement camera/galvo triggering
+    %%%% for fast scanning might be a good time.
     
     % Initialize arrays
     frames_ft  = zeros(copt_ft.Width,  copt_ft.Height,  G, 'single');
@@ -139,25 +157,10 @@ for s = 1:S                        % Loop over SLM segments
     
     if dosave
         % Save that stuff! Save for each segment position separately to prevent massive files
-        p = preparesave(p, dirs, sprintf('raylearn_pencil_beam_segment%03i'));
-        save(p.savepath, '-v7.3', 'frames_ft', 'frames_img', 'darkframe_img', 'darkframe_ft', ...
+        savepath = fullfile(p.savedir, sprintf('%s_%03i', p.savename, s))
+        save(savepath, '-v7.3', 'frames_ft', 'frames_img', 'darkframe_img', 'darkframe_ft', ...
             's', 'p', 'sopt', 'copt_ft', 'copt_img')
     end
 end
 
 
-%% Subfunctions
-
-function p = preparesave(p, dirs, prefix)
-    % Script path, revision and date&time
-    p.script_name = mfilename('fullpath');
-    [~, p.script_version] = system(['git --git-dir="' dirs.repo '\.git" rev-parse HEAD']);
-    [~, p.git_diff] = system(['git --git-dir="' dirs.repo '\.git" diff']);
-    p.save_time = now;
-
-    % Save
-    savedir = [dirs.localdata '\raylearn-data\TPM\' date '-' p.samplename];
-    try mkdir(savedir); catch 'MATLAB:MKDIR:DirectoryExists'; end
-    p.savepath = fullfile(savedir, sprintf('%s_%f_%s.mat', prefix, now, p.samplename));
-    fprintf('\nSaving to %s\n', p.savepath)
-end
