@@ -105,13 +105,16 @@ if dosave
     p.savename = sprintf('%s_%f_%s', filenameprefix, now, p.samplename);
     p.savedir = fullfile([dirs.localdata '\raylearn-data\TPM\' date '-' p.samplename], p.savename);
     try mkdir(p.savedir); catch 'MATLAB:MKDIR:DirectoryExists'; end
-    fprintf('\nSaving to %s\n', p.savedir)
+    fprintf('\nSave Directory: %s\n', p.savedir)
 end
 
 starttime = now;
 SG = S*G;
 sg = 0;
+disp('Started measurement...')
 for s = 1:S                        % Loop over SLM segments
+    numchars = 0;
+    
     %%%% I want to switch to 4D indexing at some point. When I implement camera/galvo triggering
     %%%% for fast scanning might be a good time.
     
@@ -152,15 +155,19 @@ for s = 1:S                        % Loop over SLM segments
             colorbar
         end
         
-        eta(sg, SG, starttime, 'console', sprintf('Measuring pencil beams...\nSegment: %i/%i, Tilt: %i/%i',s,S,g,G), 0);
+        fprintf(repmat('\b', [1 numchars]))
+        numchars = fprintf('Galvo tilt %i/%i\n', g, G);
     end
     
     if dosave
         % Save that stuff! Save for each segment position separately to prevent massive files
-        savepath = fullfile(p.savedir, sprintf('%s_%03i', p.savename, s))
+        savepath = fullfile(p.savedir, sprintf('%s_%03i.mat', p.savename, s));
+        disp('Saving...')
         save(savepath, '-v7.3', 'frames_ft', 'frames_img', 'darkframe_img', 'darkframe_ft', ...
             's', 'p', 'sopt', 'copt_ft', 'copt_img')
     end
+    
+    eta(sg, SG, starttime, 'console', sprintf('Measuring pencil beams...\nSegments done: %i/%i',s,S), 0);
 end
 
 
