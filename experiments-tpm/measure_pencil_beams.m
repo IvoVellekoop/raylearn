@@ -12,15 +12,15 @@ end
 
 %% Settings
 p.samplename = 'empty';
-doshowcams = 1;                     % Toggle show what the cameras see
-dosave = 0;                         % Toggle savings
+doshowcams = 0;                     % Toggle show what the cameras see
+dosave = 1;                         % Toggle savings
 dochecksamplename = 0;              % Toggle console sample name check
 
 % SLM Settings
 p.ppp = 3;                          % Pixels per period for the grating. Should match Galvo setting!
 p.segmentsize_pix = 25 * p.ppp;     % Segment width in pixels
-p.N_diameter =  9;                  % Number of segments across SLM diameter
-p.beamdiameter = 0.70;              % Diameter of circular SLM segment set (relative coords)
+p.N_diameter = 11;                  % Number of segments across SLM diameter
+p.beamdiameter = 0.60;              % Diameter of circular SLM segment set (relative coords)
 p.slm_offset_x = 0.01;              % Horizontal offset of rectangle SLM geometry (relative coords)
 p.slm_offset_y = 0.03;              % Vertical offset of rectangle SLM geometry (relative coords)
 p.segment_patch_id = 2;             % Pencil Beam segment SLM patch ID
@@ -28,9 +28,9 @@ p.segment_patch_id = 2;             % Pencil Beam segment SLM patch ID
 % Galvo Mirror settings
 p.GalvoXcenter =  0.363;            % Galvo center x
 p.GalvoYcenter = -0.026;            % Galvo center y
-p.GalvoRadius  =  0.110;            % Galvo scan radius: from center to outer
-p.GalvoNX = 9;                      % Number of Galvo steps, x
-p.GalvoNY = 9;                      % Number of Galvo steps, y
+p.GalvoRadius  =  0.090;            % Galvo scan radius: from center to outer
+p.GalvoNX = 11;                     % Number of Galvo steps, x
+p.GalvoNY = 11;                     % Number of Galvo steps, y
 % Note: the actual number of galvo steps is smaller, as the corners from the square grid
 % will be cut to make a circle
 
@@ -111,6 +111,8 @@ end
 starttime = now;
 SG = S*G;
 sg = 0;
+rawdatasize = bytes2str(8 * SG * (copt_ft.Height*copt_ft.Width + copt_img.Height*copt_img.Width));
+fprintf('\nRaw data size will be: %s\n', rawdatasize)
 disp('Started measurement...')
 for s = 1:S                        % Loop over SLM segments
     numchars = 0;
@@ -167,7 +169,8 @@ for s = 1:S                        % Loop over SLM segments
             's', 'p', 'sopt', 'copt_ft', 'copt_img')
     end
     
-    eta(sg, SG, starttime, 'console', sprintf('Measuring pencil beams...\nSegments done: %i/%i',s,S), 0);
+    eta(sg, SG, starttime, 'console', ...
+        sprintf('Measuring pencil beams...\nRaw data size will be: %s\nSegments done: %i/%i',rawdatasize,s,S), 0);
 end
 
 
