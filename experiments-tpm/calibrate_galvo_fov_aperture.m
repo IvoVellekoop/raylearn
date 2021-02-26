@@ -47,6 +47,7 @@ update_plot_every = 35;
 if doshowcams
     fig_galvoscan = figure;
     fig_resize(350,3)
+    movegui('center')
 end
 
 for gx = 1:p.GalvoNX                        % Loop over Galvo tilts
