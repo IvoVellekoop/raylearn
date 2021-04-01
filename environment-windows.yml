@@ -1,0 +1,4 @@
+name: raylearn
+channels:
+  - defaults
+prefix: G:\Anaconda\envs\raylearn
