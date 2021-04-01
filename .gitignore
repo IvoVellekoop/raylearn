@@ -5,3 +5,4 @@
 *.asv
 *.m~
 __pycache__/
+/tmp*
