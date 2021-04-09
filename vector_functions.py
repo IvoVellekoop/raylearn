@@ -2,12 +2,15 @@
 
 Terminology used:
 ('Mx...' denotes one or multiple dimensions of undefined length.)
-Vector:   A DxMx... torch tensor where the first dimension denotes spatial components.
-          Usually, D=3, representing spatial dimensions x, y and z. The other dimensions Mx... can
-          be used as regular array dimensions.
-Scalar:   A 1xMx... torch tensor where the first dimension has length 1. The other dimensions Mx...
-          can be used as regular array dimensions.
-
+Vector: A DxMx... torch tensor where the 0th dimension denotes vector components.
+        Usually, D=3, representing vector dimensions x, y and z. Other dimensions are used for
+        parallelization.
+Scalar: A 1xMx... torch tensor where the 0th dimension has length 1. Or, in cases where all
+        elements of the Tensor have the same value, this may be replaced by a Python float or
+        double. Other dimensions are used for parallellization.
+Note that for vector and scalar operations, the number of dimensions must match! Dimensionality of
+e.g. 3x1x1 is not the same as 3 for torch tensors, and will yield incorrect results for the vector
+operations!
 """
 
 import torch
@@ -40,5 +43,29 @@ def rejection(v, w):
     """Vector rejection of vector v onto vector for DxM... vectors, where D is spatial dimension."""
     return v - projection(v, w)
 
+def cross(v, w):
+    """Cross product of vector v and w for DxM... vectors, where D is spatial dimension."""
+    ux = v[1]*w[2] - v[2]*w[1]
+    uy = v[2]*w[0] - v[0]*w[2]
+    uz = v[0]*w[1] - v[0]*w[2]
+    return torch.stack((ux, uy, uz))
+
 
 ## Vector factory functions
+def vector(values, size):
+    """Construct a single vector from given tuple and expand to size.
+
+    The vector components can be passed as a Python tuple, from which a torch Tensor with the
+    desired dimensions is constructed, as specified in the size argument. The 0th dimension of the
+    torch Tensor represents the vector dimension. The higher dimensions are used for
+    parallelization. In PyTorch, a Tensor of size (3) is not the same as a Tensor of size (3,1,1).
+    This expansion of dimensions in PyTorch is only required for correctly applying operations.
+    The values are copied by index; the data itself is not copied. No new memory is allocated.
+
+    Example:
+        vector((1,2,3), (3,4,4)) returns a torch Tensor representing the vector (1,2,3)
+        parallelized in a 4x4 array. The whole torch Tensor will have a size of (3,4,4).
+    """
+
+    viewsize   = [size[0]] + ((len(size)-1) * [1])    # Construct viewsize   e.g. (3,1,1)
+    return torch.Tensor(values).view(viewsize).expand(size)
