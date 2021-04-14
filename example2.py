@@ -1,7 +1,7 @@
 """Example 2."""
 
 import torch
-from torch import nn, optim
+from torch import nn, optim, Tensor
 from vector_functions import vector, unit
 from ray_plane import Plane, CoordPlane
 from optical import collimated_source, ideal_lens
@@ -9,10 +9,10 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 # Use GPU
-torch.set_default_tensor_type('torch.cuda.FloatTensor')
+# torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
 
-def optical_system(f):
+def optical_system(f, lens_normal_x_shift):
     """Optical System."""
     # Dimensions
     N1 = 11
@@ -23,8 +23,9 @@ def optical_system(f):
 
     # Lens properties
     lens_position = 1e-3 * vector((0, 0, 25), vsize)
-    lens_normal = unit(vector((0.3, 0, -1), vsize))
-    lens_plane = Plane(lens_position, lens_normal)
+    x = vector((1, 0, 0), (3, 1, 1))
+    lens_normal = unit(vector((0, 0, -1), (3, 1, 1)) + x*lens_normal_x_shift)
+    lens_plane = Plane(lens_position, unit(lens_normal))
 
     # Camera properties
     pixsize = 10e-6
@@ -42,63 +43,86 @@ def optical_system(f):
     return camcoords
 
 
+# Dimensions
+N1 = 11
+N2 = 11
+vsize = (3, N1, N2)
 nsize = (1, 1, 1)
-f_gt = vector([50e-3], nsize)                                   # Focal length
 
-f = vector([65e-3], nsize)                                   # Focal length
+# Define Ground Truth
+f_gt = Tensor([50e-3])
+lens_normal_x_shift_gt = Tensor([0.1])
+parameters_gt = [f_gt, lens_normal_x_shift_gt]
+camcoords_gt = optical_system(*parameters_gt)
+
+# Define Inital Guess
+f = Tensor([80e-3])
 f.requires_grad = True
+lens_normal_x_shift = Tensor([0.2])
+lens_normal_x_shift.requires_grad = True
+parameters = [f, lens_normal_x_shift]
 
-traced_optical_system = torch.jit.trace(optical_system, f)
+# Trace computational graph
+traced_optical_system = torch.jit.trace(optical_system, parameters)
 
-parameters = [f]
-optimizer = torch.optim.Adam(parameters, lr=3.0e-3, betas=(0.6, 0.999))
-# optimizer = torch.optim.SGD(parameters, lr=5.0e-10)
+# Define optimizer
+optimizer = torch.optim.Adam([
+        {'lr': 5.0e-3, 'params': f},
+        {'lr': 1.0e-2, 'params': lens_normal_x_shift},
+    ], lr=1.0e-2, betas=(0.9, 0.999))
+
 criterion = nn.MSELoss(reduction='mean')
-camcoords_gt = optical_system(f_gt)
 
-iterations = 50
+iterations = 950
 losses = torch.zeros(iterations)
 fpreds = torch.zeros(iterations)
-trange = tqdm(range(iterations), desc='Loss: -')
+xtiltpreds = torch.zeros(iterations)
+trange = tqdm(range(iterations), desc='error: -')
 
 for t in trange:
     # Forward pass
-    camcoords = traced_optical_system(f)
+    camcoords = traced_optical_system(*parameters)
 
-    # Compute and print loss
-    loss = criterion(camcoords, camcoords_gt)
-    loss_value = loss.detach().item()
-    losses[t] = loss_value
+    # Compute and print error
+    MSE = criterion(camcoords, camcoords_gt)
+    error = MSE + torch.sqrt(MSE)
+    error_value = error.detach().item()
+    losses[t] = error_value
     fpreds[t] = f.detach().item()
+    xtiltpreds[t] = lens_normal_x_shift.detach().item()
 
-    trange.desc = f'Loss: {loss_value:<8.3g}'
+    trange.desc = f'error: {error_value:<8.3g}'
 
     optimizer.zero_grad()
 
-    loss.backward(retain_graph=True)
+    error.backward(retain_graph=True)
     optimizer.step()
 
 
 # === Plot === #
-fig, ax1 = plt.subplots(figsize=(6, 6), dpi=120)
-varcolor = 'tab:blue'
+fig, ax1 = plt.subplots(figsize=(5, 5), dpi=144)
+fcolor = 'tab:blue'
+xtiltcolor = 'tab:green'
+errorcolor = 'tab:red'
 
 # Plot Ground Truth
-plt.plot([0, iterations], [f_gt, f_gt], '--k', label='Ground Truth')
+plt.plot([0, iterations], [f_gt]*2, '--', color=fcolor, label='f Ground Truth')
+plt.plot([0, iterations], [lens_normal_x_shift_gt]*2, '--', color=xtiltcolor, label='x tilt Ground Truth')
 
-# Plot Loss
+# Plot error
 ax1.set_xlabel('Iteration')
-ax1.set_ylabel('f ($m$)', color=varcolor)
-ax1.plot(fpreds.detach().cpu(), color=varcolor, label='f')
-ax1.tick_params(axis='y', labelcolor=varcolor)
+# ax1.set_ylabel('f ($m$)', color=fcolor)
+ax1.set_ylabel('meters')
+ax1.plot(fpreds.detach().cpu(), color=fcolor, label='f')
+ax1.plot(xtiltpreds.detach().cpu(), color=xtiltcolor, label='x tilt')
+# ax1.tick_params(axis='y', labelcolor=fcolor)
 plt.legend(loc=9)
 
 # Plot Variable
 ax2 = ax1.twinx()
-losscolor = 'tab:red'
-ax2.set_ylabel('MSE Loss ($m^2$)', color=losscolor)
-plt.plot(losses.detach().cpu(), label='Loss', color=losscolor)
-ax2.tick_params(axis='y', labelcolor=losscolor)
+ax2.set_ylabel('Error ($m^2$)', color=errorcolor)
+plt.plot(losses.detach().cpu(), label='Error', color=errorcolor)
+ax2.tick_params(axis='y', labelcolor=errorcolor)
 ax2.legend(loc=0)
 
 fig.tight_layout()  # otherwise the right y-label is slightly clipped
