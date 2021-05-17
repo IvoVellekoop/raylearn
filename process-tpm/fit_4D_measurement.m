@@ -1,6 +1,6 @@
 %% Test to fit 4D polynomial, to model camera coords to SLM/Galvo coords
 
-forcereset = 0;
+forcereset = 1;
 
 if forcereset || ~exist('cam_img_row', 'var')
     close all; clc; clear
@@ -11,7 +11,8 @@ if forcereset || ~exist('cam_img_row', 'var')
 
 %     load(fullfile(dirs.localdata, 'pencil-beam-positions/03-Nov-2020-empty/raylearn_pencil_beam_738098.472397_empty.mat'));
 %     load /home/daniel/d/ScientificData/raylearn-data/TPM/pencil-beam-positions/03-Nov-2020-empty/raylearn_pencil_beam_738098.472397_empty.mat
-    load F:\ScientificData\raylearn-data\TPM\pencil-beam-positions\03-Nov-2020-empty\raylearn_pencil_beam_738098.472397_empty.mat
+%     load F:\ScientificData\raylearn-data\TPM\pencil-beam-positions\03-Nov-2020-empty\raylearn_pencil_beam_738098.472397_empty.mat
+    load("//ad.utwente.nl/TNW/BMPI/Data/Daniel Cox/ExperimentalData/raylearn-data/TPM/pencil-beam-positions/26-Feb-2021-empty/raylearn_pencil_beam_738213.520505_empty.mat")
 end
 
 %% Load SLM and Galvo coordinates
@@ -110,6 +111,43 @@ plot(gridpoints, kx_select, 'o');
 hold off
 title('Interpolation check')
 %%%%
+
+
+
+
+%% 2D grid slice
+% index_xslm = 6;
+% index_yslm = 6;
+index_xgalvo = 6;
+index_ygalvo = 6;
+
+selection = false(sz);
+selection(:, :, index_xgalvo, index_ygalvo) = true;
+
+x_select  = x_grid(selection);
+y_select  = y_grid(selection);
+kx_select = kx_grid(selection);
+ky_select = ky_grid(selection);
+
+Xslm_gt_select = Xslm_gt_grid(selection);
+Yslm_gt_select = Yslm_gt_grid(selection);
+Xgalvo_gt_select = Xgalvo_gt_grid(selection);
+Ygalvo_gt_select = Ygalvo_gt_grid(selection);
+
+figure(5)
+plot3(Xslm_gt_select, Yslm_gt_select, kx_select, '.')
+xlabel('Xslm')
+ylabel('Yslm')
+zlabel('kx_{cam} (pix)')
+grid on
+
+figure(6)
+plot3(Xslm_gt_select, Yslm_gt_select, ky_select, '.')
+xlabel('Xslm')
+ylabel('Yslm')
+zlabel('ky_{cam} (pix)')
+grid on
+
 
 %% Create basis polynomial functions
 % Create coordinate arrays for x,y,kx,ky
