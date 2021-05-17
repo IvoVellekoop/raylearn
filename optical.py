@@ -16,45 +16,49 @@ operations!
 """
 
 import torch
-from torch import nn
-from vector_functions import unit, vector
+import numpy as np
+from vector_functions import dot, unit, norm_square, rejection
 from ray_plane import Ray, Plane
 
 
-def point_source():
-    """WIP! Point source."""
-    Nx = 5
-    Ny = 1
-    mult_opening = 10e-3;
-    p0x, p0y = torch.meshgrid(mult_opening*torch.linspace(-1.0,1.0,Nx), \
-                              mult_opening*torch.linspace(-1.0,1.0,Ny))
-    p0z = torch.zeros(Ny,Nx)
-    p0 = torch.stack((p0x.view(Ny,Nx), p0y.view(Ny,Nx), p0z.view(Ny,Nx)))
+def collimated_source(sourceplane, Nx, Ny, **raykwargs):
+    """###WIP! Define size differently for more dimensions. Collimated source.
+    Return a Ray object with 3 by Nx by Ny position_m. Position and grid spacing determined by
+    input sourceplane and Nx & Ny.
 
-    p1 = vector((0,0,0), (3, Ny, Nx))
-    s0 = unit(p1 - p0)
+    Input
+    -----
+        sourceplane     CoordPlane. Position_m defines the center position. The x and y vectors
+                        define the span of the rays: distance in meter from center to outer ray.
+        Nx              Number of ray elements along x plane direction.
+        Ny              Number of ray elements along y plane direction.
+        raykwargs       Additional properties to pass to the Ray object.
+    """
+    x_array = sourceplane.x * torch.linspace(-1.0, 1.0, Nx).view(1, Nx, 1)
+    y_array = sourceplane.y * torch.linspace(-1.0, 1.0, Ny).view(1, 1, Ny)
+    pos = sourceplane.position_m + x_array + y_array
 
-    return Ray(p1, s0)
-
-point_source()
+    return Ray(pos, sourceplane.normal, **raykwargs)
 
 
-def collimated_source(size):
-    """WIP! Collimated source."""
-    mult_opening = 10e-3;
+def point_source(sourceplane, Nx, Ny, **raykwargs):
+    """Point source with limited opening angle.
+    Return a Ray object with 3 by Nx by Ny position_m. Position and grid spacing determined by
+    input sourceplane and Nx & Ny.
 
-    posx, posy = torch.meshgrid( mult_opening * torch.linspace(-1.0,1.0,size[1]), \
-                                 mult_opening * torch.linspace(-1.0,1.0,size[2]))
-    posz = torch.zeros(size[1:])
-    pos = torch.stack((posx, posy, posz))
+    Input
+    -----
+        sourceplane     CoordPlane. Position_m defines the center position. The x and y vectors
+                        define the aperture of the rays: tan(angle) between center and outer ray.
+        Nx              Number of ray elements along x plane direction.
+        Ny              Number of ray elements along y plane direction.
+        raykwargs       Additional properties to pass to the Ray object.
+    """
+    x_array = sourceplane.x * torch.linspace(-1.0, 1.0, Nx).view(1, Nx, 1)
+    y_array = sourceplane.y * torch.linspace(-1.0, 1.0, Ny).view(1, 1, Ny)
+    direction = unit(sourceplane.normal + x_array + y_array)
 
-    d = vector((0,0,1), size)
-
-    # Turn into parameter
-    pos_param = nn.Parameter(pos, requires_grad=True)
-    d_param = nn.Parameter(d, requires_grad=True)
-
-    return Ray(pos_param, d_param)
+    return Ray(sourceplane.position_m, direction, **raykwargs)
 
 
 def ideal_lens(in_ray, lens, f):
