@@ -18,6 +18,7 @@ operations!
 
 import torch
 from vector_functions import dot, cross, unit, norm_square
+import copy
 
 
 class Ray:
@@ -38,20 +39,35 @@ class Ray:
 
     """
 
-    def __init__(self, position_m, direction, refractive_index=1, pathlength_m=0, weight=1):
+    def __init__(self, position_m, direction, refractive_index=1, pathlength_m=0, intensity=1, weight=1):
         self.position_m = position_m                # Vector array. Position in m
         self.direction = direction                  # Vector array. Direction unit vector
         self.refractive_index = refractive_index    # Scalar array. Refractive index of medium
-        self.pathlength = pathlength_m              # Scalar array. Total optical pathlength in m
+        self.pathlength_m = pathlength_m            # Scalar array. Total optical pathlength in m
+        self.intensity = intensity                  # Scalar array. Intensity of ray.
         self.weight = weight                        # Scalar array. Total weight in loss function.
-
 
     def intersect_plane(self, plane):
         """Return new Ray at intersection with Plane or CoordPlane."""
         distance_m = dot(plane.normal, plane.position_m - self.position_m) \
-                 / dot(plane.normal, self.direction)
+            / dot(plane.normal, self.direction)
         intersection = self.position_m + self.direction * distance_m
-        return Ray(intersection, self.direction, self.refractive_index, self.pathlength, self.weight)
+        return self.copy(position_m=intersection)
+
+    def mask(self, mask_factors):
+        """Mask Ray with given mask_factors array."""
+        intensity = self.intensity * mask_factors
+        return self.copy(intensity=intensity)
+
+    def copy(self, **kwargs):
+        """
+        Create copy of this Ray, with some slight alterations passed as keyword arguments.
+        Note that torch tensor attribute will reference the same value as the original Ray.
+        """
+        copiedray = copy.copy(self)
+        copiedray.__dict__.update(**kwargs)
+        return copiedray
+
 
 
 class Plane:
@@ -73,7 +89,6 @@ class Plane:
         self.normal = normal                        # Vector array. Plane normal as unit vector
 
 
-
 class CoordPlane():
     """CoordPlane class.
 
@@ -82,30 +97,31 @@ class CoordPlane():
     attribute represents the unit vector perpendicular to the two component vectors, and is
     calculated on the fly when read. This makes the CoordPlane class mostly compatible with the
     Plane class. However, since the CoordPlane.normal attribute is calculated from the x & y
-    component vectors on the fly, it is read only.
+    component vectors on the fly, it is read only. The unit of the x & y component vectors depends
+    on the application.
 
     Attributes
     ----------
-        position_m          Vector. Plane position in meters
-        x_m                 Vector. x component vector in meters.
-        y_m                 Vector. y component vector in meters.
+        position_m          Vector. Plane position vector in meters.
+        x                   Vector. x component vector.
+        y                   Vector. y component vector.
         normal              Read only. Vector array. Unit vector of plane normal. When read,
                             this attribute is calculated on the fly.
     """
 
-    def __init__(self, position_m, x_m, y_m):
+    def __init__(self, position_m, x, y):
         self.position_m = position_m
-        self.x_m = x_m
-        self.y_m = y_m
+        self.x = x
+        self.y = y
 
     @property
     def normal(self):
-        """Normal vector of the plane. Computed from the x & y component vectors."""
-        return unit(cross(self.x_m, self.y_m))
+        """Compute normal vector of the plane. Computed from the x & y component vectors."""
+        return unit(cross(self.x, self.y))
 
     def transform(self, rays):
         """Transform vector array to coordinates of the CoordPlane x & y."""
         p = rays.position_m - self.position_m
-        x = dot(p, self.x_m) / norm_square(self.x_m)
-        y = dot(p, self.y_m) / norm_square(self.y_m)
+        x = dot(p, self.x) / norm_square(self.x)
+        y = dot(p, self.y) / norm_square(self.y)
         return torch.cat((x, y))
