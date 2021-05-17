@@ -117,8 +117,9 @@ def intensity_mask_smooth_grid(in_ray, coordplane, spacing_x, spacing_y, power):
 
 def snells(ray_in, N, n_out):
     """
-    Compute refracted Ray. Returns a new Ray instance with the new direction
-    and refractive index.
+    Compute refracted Ray.
+
+    Returns a new Ray instance with the new direction and refractive index.
 
     Input
     -----
@@ -129,7 +130,7 @@ def snells(ray_in, N, n_out):
     Output
     ------
         ray_out     Ray. Refracted outgoing Ray.
-    
+
     Notes on derivation: rejection(ray_dir, surface_normal) has magnitude sin(angle)
     and thus it can act as sine in Snell's law. Furthermore, it is perpendicular to
     the surface_normal. Hence, it's the perpendicular component of dir_out. Once
