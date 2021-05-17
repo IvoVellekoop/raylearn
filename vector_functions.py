@@ -16,42 +16,61 @@ operations!
 import torch
 
 
-## Vector operations
+# Vector operations
 
 def dot(v, w):
     """Dot product for DxMx... vectors, where D is spatial dimension."""
     return torch.sum(v*w, dim=0, keepdim=True)
 
+
 def norm(v):
     """L2-norm for DxM... vectors, where D is spatial dimension."""
     return torch.norm(v, dim=0, keepdim=True)
 
+
 def norm_square(v):
     """L2-norm squared for DxM... vectors, where D is spatial dimension."""
-    return dot(v,v)
+    return dot(v, v)
+
 
 def unit(v):
     """Compute unit vectors for DxM... vectors, where D is spatial dimension."""
     return v / norm(v)
 
+
 def projection(v, w):
-    """Vector projection of vector v onto vector for DxM... vectors, where D is spatial dimension."""
+    """Vector projection of vector v onto w for DxM... vectors, where D is spatial dimension."""
     wunit = unit(w)
     return dot(v, wunit) * wunit
 
+
 def rejection(v, w):
-    """Vector rejection of vector v onto vector for DxM... vectors, where D is spatial dimension."""
+    """Vector rejection of vector v onto w for DxM... vectors, where D is spatial dimension."""
     return v - projection(v, w)
 
+
 def cross(v, w):
-    """Cross product of vector v and w for DxM... vectors, where D is spatial dimension."""
+    """Cross product of vector v and w for 3xM... vectors, where 3 is spatial dimension."""
     ux = v[1]*w[2] - v[2]*w[1]
     uy = v[2]*w[0] - v[0]*w[2]
-    uz = v[0]*w[1] - v[0]*w[2]
+    uz = v[0]*w[1] - v[1]*w[0]
     return torch.stack((ux, uy, uz))
 
 
-## Vector factory functions
+def rotate(v, u, theta):
+    """Rotate vector v theta radians around unit vector u.
+    For derivation see: http://ksuweb.kennesaw.edu/~plaval/math4490/rotgen.pdf"""
+    if type(theta) == torch.Tensor:
+        tensor_theta = theta
+    else:
+        tensor_theta = torch.tensor(theta)
+
+    C = torch.cos(tensor_theta)
+    S = torch.sin(tensor_theta)
+    return (1-C)*dot(v, u)*u + C*v + S*cross(u, v)
+
+
+# Vector factory functions
 def vector(values, size):
     """Construct a single vector from given tuple and expand to size.
 
@@ -62,10 +81,15 @@ def vector(values, size):
     This expansion of dimensions in PyTorch is only required for correctly applying operations.
     The values are copied by index; the data itself is not copied. No new memory is allocated.
 
-    Example:
+    Example
+    -------
         vector((1,2,3), (3,4,4)) returns a torch Tensor representing the vector (1,2,3)
         parallelized in a 4x4 array. The whole torch Tensor will have a size of (3,4,4).
     """
-
-    viewsize   = [size[0]] + ((len(size)-1) * [1])    # Construct viewsize   e.g. (3,1,1)
+    viewsize = [size[0]] + ((len(size)-1) * [1])    # Construct viewsize   e.g. (3,1,1)
     return torch.Tensor(values).view(viewsize).expand(size)
+
+### Define size once and then define factory functions for vector, vector array, scalar, scalar array?
+### If I were to put the spatial dimension D as the trailing dimension, a size of (1,1,3) would be
+### equivalent to (3). Which would mean the vector could have a default size of (3), which should
+### match any case.
