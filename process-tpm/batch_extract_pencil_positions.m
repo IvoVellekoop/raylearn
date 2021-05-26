@@ -2,22 +2,27 @@
 % Walk through (split) data files and extract the pencil beam position from each frame. Then
 % save the results.
 
-close all; clear; clc
+forcereset = 0;
 
-% Define location paths
-addpath(fileparts(fileparts(mfilename('fullpath'))))   % Parent dir
-dirconfig_raylearn
+if forcereset || ~exist('dirs', 'var')
+    close all; clear; clc
+
+    % Define location paths
+    addpath(fileparts(fileparts(mfilename('fullpath'))))   % Parent dir
+    dirconfig_raylearn
+end
 
 % Settings
-doshowplot = 0;                     % Toggle showing plot of each found position (for debugging)
-dosave = 1;                         % Toggle saving
-meanthreshfactor = 4;               % This factor scales the threshold
+doshowplot = 1;                     % Toggle showing plot of each found position (for debugging)
+dosave = 0;                         % Toggle saving
+meanthreshfactor = 5;               % This factor scales the threshold
 bgcornersize = 10;                  % Corner size in pixels. These will be used for noise level estimation.
 percentile = 97;                    % Percentile of the corner pixel values to use
-percentilefactor = 2;               % 
+percentilefactor = 2;               % Multiply percentile pixel value with this
 medfiltsize = 5;                    % Size of the median filter
-inputpattern = 'F:\ScientificData\raylearn-data\TPM\pencil-beams-split\*\raylearn_pencil_beam*';
-outputgroupfolder = 'F:\ScientificData\raylearn-data\TPM\pencil-beam-positions';
+inputpattern = [dirs.localdata '/raylearn_pencil_beam*'];
+% inputpattern = [dirs.localdata '\raylearn-data\TPM\pencil-beams-split\04-May-2021-grid\raylearn_pencil_beam*'];
+outputgroupfolder = [dirs.localdata '/raylearn-data/TPM/pencil-beam-positions'];
 
 % Process
 dirlist = dir(inputpattern);        % List files to be processed
@@ -34,6 +39,7 @@ for d = 1:D
         bytestotal = bytestotal + filelist(f).bytes;
     end
 end
+fprintf('\nTotal data size: %s\nLoading data...\n', bytes2str(bytestotal))
 
 if doshowplot
     fig = figure;
@@ -59,29 +65,34 @@ for d = 1:D
         filepath = fullfile(filelist(f).folder, filelist(f).name);      % Construct file path
         load(filepath)
         
-        [~,~,~,G] = size(frames_slmslice_ft);
+        [~,~,G] = size(frames_ft);
         
         if f==1
-            % Initialize list of camera coordinates
-            % Note: The number of 
+            % Initialize list of camera coordinates and intensities
+            % Note: this code is inside the for loop as it relies on the loaded data
             cam_ft_col  = nan(F, G);
             cam_ft_row  = nan(F, G);
+            cam_ft_mean_intensity = nan(F, G);
+            cam_ft_mean_masked_intensity = nan(F, G);
+            
             cam_img_col = nan(F, G);
             cam_img_row = nan(F, G);
+            cam_img_mean_intensity = nan(F, G);
+            cam_img_mean_masked_intensity = nan(F, G);
             found_spot = false(F, G);
         end
 
         
         % Loop over frames
         for g=1:G
-            frame_ft = frames_slmslice_ft(:,:,1,g);
-            frame_img = frames_slmslice_img(:,:,1,g);
+            frame_ft = frames_ft(:,:,g);
+            frame_img = frames_img(:,:,g);
             
             % Extract pencil beam spot position
-            [col_ft, row_ft, threshold_ft, framemask_ft, found_ft] = extract_pencil_position_from_frame(...
+            [col_ft, row_ft, mean_intensity_ft, mean_masked_intensity_ft, threshold_ft, framemask_ft, found_ft] = extract_pencil_position_from_frame(...
                 frame_ft, meanthreshfactor, bgcornersize, percentile, percentilefactor, medfiltsize);
             
-            [col_img, row_img, threshold_img, framemask_img, found_img] = extract_pencil_position_from_frame(...
+            [col_img, row_img, mean_intensity_img, mean_masked_intensity_img, threshold_img, framemask_img, found_img] = extract_pencil_position_from_frame(...
                 frame_img, meanthreshfactor, bgcornersize, percentile, percentilefactor, medfiltsize);
             
             % Count failed detections
@@ -114,11 +125,17 @@ for d = 1:D
                 drawnow
             end
             
-            % Store found beam spot positions
+            % Store found beam spot positions and intensities
             cam_ft_col(s, g) = col_ft;
             cam_ft_row(s, g) = row_ft;
+            cam_ft_mean_intensity(s, g) = mean_intensity_ft;
+            cam_ft_mean_masked_intensity(s, g) = mean_masked_intensity_ft;
+            
             cam_img_col(s,g) = col_img;
             cam_img_row(s,g) = row_img;
+            cam_img_mean_intensity(s, g) = mean_intensity_img;
+            cam_img_mean_masked_intensity(s, g) = mean_masked_intensity_img;
+            
             found_spot(s, g) = found_ft & found_img;
             
             num_processed = num_processed + 1;
@@ -148,7 +165,9 @@ for d = 1:D
         
         % Save
         save(savepath, '-v7.3', 'copt_ft', 'copt_img', 'sopt', 'p',...
-            'cam_ft_col', 'cam_ft_row', 'cam_img_col', 'cam_img_row', 'found_spot')
+            'cam_ft_col', 'cam_ft_row', 'cam_ft_mean_intensity', 'cam_ft_mean_masked_intensity',...
+            'cam_img_col', 'cam_img_row', 'cam_img_mean_intensity', 'cam_img_mean_masked_intensity',...
+            'found_spot')
     end
 end
 

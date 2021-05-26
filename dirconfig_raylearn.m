@@ -24,8 +24,7 @@ dirs.main = char(join(mfilearray(1:end-2), filesep));         % Allprojects dir
 dirs.repo = char(join(mfilearray(1:end-1), filesep));         % repo directory
 dirs.simdata = fullfile(char(dirs.repo), 'SimulationData');   % Simulation Data
 dirs.expdata = fullfile(char(dirs.repo), 'ExperimentalData'); % Experimental Data
-% dirs.localdata = fullfile(char(dirs.repo), 'LocalData');      % Local Data
-dirs.localdata = 'C:\LocalData\';      % Local Data
+dirs.localdata = fullfile(char(dirs.repo), 'LocalData');      % Local Data
 % expdatadir = '//ad.utwente.nl/TNW/BMPI/Users/Daniel Cox/ExperimentalData';
 
 
