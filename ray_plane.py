@@ -124,4 +124,4 @@ class CoordPlane():
         p = rays.position_m - self.position_m
         x = dot(p, self.x) / norm_square(self.x)
         y = dot(p, self.y) / norm_square(self.y)
-        return torch.cat((x, y))
+        return torch.cat((x, y), -1)

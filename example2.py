@@ -1,14 +1,14 @@
 """Example 2."""
 
 import torch
-from torch import nn, optim, Tensor
+from torch import nn, optim, tensor, Tensor
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from tqdm import tqdm
 import imageio
 
-from vector_functions import vector, unit
+from vector_functions import unit
 from ray_plane import Plane, CoordPlane
 from optical import collimated_source, ideal_lens
 from plot_functions import plot_rays, plot_coords, ray_positions, plot_lens, plot_plane
@@ -22,25 +22,25 @@ def optical_system(f, lens_normal_shift):
     # Dimensions
     N1 = 7
     N2 = 7
-    vsize = (3, N1, N2)
-    
+
     # Source properties
-    src_pos = vector((0,0,0), (3,1,1))
-    src_x = 1e-2 * vector((-1,0,0), (3,1,1))
-    src_y = 1e-2 * vector((0,1,0), (3,1,1))
+    src_pos = tensor((0., 0., 0.))
+    src_x = 1e-2 * tensor((1., 0., 0.))
+    src_y = 1e-2 * tensor((0., 1., 0.))
     src_plane = CoordPlane(src_pos, src_x, src_y)
+    print(src_plane.normal)
 
     # Lens properties
-    lens_position = 1e-3 * vector((0, 0, 30), (3, 1, 1))
-    y = vector((0, 1, 0), (3, 1, 1))
-    lens_normal = unit(vector((0, 0, -1), (3, 1, 1)) + y*lens_normal_shift)
+    lens_position = 1e-3 * tensor((0., 0., 30.))
+    y = tensor((0., 1., 0.))
+    lens_normal = unit(tensor((0., 0., -1.)) + y*lens_normal_shift)
     lens_plane = Plane(lens_position, lens_normal)
 
     # Camera properties
     pixsize = 10e-6
-    cam_position = 1e-3 * vector((0, 0, 70), (3, 1, 1))
-    cam_x = pixsize * unit(vector((-1, 0, 0), (3, 1, 1)))
-    cam_y = pixsize * unit(vector((0, 1, 0), (3, 1, 1)))
+    cam_position = 1e-3 * tensor((0., 0., 70.))
+    cam_x = pixsize * unit(tensor((-1., 0., 0.)))
+    cam_y = pixsize * unit(tensor((0., 1., 0.)))
     cam_plane = CoordPlane(cam_position, cam_x, cam_y)
 
     # Ray tracing
@@ -49,16 +49,10 @@ def optical_system(f, lens_normal_shift):
     rays3 = rays2.intersect_plane(cam_plane)
     camcoords = cam_plane.transform(rays3)
 
-    positions = ray_positions((rays1, rays2, rays3))
+    rays = (rays1, rays2, rays3)
 
-    return camcoords, positions, lens_plane, cam_plane
+    return camcoords, rays, lens_plane, cam_plane
 
-
-# Dimensions
-N1 = 7
-N2 = 7
-vsize = (3, N1, N2)
-nsize = (1, 1, 1)
 
 # Define Ground Truth
 f_gt = Tensor([50e-3])
@@ -66,10 +60,10 @@ lens_normal_shift_gt = Tensor([0.1])
 parameters_gt = [f_gt, lens_normal_shift_gt]
 camcoords_gt_perfect, raylist_gt, lens_plane, cam_plane = optical_system(*parameters_gt)
 stdcoords = torch.std(camcoords_gt_perfect)
-camcoords_gt = camcoords_gt_perfect + 1e-2 * torch.randn((N1, N2)) * stdcoords
+camcoords_gt = camcoords_gt_perfect + 1e-2 * torch.randn(camcoords_gt_perfect.shape) * stdcoords
 
 # Define Inital Guess
-f = Tensor([80e-3])
+f = tensor((80e-3,))
 f.requires_grad = True
 lens_normal_shift = Tensor([0.25])
 lens_normal_shift.requires_grad = True
@@ -91,7 +85,7 @@ errors = torch.zeros(iterations)
 fpreds = torch.zeros(iterations)
 tiltpreds = torch.zeros(iterations)
 coordpreds = []
-raypospreds = []
+rayspreds = []
 lens_planes = []
 cam_planes = []
 trange = tqdm(range(iterations), desc='error: -')
@@ -102,7 +96,7 @@ for t in trange:
     # Forward pass
     camcoords, raylist, lens_plane, cam_plane = optical_system(*parameters)
     coordpreds.append(camcoords.detach())
-    raypospreds.append(raylist)
+    rayspreds.append(raylist)
     lens_planes.append(lens_plane)
     cam_planes.append(cam_plane)
 
@@ -139,7 +133,7 @@ with imageio.get_writer('plots/learnplot.gif', mode='I', fps=20) as writer:
         cam_plane_plot = CoordPlane(cam_plane.position_m, cam_plane.x * 700, cam_plane.y * 700)
         plot_plane(ax1, cam_plane_plot, '')
         ax1.text(0.065, 0.008, 'Camera')
-        plot_rays(ax1, raypospreds[t])
+        plot_rays(ax1, rayspreds[t])
         ax1.set_title('Ray Tracer prediction')
 
         # Cam coords plot

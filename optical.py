@@ -34,8 +34,8 @@ def collimated_source(sourceplane, Nx, Ny, **raykwargs):
         Ny              Number of ray elements along y plane direction.
         raykwargs       Additional properties to pass to the Ray object.
     """
-    x_array = sourceplane.x * torch.linspace(-1.0, 1.0, Nx).view(1, Nx, 1)
-    y_array = sourceplane.y * torch.linspace(-1.0, 1.0, Ny).view(1, 1, Ny)
+    x_array = sourceplane.x * torch.linspace(-1.0, 1.0, Nx).view(Nx, 1, 1)
+    y_array = sourceplane.y * torch.linspace(-1.0, 1.0, Ny).view(1, Ny, 1)
     pos = sourceplane.position_m + x_array + y_array
 
     return Ray(pos, sourceplane.normal, **raykwargs)
@@ -54,8 +54,8 @@ def point_source(sourceplane, Nx, Ny, **raykwargs):
         Ny              Number of ray elements along y plane direction.
         raykwargs       Additional properties to pass to the Ray object.
     """
-    x_array = sourceplane.x * torch.linspace(-1.0, 1.0, Nx).view(1, Nx, 1)
-    y_array = sourceplane.y * torch.linspace(-1.0, 1.0, Ny).view(1, 1, Ny)
+    x_array = sourceplane.x * torch.linspace(-1.0, 1.0, Nx).view(Nx, 1, 1)
+    y_array = sourceplane.y * torch.linspace(-1.0, 1.0, Ny).view(1, Ny, 1)
     direction = unit(sourceplane.normal + x_array + y_array)
 
     return Ray(sourceplane.position_m, direction, **raykwargs)
@@ -99,7 +99,7 @@ def smooth_grid(x, y, spacing_x, spacing_y, power):
     """
     cosinegrid, indices = torch.max(torch.stack((
         (0.5 * torch.cos(x * 2 * np.pi / spacing_x) + 0.5),
-        (0.5 * torch.cos(y * 2 * np.pi / spacing_y) + 0.5))), dim=0)
+        (0.5 * torch.cos(y * 2 * np.pi / spacing_y) + 0.5))), dim=-1)
 
     return 1 - cosinegrid ** power
 
