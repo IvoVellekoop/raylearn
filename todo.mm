@@ -3,7 +3,7 @@
 <node TEXT="Correct system&#xa;aberrations in&#xa;experiment and&#xa;measure improvement - 20" FOLDED="false" ID="ID_1454915667" CREATED="1620382095375" MODIFIED="1620389150497" STYLE="oval">
 <font SIZE="10"/>
 <hook NAME="MapStyle" background="#3c3f41" zoom="1.5">
-    <properties edgeColorConfiguration="#808080ff,#00ddddff,#dddd00ff,#dd0000ff,#00dd00ff,#dd0000ff,#7cddddff,#dddd7cff,#dd7cddff,#7cdd7cff,#dd7c7cff,#7c7cddff" fit_to_viewport="false"/>
+    <properties fit_to_viewport="false" edgeColorConfiguration="#808080ff,#00ddddff,#dddd00ff,#dd0000ff,#00dd00ff,#dd0000ff,#7cddddff,#dddd7cff,#dd7cddff,#7cdd7cff,#dd7c7cff,#7c7cddff"/>
 
 <map_styles>
 <stylenode LOCALIZED_TEXT="styles.root_node" STYLE="oval" UNIFORM_SHAPE="true" VGAP_QUANTITY="24 pt">
@@ -66,7 +66,7 @@
 </map_styles>
 </hook>
 <hook NAME="AutomaticEdgeColor" COUNTER="1" RULE="ON_BRANCH_CREATION"/>
-<node TEXT="Compute raylearn&#xa;correction pattern - 8" POSITION="right" ID="ID_1857496707" CREATED="1620385771052" MODIFIED="1620388571469" HGAP_QUANTITY="15.5 pt" VSHIFT_QUANTITY="-15 pt">
+<node TEXT="Compute raylearn&#xa;correction pattern - 8" POSITION="right" ID="ID_1857496707" CREATED="1620385771052" MODIFIED="1622105434406" HGAP_QUANTITY="15.5 pt" VSHIFT_QUANTITY="-15 pt">
 <edge COLOR="#00dddd"/>
 <node TEXT="Fit system model&#xa;to measurements - 13" ID="ID_1506468163" CREATED="1620385816196" MODIFIED="1622036267164" HGAP_QUANTITY="11.75 pt" VSHIFT_QUANTITY="-34.5 pt">
 <node TEXT="Measurements of&#xa;pencil beams&#xa;through grid target - 20" ID="ID_1505952362" CREATED="1620389032328" MODIFIED="1620389249706">
@@ -80,7 +80,7 @@
 </node>
 <node TEXT="Convert measurements&#xa;to useable format - 10" ID="ID_1054617586" CREATED="1620385876892" MODIFIED="1622036267162" HGAP_QUANTITY="16.25 pt" VSHIFT_QUANTITY="1.5 pt"/>
 <node TEXT="(when necessary)&#xa;Repeat with higher res&#xa;and better focus - 13" ID="ID_1731513296" CREATED="1620385827094" MODIFIED="1622036249113"/>
-<node TEXT="Create system model - 13" ID="ID_337365993" CREATED="1620385896214" MODIFIED="1620389205467" HGAP_QUANTITY="12.5 pt" VSHIFT_QUANTITY="-15 pt">
+<node TEXT="Create system model - 13" ID="ID_337365993" CREATED="1620385896214" MODIFIED="1622105488685" HGAP_QUANTITY="12.5 pt" VSHIFT_QUANTITY="-15 pt">
 <node TEXT="Intensity property - 10" ID="ID_639552022" CREATED="1620386210528" MODIFIED="1620386892010">
 <icon BUILTIN="button_ok"/>
 </node>
@@ -105,6 +105,9 @@
 <node TEXT="Create Galvo tilt element - 8" ID="ID_1884701494" CREATED="1620386319285" MODIFIED="1620388794774"/>
 <node TEXT="Create SLM position source - 10" ID="ID_522349803" CREATED="1620386328468" MODIFIED="1620388801782"/>
 <node TEXT="(optional improvement)&#xa;Grid mask function with convolution - 13" ID="ID_1206566708" CREATED="1620386137921" MODIFIED="1621509753900"/>
+<node TEXT="(if necessary)&#xa;Plot error-parameter landscape" ID="ID_1131823186" CREATED="1622105480309" MODIFIED="1622105501573" HGAP_QUANTITY="-127 pt" VSHIFT_QUANTITY="-33.75 pt">
+<cloud COLOR="#f0f0f0" ALPHA="20" SHAPE="ARC"/>
+</node>
 </node>
 </node>
 <node TEXT="Ray pattern with&#xa;pathlengths to&#xa;correction pattern - 10" ID="ID_1149218589" CREATED="1620386359853" MODIFIED="1620388974595" HGAP_QUANTITY="15.5 pt" VSHIFT_QUANTITY="-21.75 pt">
