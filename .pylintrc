@@ -1,0 +1,6 @@
+[BASIC]
+
+disable=
+    invalid-name,
+    no-member
+
