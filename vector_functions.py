@@ -13,6 +13,9 @@ Scalar: A ...xMx1 torch tensor where the last dimension has length 1. Or, in cas
         elements of the Tensor have the same value, this may be replaced by a Python float or
         double. Other dimensions are used for parallellization. (Although note that a few PyTorch
         Tensor functions, like torch.cos, will not accept native Python floats.)
+Parallelization can be used for many things. For instance in a Ray object that represents rays of
+different positions and/or directions, or Plane or CoordPlane objects with different positions or
+orientations, e.g. for a galvo mirror plane.
 
 For complete broadcasting semantics, see https://pytorch.org/docs/stable/notes/broadcasting.html
 """
@@ -53,6 +56,11 @@ def rejection(v, w):
     return v - projection(v, w)
 
 
+def reflection(v, w):
+    """Reflect vector v along vector w for ...xMxD vectors, where D is vector dimension."""
+    return v - 2 * projection(v, w)
+
+
 def cross(v, w):
     """Cross product of vector v and w for ...xMx3 vectors, where 3 is vector dimension."""
     vx, vy, vz = v.unbind(-1)
@@ -69,10 +77,10 @@ def rotate(v, u, theta):
 
     For derivation see: http://ksuweb.kennesaw.edu/~plaval/math4490/rotgen.pdf
     """
-    if type(theta) == torch.Tensor:
-        tensor_theta = theta                # Already a Tensor
+    if isinstance(theta, torch.Tensor):
+        tensor_theta = theta                    # Already a Tensor
     else:
-        tensor_theta = torch.Tensor((theta,))  # Turn into Tensor
+        tensor_theta = torch.Tensor((theta,))   # Turn into Tensor
 
     C = torch.cos(tensor_theta)
     S = torch.sin(tensor_theta)

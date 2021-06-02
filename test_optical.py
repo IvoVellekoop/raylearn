@@ -1,13 +1,14 @@
 """Test optical."""
 
 import torch
-from torch import Tensor, tensor   ##### torch.Tensor does weird stuff when you give it a torch.Size
+from torch import Tensor, tensor, stack, meshgrid
 import numpy as np
 
 from testing import comparetensors
-from vector_functions import dot, unit, norm, cross, rejection
+from vector_functions import dot, unit, norm, cross, rejection, rotate, reflection
 from ray_plane import Ray, Plane, CoordPlane
-from optical import point_source, collimated_source, ideal_lens, snells
+from optical import point_source, collimated_source, ideal_lens, snells,\
+                    mirror, galvo_mirror, slm_segment
 
 
 def test_sources():
@@ -197,13 +198,14 @@ def test_snells2():
     n_out = 1.7
 
     # Define point source
-    src_pos = Tensor((2,42,3))
-    src_x = Tensor((3,-0.2,0.3))
-    src_y_prime = Tensor((1,4,0))
+    src_pos = tensor((2., 42., 3.))
+    src_x = tensor((3, -0.2, 0.3))
+    src_y_prime = tensor((1., 4., 0.))
     src_y = unit(rejection(src_y_prime, src_x))
-    src = point_source(CoordPlane(src_pos, src_x, src_y), Nx, Ny, refractive_index=n_in)
+    src_plane = CoordPlane(src_pos, src_x, src_y)
+    src = point_source(src_plane, Nx, Ny, refractive_index=n_in)
 
-    normal = unit(Tensor((3,2,-9)))
+    normal = unit(tensor((3., 2., -9.)))
     ray_out = snells(src, normal, n_out)
 
     # Since directional and normal vectors are unitary: ||DxN|| = sin(angle)
@@ -212,5 +214,191 @@ def test_snells2():
     assert comparetensors(sin_out, n_in/n_out * sin_in)
 
 
-if __name__ == '__main__':
-    test_sources()
+def test_mirror1():
+    """
+    Test mirror with single manual Ray.
+    """
+    # Construct Mirror Plane
+    theta = 0.42
+    origin = tensor((0., 0., 0.))
+    x = tensor((1., 0., 0.))
+    z = tensor((0., 0., 1.))
+    mirror_normal = rotate(x, z, theta)
+    mirror_plane = Plane(origin, mirror_normal)
+
+    # Construct Rays
+    ray_in = Ray(x, -x)
+    ray_reflect = mirror(ray_in, mirror_plane)
+    ray_dir_manual = tensor((np.cos(2*theta), np.sin(2*theta), 0))
+
+    assert comparetensors(ray_dir_manual, ray_reflect.direction)
+    assert comparetensors(origin, ray_reflect.position_m)
+
+
+def test_mirror2():
+    """
+    Test mirror with mirror version of point source.
+
+    Note: reflecting along z == rotating around y + reflecting along x
+    """
+    Nx = 5
+    Ny = 3
+
+    # Construct randomly oriented coordinate system
+    origin = tensor((0., 0., 0.))
+    x = unit(torch.randn(3))
+    y = unit(rejection(torch.randn(3), x))
+    z = cross(x, y)
+
+    # Mirror plane normal = -z
+    mirror_plane = Plane(origin, z)
+
+    # Define point source
+    src_plane = CoordPlane(-2*z, x, y)
+    src = point_source(src_plane, Nx, Ny)
+
+    # Reflected rays
+    reflected_rays = mirror(src, mirror_plane)
+
+    # Rotated point source around y, then reflect along x
+    mirror_src_plane = CoordPlane(2*z, -x, y)
+    mirror_src = point_source(mirror_src_plane, Nx, Ny)
+    refl_mirror_dirs = reflection(mirror_src.direction, x)
+
+    assert comparetensors(reflected_rays.direction, refl_mirror_dirs)
+
+
+def test_galvo_mirror1():
+    """
+    Test galvo mirror for a simple case.
+
+    Rotate the mirror in steps of 22.5 degrees and check against
+    manual computation.
+    """
+    # Construct randomly oriented coordinate system
+    origin = torch.randn(3)
+    x = unit(torch.randn(3))
+    y = unit(rejection(torch.randn(3), x))
+    z = cross(x, y)
+
+    # Can be uncommented for easier troubleshooting:
+    # x = tensor((1.,0,0))
+    # y = tensor((0.,1,0))
+    # z = tensor((0.,0,1))
+
+    # Galvo Plane with y+z-diagonal as normal and input Ray coming in from y
+    galvo_plane = CoordPlane(origin, x, unit(y-z))
+
+    assert comparetensors(galvo_plane.normal, unit(z+y))
+
+    ray_in = Ray(origin + y, -y)
+
+    # Rotate with steps of 22.5 degrees around x axis
+    # -> reflection direction of ray should rotate in steps of 45 degrees
+    rotations = np.pi/8 * tensor(((2., 0), (1, 0), (0, 0), (-1, 0), (-2, 0)))
+    reflected_rays = galvo_mirror(ray_in, galvo_plane, rotations)
+
+    # Manually compute direction unit vectors
+    sq2 = np.sqrt(0.5, dtype=np.float32)
+    x_dir_man = tensor((0., 0., 0., 0., 0.)).view(5, 1) * x
+    y_dir_man = tensor((-1, -sq2, 0, sq2, 1)).view(5, 1) * y
+    z_dir_man = tensor((0., sq2, 1., sq2, 0)).view(5, 1) * z
+    direction_man = x_dir_man + y_dir_man + z_dir_man
+
+    assert comparetensors(direction_man, reflected_rays.direction)
+
+
+def test_galvo_mirror2():
+    """
+    Test galvo mirror with 2 rotation axes.
+
+    Galvo Plane axes are -x&z. Input Ray has direction -z.
+    """
+    # Construct randomly oriented coordinate system
+    x = unit(torch.randn(3))
+    y = unit(rejection(torch.randn(3), x))
+    z = cross(x, y)
+
+    # Can be uncommented for easier troubleshooting:
+    # x = tensor((1.,0,0))
+    # y = tensor((0.,1,0))
+    # z = tensor((0.,0,1))
+
+    # Galvo Plane and input Ray
+    galvo_plane = CoordPlane(torch.randn(3), -x, z)
+    ray_in = Ray(torch.randn(3), -z)
+
+    # Reflect rays off rotated galvo mirrors
+    N = 7
+    rot_lin = np.pi/2 * torch.linspace(-1, 1, N)
+    rotations = stack(meshgrid(rot_lin, rot_lin*0), dim=-1)
+    reflected_rays = galvo_mirror(ray_in, galvo_plane, rotations)
+    shape = torch.tensor(reflected_rays.direction.shape)
+
+    assert comparetensors(shape, torch.tensor((N, N, 3)))
+
+    # Manually compute directions for comparison
+    # Note! The galvo directions here are global -x&z direction
+    rot_galvox = rotations.unsqueeze(-2).unbind(-1)[0]
+    rot_galvoy = rotations.unsqueeze(-2).unbind(-1)[1]
+
+    # Manual components for this particular situation
+    x_dir_man = x *  torch.sin(2*rot_galvox) * torch.sin(rot_galvoy)
+    y_dir_man = y * -torch.sin(2*rot_galvox) * torch.cos(rot_galvoy)
+    z_dir_man = z * -torch.cos(2*rot_galvox)
+    direction_man = x_dir_man + y_dir_man + z_dir_man
+
+    assert comparetensors(direction_man, reflected_rays.direction)
+
+
+def test_galvo_mirror3():
+    """
+    Test Galvo Mirror reflected Ray position.
+    """
+    # Construct randomly oriented coordinate system
+    x = unit(torch.randn(3))
+    y = unit(rejection(torch.randn(3), x))
+    z = cross(x, y)
+
+    # Planes and Ray
+    galvo_plane = CoordPlane(torch.randn(3), x, y)
+    ray_in = Ray(torch.randn(3), unit(torch.randn(3)))
+    rot_mir_plane_man = Plane(galvo_plane.position_m, unit(z-y))
+
+    # Rotate 45 degrees around x
+    rot_x = float(np.pi/4)
+    rotations = torch.tensor((rot_x, 0))
+
+    # Compute positions
+    position_at_galvo = galvo_mirror(ray_in, galvo_plane, rotations).position_m
+    position_man = ray_in.intersect_plane(rot_mir_plane_man).position_m
+
+    assert comparetensors(position_man, position_at_galvo)
+
+
+def test_slm_segment():
+    """
+    Test SLM segment.
+    """
+    # Construct randomly oriented coordinate system
+    x = unit(torch.randn(3))
+    y = unit(rejection(torch.randn(3), x))
+    z = cross(x, y)
+
+    # Construct SLM stuff and Ray
+    n_ray = 1.42
+    pathlength_m = 7
+    ray_in = Ray(torch.randn(3), unit(torch.randn(3)),
+                        refractive_index=n_ray, pathlength_m=pathlength_m)
+    slm_plane = CoordPlane(torch.randn(3), 0.1*x, 0.2*y)
+    slm_coords = torch.randn((4,2))
+
+    # Compute output Ray and manual positions
+    ray_out = slm_segment(ray_in, slm_plane, slm_coords)
+    x_slm, y_slm = slm_coords.unsqueeze(-2).unbind(-1)   # Split vector dimensions
+    position_man = slm_plane.position_m + x_slm * slm_plane.x + y_slm * slm_plane.y
+
+    assert comparetensors(ray_out.direction, ray_in.direction)
+    assert ray_out.refractive_index == n_ray
+    assert ray_out.pathlength_m == pathlength_m
+    assert comparetensors(ray_out.position_m, position_man)

@@ -3,17 +3,8 @@
 The main purpose of these classes is to bundle together relevant parameters like position,
 direction and refractive index.
 
-Terminology used:
-('Mx...' denotes one or multiple dimensions of undefined length.)
-Vector: A DxMx... torch tensor where the 0th dimension denotes vector components.
-        Usually, D=3, representing vector dimensions x, y and z. Other dimensions are used for
-        parallelization.
-Scalar: A 1xMx... torch tensor where the first dimension has length 1. Or, in cases where all Ray
-        elements have the same value, this may be replaced by a Python float or double. Other
-        dimensions are used for parallellization.
-Note that for vector and scalar operations, the number of dimensions must match! Dimensionality of
-e.g. 3x1x1 is not the same as 3 for torch tensors, and will yield incorrect results for the vector
-operations!
+For clarification of the meaning in this context of terminology like vectors and scalars,
+see vector_functions.py.
 """
 
 import torch
@@ -40,12 +31,13 @@ class Ray:
     """
 
     def __init__(self, position_m, direction, refractive_index=1, pathlength_m=0, intensity=1, weight=1):
-        self.position_m = position_m                # Vector array. Position in m
-        self.direction = direction                  # Vector array. Direction unit vector
-        self.refractive_index = refractive_index    # Scalar array. Refractive index of medium
-        self.pathlength_m = pathlength_m            # Scalar array. Total optical pathlength in m
-        self.intensity = intensity                  # Scalar array. Intensity of ray.
-        self.weight = weight                        # Scalar array. Total weight in loss function.
+        self.position_m = position_m                # Vector. Position in m
+        self.direction = direction                  # Vector. Direction unit vector
+        ### Check unit vector?
+        self.refractive_index = refractive_index    # Scalar. Refractive index of medium
+        self.pathlength_m = pathlength_m            # Scalar. Total optical pathlength in m
+        self.intensity = intensity                  # Scalar. Intensity of ray.
+        self.weight = weight                        # Scalar. Total weight in loss function.
 
     def intersect_plane(self, plane):
         """Return new Ray at intersection with Plane or CoordPlane."""
@@ -87,6 +79,7 @@ class Plane:
     def __init__(self, position_m, normal):
         self.position_m = position_m                # Vector array. Position in m
         self.normal = normal                        # Vector array. Plane normal as unit vector
+        ### Check unit vector?
 
 
 class CoordPlane():
@@ -96,9 +89,7 @@ class CoordPlane():
     its coordinate system. It is suitable to represents for instance a camera plane. The normal
     attribute represents the unit vector perpendicular to the two component vectors, and is
     calculated on the fly when read. This makes the CoordPlane class mostly compatible with the
-    Plane class. However, since the CoordPlane.normal attribute is calculated from the x & y
-    component vectors on the fly, it is read only. The unit of the x & y component vectors depends
-    on the application.
+    Plane class. The unit of the x & y component vectors depends on the application.
 
     Attributes
     ----------
@@ -113,6 +104,7 @@ class CoordPlane():
         self.position_m = position_m
         self.x = x
         self.y = y
+        ### Check orthogonality?
 
     @property
     def normal(self):
