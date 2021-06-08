@@ -17,8 +17,8 @@ function [x_sample_mm, y_sample_mm, x_obj, y_obj, z_obj] = galvoslm_to_rays(Ux_g
     f2 = 100;                   % Lens 2 focal length (mm)
     f3 = 400;                   % Lens 3 focal length (mm)
     f4 = 400;                   % Lens 4 focal length (mm)
-    f5 = 200;                   % Lens 5 focal length (mm)
-    f7 = 400;                   % Lens 7 focal length (mm)
+    f5 = 150;                   % Lens 5 focal length (mm)
+    f7 = 300;                   % Lens 7 focal length (mm)
     c_galvo = 0.5;                 % Galvo tilt constant (volt/degree)
     SLM_height = 10.7;          % Physical height of SLM pixel array (mm)
     
