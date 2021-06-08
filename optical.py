@@ -84,12 +84,13 @@ def ideal_lens(in_ray, lens, f):
     return out_ray
 
 
-def smooth_grid(x, y, spacing_x, spacing_y, power):
+def smooth_grid(xy, spacing_x, spacing_y, power):
     """Smooth Grid function.
 
     Input
     -----
     """
+    x, y = xy.unbind(-1)
     cosinegrid, indices = torch.max(torch.stack((
         (0.5 * torch.cos(x * 2 * np.pi / spacing_x) + 0.5),
         (0.5 * torch.cos(y * 2 * np.pi / spacing_y) + 0.5))), dim=-1)
@@ -103,8 +104,8 @@ def intensity_mask_smooth_grid(in_ray, coordplane, spacing_x, spacing_y, power):
     Pass rays through intensity mask.
     """
     rays_at_plane = in_ray.intersect_plane(coordplane)
-    x, y = coordplane.transform(rays_at_plane)
-    factors = smooth_grid(x, y, spacing_x, spacing_y, power)
+    xy = coordplane.transform(rays_at_plane)
+    factors = smooth_grid(xy, spacing_x, spacing_y, power)
     return rays_at_plane.mask(factors)
 
 
@@ -211,7 +212,7 @@ def slm_segment(ray_in, slm_plane, slm_coords):
         SLM_plane   CoordPlane. The x and y vectors of the SLM plane represent
                     the physical size of the SLM from edge to edge.
         SLM_coords  Tensor. Coordinates of the output ray positions in relative
-                    SLM coordinates, i.e. ranging from edge to edge = [-0.5, 0.5].
+                    SLM coordinates, i.e. ranging from top to bottom = [-0.5, 0.5].
 
     Output
     ------

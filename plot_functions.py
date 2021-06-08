@@ -22,11 +22,9 @@ def plot_rays(ax, rays, plotkwargs={}):
     dimhori = 2
     dimvert = 1
     dimlabels = ['x (m)', 'y (m)', 'z (m)']
-    positions = ray_positions(rays)
-    positions_hori = torch.stack(positions)[:, :, :, dimhori].view(
-        len(positions), -1).detach().cpu()
-    positions_vert = torch.stack(positions)[:, :, :, dimvert].view(
-        len(positions), -1).detach().cpu()
+    positions = torch.stack(ray_positions(rays)).unbind(-1)
+    positions_hori = positions[dimhori].view(len(rays), -1).detach().cpu()
+    positions_vert = positions[dimvert].view(len(rays), -1).detach().cpu()
 #    plot_plane = CoordPlane(tensor((0.,0.,0.)), tensor((0.,0.,1.)), tensor((0.,1.,0.)))
 
     # Plot
@@ -48,7 +46,7 @@ def plot_coords(ax, coords, plotkwargs={'color': 'tab:blue'}):
     return ln
 
 
-def plot_plane(ax, coordplane, text='', plotkwargs={'color': 'black'}):
+def plot_plane(ax, coordplane, scale=1, text='', plotkwargs={'color': 'black'}):
     """Plot a plane.
 
     WIP: currently assumes: dimhori = 2, dimvert = 1, text at point B.
@@ -56,8 +54,8 @@ def plot_plane(ax, coordplane, text='', plotkwargs={'color': 'black'}):
     """
     # Get properties
     position_m = coordplane.position_m
-    x = coordplane.x
-    y = coordplane.y
+    x = scale * coordplane.x
+    y = scale * coordplane.y
 
     # Compute 4 corner points of plane
     A = position_m + x + y
@@ -76,14 +74,14 @@ def plot_plane(ax, coordplane, text='', plotkwargs={'color': 'black'}):
     return ln
 
 
-def plot_lens(ax, plane, f, width, plotkwargs={'color': 'black'}):
+def plot_lens(ax, plane, f, scale, pretext='', plotkwargs={'color': 'black'}):
     """Plot lens."""
     x_global = tensor((1., 0., 0.))
-    x_plane = width * unit(rejection(x_global, plane.normal))
+    x_plane = unit(rejection(x_global, plane.normal))
     y_plane = cross(plane.normal, x_plane)
 
     tilt = np.arcsin(float(plane.normal.unbind(-1)[1].detach())) * 180/np.pi
-    text = f' f={f*1e3:.1f}mm\n tilt={tilt:.2f}$\degree$'
+    text = pretext + f' f={f*1e3:.1f}mm'
     coordplane = CoordPlane(plane.position_m, x_plane, y_plane)
-    ln = plot_plane(ax, coordplane, text, plotkwargs)
+    ln = plot_plane(ax, coordplane, scale, text, plotkwargs)
     return ln
