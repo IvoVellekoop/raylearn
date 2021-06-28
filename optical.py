@@ -80,11 +80,11 @@ def ideal_lens(in_ray, lens, f):
     # Delta = 2*f - norm(A-P) - norm(P-K)
     #     Delta = f - torch.sqrt(f*f + normsq(P-L))
 
-    out_ray = Ray(P, unit(focus - P))                     # Output Ray
+    out_ray = in_ray.copy(position_m=P, direction=unit(focus - P))    # Output Ray
     return out_ray
 
 
-def smooth_grid(xy, spacing_x, spacing_y, power):
+def smooth_grid(xy, power):
     """Smooth Grid function.
 
     Input
@@ -92,20 +92,20 @@ def smooth_grid(xy, spacing_x, spacing_y, power):
     """
     x, y = xy.unbind(-1)
     cosinegrid, indices = torch.max(torch.stack((
-        (0.5 * torch.cos(x * 2 * np.pi / spacing_x) + 0.5),
-        (0.5 * torch.cos(y * 2 * np.pi / spacing_y) + 0.5))), dim=-1)
+        (0.5 * torch.cos(x * 2 * np.pi) + 0.5),
+        (0.5 * torch.cos(y * 2 * np.pi) + 0.5)), dim=-1), dim=-1)
 
-    return 1 - cosinegrid ** power
+    return 1 - cosinegrid.unsqueeze(-1) ** power
 
 
-def intensity_mask_smooth_grid(in_ray, coordplane, spacing_x, spacing_y, power):
+def intensity_mask_smooth_grid(in_ray, coordplane, power):
     """Intensity Mask of Smooth Grid.
 
     Pass rays through intensity mask.
     """
     rays_at_plane = in_ray.intersect_plane(coordplane)
     xy = coordplane.transform(rays_at_plane)
-    factors = smooth_grid(xy, spacing_x, spacing_y, power)
+    factors = smooth_grid(xy, power)
     return rays_at_plane.mask(factors)
 
 
@@ -129,6 +129,10 @@ def snells(ray_in, N, n_out):
     and thus it can act as sine in Snell's law. Furthermore, it is perpendicular to
     the surface_normal. Hence, it's the perpendicular component of dir_out. Once
     this is known, the parallel component can also be computed, since |dir_out| = 1.
+
+    By the same equations, backwards propagating rays can also be computed by
+    reversing the surface normal. Make sure the refractive indices of both the Rays
+    and the interface are correct though.
     """
     dir_in = ray_in.direction
     n_in = ray_in.refractive_index
