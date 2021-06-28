@@ -16,6 +16,8 @@ from ray_plane import Ray, Plane, CoordPlane
 from plot_functions import plot_plane, plot_lens, plot_rays, plot_coords
 from optical import ideal_lens, snells, galvo_mirror, slm_segment, intensity_mask_smooth_grid
 
+from torchviz import make_dot
+
 # Set default tensor type to double (64 bit)
 # Machine epsilon of float (32-bit) is 2^-23 = 1.19e-7
 # The ray simulation contains both meter and micrometer scales,
@@ -52,8 +54,10 @@ class TPM(torch.nn.Module):
         # References:
         # https://refractiveindex.info/?shelf=main&book=H2O&page=Hale
         # https://refractiveindex.info/?shelf=glass&book=soda-lime&page=Rubin-clear
+        # https://refractiveindex.info/?shelf=glass&book=SCHOTT-multipurpose&page=D263TECO
         self.n_water = 1.3304
         self.n_target = 1.5191
+        self.n_coverslip = 1.5185
 
         # Define coordinate system
         origin = tensor((0., 0., 0.))
@@ -61,8 +65,10 @@ class TPM(torch.nn.Module):
         y = tensor((0., 1., 0.))
         z = tensor((0., 0., 1.))
 
-        # Initial Ray list
-        self.rays = [Ray(origin, -z)]
+        self.origin = origin
+        self.x = x
+        self.y = y
+        self.z = z
 
         # Galvo
         self.galvo_plane = CoordPlane(origin, x, y)
@@ -77,11 +83,11 @@ class TPM(torch.nn.Module):
 
         # SLM coords and Galvo rotations
         # Note: Create fake data for the time being
-        SX = 3
+        SX = 5
         slm_coords_lin = torch.linspace(-0.4, 0.4, SX)
         self.slm_coords = stack(meshgrid(slm_coords_lin, slm_coords_lin), -1).view(SX, SX, 1, 1, 2)
 
-        GX = 5
+        GX = 15
         galvo_volt_lin = torch.linspace(-0.15, 0.15, GX)
         galvo_rots_lin = galvo_volt_lin * self.galvo_rad_per_V
         self.galvo_rots = stack(meshgrid(galvo_rots_lin, galvo_rots_lin), -1).view(GX, GX, 2)
@@ -89,9 +95,9 @@ class TPM(torch.nn.Module):
         # Focal distances (m)
         self.f5 = 150e-3
         self.f7 = 300e-3
-        self.f9 = 150e-3            #### Dubble check
-        self.f10 = 200e-3           #### Dubble check
-        self.f11 = 100e-3           #### Dubble check
+        self.f9 = 150e-3
+        self.f10 = 200e-3
+        self.f11 = 100e-3
         self.obj1_tubelength = 200e-3           # Objective standard tubelength
         self.obj1_magnification = 16            # Objective magnification
         self.fobj1 = self.obj1_tubelength / self.obj1_magnification
@@ -113,9 +119,7 @@ class TPM(torch.nn.Module):
             self.sample_plane.position_m,
             self.grid_target_x_spacing * -x,
             self.grid_target_y_spacing * y)
-        self.grid_target_thickness = 1.5e-3
-        self.grid_target_front_plane = Plane(
-            self.grid_target_back_plane.position_m - self.grid_target_thickness*z, -z)
+        self.grid_target_thickness = 0.
 
         # Lens planes transmission arm
         self.OBJ2 = Plane(self.sample_plane.position_m + self.fobj2*z, -z)
@@ -126,6 +130,13 @@ class TPM(torch.nn.Module):
         # Camera planes
         self.cam_ft_plane = CoordPlane(self.L10.position_m + self.f10*z, -x, y)
         self.cam_im_plane = CoordPlane(self.L11.position_m + self.f11*z, -x, y)
+
+    def update(self):
+        """
+        Update properties depending on parameters to be learned.
+        """
+        self.grid_target_front_plane = Plane(
+            self.grid_target_back_plane.position_m - self.grid_target_thickness*z, -z)
 
     def raytrace(self):
         """
@@ -142,27 +153,25 @@ class TPM(torch.nn.Module):
                             for that corresponding dimension.  Predicted camera
                             coordinates of Image plane camera.
         """
+        # Initial Ray list
+        self.rays = [Ray(self.origin, -self.z)]
+
         # Propagation to objective 1
         self.rays.append(galvo_mirror(self.rays[-1], self.galvo_plane, self.galvo_rots))
         self.rays.append(slm_segment(self.rays[-1], self.slm_plane, self.slm_coords))
         self.rays.append(ideal_lens(self.rays[-1], self.L5, self.f5))
         self.rays.append(ideal_lens(self.rays[-1], self.L7, self.f7))
         self.rays.append(ideal_lens(self.rays[-1], self.OBJ1, self.fobj1))
-        self.rays.append(self.rays[-1].intersect_plane(self.sample_plane))
-
-        # Backpropagate through air/water interface  #### To do: count as negative distance
-        self.rays.append(snells(self.rays[-1], self.OBJ1.normal, self.n_water))
+        self.rays.append(self.rays[-1].copy(refractive_index=self.n_water))
 
         # Propagation through grid target glass slide
         self.rays.append(self.rays[-1].intersect_plane(self.grid_target_front_plane))
         self.rays.append(snells(self.rays[-1], self.grid_target_front_plane.normal, self.n_target))
         self.rays.append(self.rays[-1].intersect_plane(self.grid_target_back_plane))
-        self.grid_target_back_ray = intensity_mask_smooth_grid(
-            self.rays[-1], self.grid_target_back_plane, 4)
-        self.rays.append(self.grid_target_back_ray)
-        self.rays.append(snells(self.rays[-1], self.grid_target_back_plane.normal, 1))
+        self.rays.append(intensity_mask_smooth_grid(self.rays[-1], self.grid_target_back_plane, 4))
 
         # Propagation from objective 2
+        self.rays.append(snells(self.rays[-1], self.grid_target_back_plane.normal, self.n_coverslip))
         self.rays.append(ideal_lens(self.rays[-1], self.OBJ2, self.fobj2))
         self.rays.append(ideal_lens(self.rays[-1], self.L9, self.f9))
         self.rays.append(ideal_lens(self.rays[-1], self.L10, self.f10))
@@ -176,7 +185,7 @@ class TPM(torch.nn.Module):
         self.cam_ft_coords = self.cam_ft_plane.transform(cam_ft_ray)
         self.cam_im_coords = self.cam_im_plane.transform(cam_im_ray)
 
-        return self.cam_ft_coords, self.cam_im_coords
+        return self.cam_ft_coords, self.cam_im_coords, cam_ft_ray.intensity, cam_im_ray.intensity
 
     def plot(self):
         """Plot the TPM setup and the current rays."""
@@ -215,14 +224,71 @@ class TPM(torch.nn.Module):
 tpm = TPM()
 
 
-# Demo settings
-tpm.grid_target_thickness = 0 * 1.5e-3
-
-
-# change grid target front plane
+# Define Ground Truth
 z = tensor((0., 0., 1.))
-tpm.grid_target_front_plane = Plane(
-    tpm.grid_target_back_plane.position_m - tpm.grid_target_thickness*z, -z)
+grid_target_thickness_gt = tensor((1.5e-3,))
+tpm.grid_target_thickness = grid_target_thickness_gt
+tpm.update()
+cam_ft_coords_gt, cam_im_coords_gt, intensity_ft_gt, intensity_im_gt = tpm.raytrace()
 
-cam_ft_coords, cam_im_coords = tpm.raytrace()
-tpm.plot()
+
+# Define Inital Guess
+tpm.grid_target_thickness = tensor((0.,), requires_grad=True)
+tpm.update()
+parameters = (tpm.grid_target_thickness,)
+
+# Trace computational graph
+# tpm.traced_raytrace = torch.jit.trace_module(tpm, {'raytrace': []})
+
+# Define optimizer
+optimizer = torch.optim.Adam([
+        {'lr': 2.0e-4, 'params': tpm.grid_target_thickness},
+    ], lr=1.0e-3)
+
+
+criterion = torch.nn.MSELoss(reduction='mean')
+
+iterations = 100
+errors = torch.zeros(iterations)
+trange = tqdm(range(iterations), desc='error: -')
+
+
+for t in trange:
+    # === Learn === #
+    # Forward pass
+    tpm.update()
+    cam_ft_coords, cam_im_coords, intensity_ft, intensity_im = tpm.raytrace()
+
+    # Compute and print error
+    MSE = criterion(cam_ft_coords_gt, cam_ft_coords) \
+        + criterion(cam_im_coords_gt, cam_im_coords)  # \
+        #+ criterion(intensity_im_gt, intensity_im)
+
+    error = MSE
+    error_value = error.detach().item()
+    errors[t] = error_value
+
+    trange.desc = f'error: {error_value:<8.3g}, thick: {tpm.grid_target_thickness.detach()}'
+
+    error.backward(retain_graph=True)
+    optimizer.step()
+    optimizer.zero_grad()
+
+print(f'\n\nGround Truth: {grid_target_thickness_gt.detach()}\n' +
+      f'Prediction: {tpm.grid_target_thickness.detach()}')
+
+
+fig, ax1 = plt.subplots(figsize=(7, 7))
+fig.dpi = 144
+
+# Plot error
+errorcolor = 'tab:red'
+RMSEs = np.sqrt(errors.detach().cpu())
+ax1.plot(RMSEs, label='error', color=errorcolor)
+ax1.set_ylabel('Error (pix)')
+ax1.set_ylim((0, max(RMSEs)))
+ax1.legend()
+
+# fig.tight_layout()  # otherwise the right y-label is slightly clipped
+plt.title('Learning parameters')
+plt.show()
