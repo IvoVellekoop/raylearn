@@ -7,6 +7,7 @@ Fit measurements of an absorbing Grid Target in the Two Photon Microscope.
 import torch
 from torch import tensor, stack, meshgrid
 import numpy as np
+import h5py
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from tqdm import tqdm
@@ -15,6 +16,7 @@ from vector_functions import rotate
 from ray_plane import Ray, Plane, CoordPlane
 from plot_functions import plot_plane, plot_lens, plot_rays, plot_coords
 from optical import ideal_lens, snells, galvo_mirror, slm_segment, intensity_mask_smooth_grid
+from testing import MSE
 
 from torchviz import make_dot
 
@@ -82,15 +84,9 @@ class TPM(torch.nn.Module):
         self.slm_plane = CoordPlane(origin, self.slm_x, self.slm_y)
 
         # SLM coords and Galvo rotations
-        # Note: Create fake data for the time being
-        SX = 5
-        slm_coords_lin = torch.linspace(-0.4, 0.4, SX)
-        self.slm_coords = stack(meshgrid(slm_coords_lin, slm_coords_lin), -1).view(SX, SX, 1, 1, 2)
-
-        GX = 15
-        galvo_volt_lin = torch.linspace(-0.15, 0.15, GX)
-        galvo_rots_lin = galvo_volt_lin * self.galvo_rad_per_V
-        self.galvo_rots = stack(meshgrid(galvo_rots_lin, galvo_rots_lin), -1).view(GX, GX, 2)
+        self.slm_coords = tensor(matfile['p/rects'])[0:2, :].T.view(-1, 2)
+        self.galvo_rots = tensor((matfile['p/galvoXs'], matfile['p/galvoYs'])).T \
+                          - tensor((matfile['p/GalvoXcenter'], matfile['p/GalvoYcenter'])).view(1, 1, 2)
 
         # Focal distances (m)
         self.f5 = 150e-3
@@ -128,13 +124,19 @@ class TPM(torch.nn.Module):
         self.L11 = Plane(self.L10.position_m + (self.f10 + self.f11)*z, -z)
 
         # Camera planes
-        self.cam_ft_plane = CoordPlane(self.L10.position_m + self.f10*z, -x, y)
-        self.cam_im_plane = CoordPlane(self.L11.position_m + self.f11*z, -x, y)
+        self.cam_pixel_size = 5.5e-6
+        self.cam_ft_plane = CoordPlane(self.L10.position_m + self.f10*z,
+                                       self.cam_pixel_size * -x,
+                                       self.cam_pixel_size * y)
+        self.cam_im_plane = CoordPlane(self.L11.position_m + self.f11*z,
+                                       self.cam_pixel_size * -x,
+                                       self.cam_pixel_size * y)
 
     def update(self):
         """
         Update properties depending on parameters to be learned.
         """
+        z = self.z
         self.grid_target_front_plane = Plane(
             self.grid_target_back_plane.position_m - self.grid_target_thickness*z, -z)
 
@@ -169,6 +171,8 @@ class TPM(torch.nn.Module):
         self.rays.append(snells(self.rays[-1], self.grid_target_front_plane.normal, self.n_target))
         self.rays.append(self.rays[-1].intersect_plane(self.grid_target_back_plane))
         self.rays.append(intensity_mask_smooth_grid(self.rays[-1], self.grid_target_back_plane, 4))
+
+        ##### wrong distance objective..?
 
         # Propagation from objective 2
         self.rays.append(snells(self.rays[-1], self.grid_target_back_plane.normal, self.n_coverslip))
@@ -221,15 +225,20 @@ class TPM(torch.nn.Module):
         plt.show()
 
 
-tpm = TPM()
-
-
 # Define Ground Truth
-z = tensor((0., 0., 1.))
-grid_target_thickness_gt = tensor((1.5e-3,))
-tpm.grid_target_thickness = grid_target_thickness_gt
+# cam_ft_coords_gt, cam_im_coords_gt, intensity_ft_gt, intensity_im_gt = tpm.raytrace()
+matpath = 'LocalData/pencil-beam-positions/26-Feb-2021-empty/raylearn_pencil_beam_738213.520505_empty.mat'
+matfile = h5py.File(matpath, 'r')
+
+cam_ft_coords_gt = tensor((matfile['cam_ft_col'], matfile['cam_ft_row'])).permute(1, 2, 0)
+cam_im_coords_gt = tensor((matfile['cam_img_col'], matfile['cam_img_row'])).permute(1, 2, 0)
+
+# self.slm_coords = tensor(matfile['p/rects'])[0:2, :].T.view(-1, 2)
+
+
+tpm = TPM()
 tpm.update()
-cam_ft_coords_gt, cam_im_coords_gt, intensity_ft_gt, intensity_im_gt = tpm.raytrace()
+tpm.raytrace()
 
 
 # Define Inital Guess
@@ -246,9 +255,7 @@ optimizer = torch.optim.Adam([
     ], lr=1.0e-3)
 
 
-criterion = torch.nn.MSELoss(reduction='mean')
-
-iterations = 100
+iterations = 1
 errors = torch.zeros(iterations)
 trange = tqdm(range(iterations), desc='error: -')
 
@@ -260,35 +267,49 @@ for t in trange:
     cam_ft_coords, cam_im_coords, intensity_ft, intensity_im = tpm.raytrace()
 
     # Compute and print error
-    MSE = criterion(cam_ft_coords_gt, cam_ft_coords) \
-        + criterion(cam_im_coords_gt, cam_im_coords)  # \
+    error = MSE(cam_ft_coords_gt, cam_ft_coords) \
+        + MSE(cam_im_coords_gt, cam_im_coords)  # \
         #+ criterion(intensity_im_gt, intensity_im)
 
-    error = MSE
     error_value = error.detach().item()
     errors[t] = error_value
 
-    trange.desc = f'error: {error_value:<8.3g}, thick: {tpm.grid_target_thickness.detach()}'
+    # trange.desc = f'error: {error_value:<8.3g}, thick: {tpm.grid_target_thickness.detach()}'
 
     error.backward(retain_graph=True)
     optimizer.step()
     optimizer.zero_grad()
 
-print(f'\n\nGround Truth: {grid_target_thickness_gt.detach()}\n' +
-      f'Prediction: {tpm.grid_target_thickness.detach()}')
+    if t % 5 == 0:
+        fig, ax1 = plt.subplots(figsize=(7, 7))
+        fig.dpi = 144
+
+        # Plot error
+        plot_coords(ax1, cam_im_coords_gt[:,49,:], {'label':'measured'})
+        plot_coords(ax1, cam_im_coords[:,49,:], {'label':'sim'})
+        ax1.set_ylabel('y (pix)')
+        ax1.set_xlabel('x (pix)')
+        ax1.legend()
+
+        # fig.tight_layout()  # otherwise the right y-label is slightly clipped
+        plt.title('Fourier Plane Cam')
+        plt.show()
+
+# print(f'\n\nGround Truth: {grid_target_thickness_gt.detach()}\n' +
+#       f'Prediction: {tpm.grid_target_thickness.detach()}')
 
 
-fig, ax1 = plt.subplots(figsize=(7, 7))
-fig.dpi = 144
+# fig, ax1 = plt.subplots(figsize=(7, 7))
+# fig.dpi = 144
 
-# Plot error
-errorcolor = 'tab:red'
-RMSEs = np.sqrt(errors.detach().cpu())
-ax1.plot(RMSEs, label='error', color=errorcolor)
-ax1.set_ylabel('Error (pix)')
-ax1.set_ylim((0, max(RMSEs)))
-ax1.legend()
+# # Plot error
+# errorcolor = 'tab:red'
+# RMSEs = np.sqrt(errors.detach().cpu())
+# ax1.plot(RMSEs, label='error', color=errorcolor)
+# ax1.set_ylabel('Error (pix)')
+# ax1.set_ylim((0, max(RMSEs)))
+# ax1.legend()
 
-# fig.tight_layout()  # otherwise the right y-label is slightly clipped
-plt.title('Learning parameters')
-plt.show()
+# # fig.tight_layout()  # otherwise the right y-label is slightly clipped
+# plt.title('Learning parameters')
+# plt.show()

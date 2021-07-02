@@ -14,7 +14,10 @@ def comparetensors(a, b, error=100):
 
 
 def checkunitvector(a, error=100):
-    """
-    Check wether tensor is a unit vector.
-    """
+    """Check wether tensor is a unit vector."""
     return comparetensors(norm(a), 1, error)
+
+
+def MSE(a, b):
+    """Mean Square Error (without NaNs)."""
+    return (a - b).nan_to_num(nan=0.0).abs().square().mean()
