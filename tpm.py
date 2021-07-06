@@ -18,7 +18,7 @@ from plot_functions import plot_plane, plot_lens, plot_rays, plot_coords
 from optical import ideal_lens, snells, galvo_mirror, slm_segment, intensity_mask_smooth_grid
 from testing import MSE
 
-from torchviz import make_dot
+# from torchviz import make_dot
 
 # Set default tensor type to double (64 bit)
 # Machine epsilon of float (32-bit) is 2^-23 = 1.19e-7
@@ -85,8 +85,9 @@ class TPM(torch.nn.Module):
 
         # SLM coords and Galvo rotations
         self.slm_coords = tensor(matfile['p/rects'])[0:2, :].T.view(-1, 2)
-        self.galvo_rots = tensor((matfile['p/galvoXs'], matfile['p/galvoYs'])).T \
+        self.galvo_volts = tensor((matfile['p/galvoXs'], matfile['p/galvoYs'])).T \
                           - tensor((matfile['p/GalvoXcenter'], matfile['p/GalvoYcenter'])).view(1, 1, 2)
+        self.galvo_rots = self.galvo_volts * self.galvo_rad_per_V
 
         # Focal distances (m)
         self.f5 = 150e-3
@@ -166,16 +167,15 @@ class TPM(torch.nn.Module):
         self.rays.append(ideal_lens(self.rays[-1], self.OBJ1, self.fobj1))
         self.rays.append(self.rays[-1].copy(refractive_index=self.n_water))
 
-        # Propagation through grid target glass slide
+        # # Propagation through grid target glass slide
         self.rays.append(self.rays[-1].intersect_plane(self.grid_target_front_plane))
         self.rays.append(snells(self.rays[-1], self.grid_target_front_plane.normal, self.n_target))
         self.rays.append(self.rays[-1].intersect_plane(self.grid_target_back_plane))
         self.rays.append(intensity_mask_smooth_grid(self.rays[-1], self.grid_target_back_plane, 4))
 
-        ##### wrong distance objective..?
-
         # Propagation from objective 2
         self.rays.append(snells(self.rays[-1], self.grid_target_back_plane.normal, self.n_coverslip))
+        self.rays.append(self.rays[-1].copy(refractive_index=1.0))
         self.rays.append(ideal_lens(self.rays[-1], self.OBJ2, self.fobj2))
         self.rays.append(ideal_lens(self.rays[-1], self.L9, self.f9))
         self.rays.append(ideal_lens(self.rays[-1], self.L10, self.f10))
@@ -213,33 +213,34 @@ class TPM(torch.nn.Module):
         plot_lens(ax1, self.L10, self.f10, scale, 'L10\n')
         plot_lens(ax1, self.L11, self.f11, scale, 'L11\n')
 
-        plot_plane(ax1, self.cam_ft_plane, scale, 'Fourier Cam')
-        plot_plane(ax1, self.cam_im_plane, scale, 'Image Cam')
+        plot_plane(ax1, self.cam_ft_plane, 2000, 'Fourier Cam')
+        plot_plane(ax1, self.cam_im_plane, 2000, 'Image Cam')
 
         # Plot rays
         ray2_exp_pos = self.rays[2].position_m.expand(self.rays[3].position_m.shape)
         ray2_exp = self.rays[2].copy(position_m=ray2_exp_pos)
         raylist = [ray2_exp] + self.rays[3:]
-        plot_rays(ax1, raylist)
+        plot_rays(ax1, raylist, fraction=0.03)
 
         plt.show()
 
 
-# Define Ground Truth
+# Import measurement
 # cam_ft_coords_gt, cam_im_coords_gt, intensity_ft_gt, intensity_im_gt = tpm.raytrace()
 matpath = 'LocalData/pencil-beam-positions/26-Feb-2021-empty/raylearn_pencil_beam_738213.520505_empty.mat'
 matfile = h5py.File(matpath, 'r')
 
-cam_ft_coords_gt = tensor((matfile['cam_ft_col'], matfile['cam_ft_row'])).permute(1, 2, 0)
-cam_im_coords_gt = tensor((matfile['cam_img_col'], matfile['cam_img_row'])).permute(1, 2, 0)
-
-# self.slm_coords = tensor(matfile['p/rects'])[0:2, :].T.view(-1, 2)
+cam_size_pix = tensor((2048., 1088.)).view(1,1,2)
+cam_ft_coords_gt = tensor((matfile['cam_ft_col'], \
+                           matfile['cam_ft_row'])).permute(1, 2, 0) - cam_size_pix/2
+cam_im_coords_gt = tensor((matfile['cam_img_col'], \
+                           matfile['cam_img_row'])).permute(1, 2, 0) - cam_size_pix/2
 
 
 tpm = TPM()
 tpm.update()
 tpm.raytrace()
-
+tpm.plot()
 
 # Define Inital Guess
 tpm.grid_target_thickness = tensor((0.,), requires_grad=True)
@@ -285,8 +286,10 @@ for t in trange:
         fig.dpi = 144
 
         # Plot error
-        plot_coords(ax1, cam_im_coords_gt[:,49,:], {'label':'measured'})
-        plot_coords(ax1, cam_im_coords[:,49,:], {'label':'sim'})
+        plot_coords(ax1, cam_im_coords_gt[:, 59, :], {'label': 'measured'})
+        plot_coords(ax1, cam_im_coords[:, 59, :], {'label': 'sim'})
+        # plot_coords(ax1, cam_ft_coords_gt[48,:,:], {'label':'measured'})
+        # plot_coords(ax1, cam_ft_coords[48,:,:], {'label':'sim'})
         ax1.set_ylabel('y (pix)')
         ax1.set_xlabel('x (pix)')
         ax1.legend()

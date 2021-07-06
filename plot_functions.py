@@ -7,12 +7,12 @@ from vector_functions import unit, cross, rejection
 from ray_plane import Plane, CoordPlane
 
 
-def ray_positions(raylist):
+def ray_positions(raylist, fraction=1):
     """Take list or tuple of rays and return list of rays."""
     return tuple(x.position_m for x in raylist)
 
 
-def plot_rays(ax, rays, plotkwargs={}):
+def plot_rays(ax, rays, plotkwargs={}, fraction=1):
     """Plot rays.
 
     WIP: currently assumes: dimhori = 2, dimvert = 1, text at point B.
@@ -22,13 +22,18 @@ def plot_rays(ax, rays, plotkwargs={}):
     dimhori = 2
     dimvert = 1
     dimlabels = ['x (m)', 'y (m)', 'z (m)']
-    positions = torch.stack(ray_positions(rays)).unbind(-1)
+    positions = torch.stack(ray_positions(rays, 0.1)).unbind(-1)
     positions_hori = positions[dimhori].view(len(rays), -1).detach().cpu()
     positions_vert = positions[dimvert].view(len(rays), -1).detach().cpu()
+
+    # Select a fraction of the rays
+    mask = torch.rand(1, positions_hori.shape[-1]) < fraction
+    positions_hori_select = positions_hori.masked_select(mask).view(len(rays), -1)
+    positions_vert_select = positions_vert.masked_select(mask).view(len(rays), -1)
 #    plot_plane = CoordPlane(tensor((0.,0.,0.)), tensor((0.,0.,1.)), tensor((0.,1.,0.)))
 
     # Plot
-    ln = ax.plot(positions_hori, positions_vert, '.-', **plotkwargs)
+    ln = ax.plot(positions_hori_select, positions_vert_select, '.-', **plotkwargs)
     ax.axis('equal')
     ax.set_xlabel(dimlabels[dimhori])
     ax.set_ylabel(dimlabels[dimvert])
