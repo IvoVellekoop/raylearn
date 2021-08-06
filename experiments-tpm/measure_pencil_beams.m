@@ -17,20 +17,20 @@ dosave = 1;                         % Toggle savings
 dochecksamplename = 0;              % Toggle console sample name check
 
 % SLM Settings
-p.ppp = 3;                          % Pixels per period for the grating. Should match Galvo setting!
-p.segmentsize_pix = 25 * p.ppp;     % Segment width in pixels
-p.N_diameter = 11;                  % Number of segments across SLM diameter
-p.beamdiameter = 0.60;              % Diameter of circular SLM segment set (relative coords)
+p.ppp = 2;                          % Pixels per period for the grating. Should match Galvo setting!
+p.segmentsize_pix = 40 * p.ppp;     % Segment width in pixels
+p.N_diameter =  9;                  % Number of segments across SLM diameter
+p.beamdiameter = 0.25;              % Diameter of circular SLM segment set (relative coords)
 p.slm_offset_x = 0.01;              % Horizontal offset of rectangle SLM geometry (relative coords)
 p.slm_offset_y = 0.03;              % Vertical offset of rectangle SLM geometry (relative coords)
 p.segment_patch_id = 2;             % Pencil Beam segment SLM patch ID
 
 % Galvo Mirror settings
-p.GalvoXcenter =  0.363;            % Galvo center x
-p.GalvoYcenter = -0.026;            % Galvo center y
-p.GalvoRadius  =  0.090;            % Galvo scan radius: from center to outer
-p.GalvoNX = 11;                     % Number of Galvo steps, x
-p.GalvoNY = 11;                     % Number of Galvo steps, y
+p.GalvoXcenter =  1.165;            % Galvo center x
+p.GalvoYcenter = -0.055;            % Galvo center y
+p.GalvoRadius  =  0.100;            % Galvo scan radius: from center to outer
+p.GalvoNX =  7;                     % Number of Galvo steps, x
+p.GalvoNY =  7;                     % Number of Galvo steps, y
 % Note: the actual number of galvo steps is smaller, as the corners from the square grid
 % will be cut to make a circle
 
@@ -58,9 +58,8 @@ p.blaze = single(bg_grating('blaze', p.ppp, 0, 255, p.segmentsize_pix) .* ones(p
 p.blaze(mask_outside_circle) = 0;                           % Set pixels outside circle to 0
 
 % Create set of SLM segment rectangles within circle
-[p.rects, S, inside_circle_mask] = ...
+[p.rects, S, p.inside_circle_mask, p.segments_X, p.segments_Y] = ...
     BlockedCircleSegments(p.N_diameter, p.beamdiameter, p.slm_offset_x, p.slm_offset_y, p.segmentwidth, p.segmentheight);
-p.inside_circle_mask = inside_circle_mask;
 
 % Create set of Galvo tilts
 % (Make a grid that's 5% smaller than the defined radius, to make it fit)
@@ -90,7 +89,7 @@ slm.setData(p.segment_patch_id, p.blaze);
 
 if doshowcams                       % Spawn wide figure
     figure; plot(0,0);
-    fig_resize(400, 2.5);
+    fig_resize(500, 2.5);
 end
 
 if dosave
@@ -103,7 +102,7 @@ if dosave
     % Create save directory
     filenameprefix = 'raylearn_pencil_beam';
     p.savename = sprintf('%s_%f_%s', filenameprefix, now, p.samplename);
-    p.savedir = fullfile([dirs.localdata '\raylearn-data\TPM\' date '-' p.samplename], p.savename);
+    p.savedir = fullfile([dirs.expdata '\raylearn-data\TPM\' date '-' p.samplename], p.savename);
     try mkdir(p.savedir); catch 'MATLAB:MKDIR:DirectoryExists'; end
     fprintf('\nSave Directory: %s\n', p.savedir)
 end
@@ -111,7 +110,7 @@ end
 starttime = now;
 SG = S*G;
 sg = 0;
-rawdatasize = bytes2str(8 * SG * (copt_ft.Height*copt_ft.Width + copt_img.Height*copt_img.Width));
+rawdatasize = bytes2str(4 * SG * (copt_ft.Height*copt_ft.Width + copt_img.Height*copt_img.Width));
 fprintf('\nRaw data size will be: %s\n', rawdatasize)
 disp('Started measurement...')
 for s = 1:S                        % Loop over SLM segments

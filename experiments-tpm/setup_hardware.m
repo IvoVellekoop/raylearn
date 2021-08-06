@@ -26,7 +26,7 @@ if active_devices.slm
     clear sopt;
     
     % SLM options
-    lambda = 720;                           % laser wavelength (in nm)
+    lambda = 715;                           % laser wavelength (in nm)
     sopt.slm_patch = 1;                     % patch number used for wavefront correction
     sopt.N_diameter = 18;                   % number of segments along the diagonal of the SLM pattern
     sopt.displayPort = 1;
@@ -82,7 +82,7 @@ end
 %% connect to PMT gain readout channel
 if active_devices.pmt_gain
     pmt_gain = daq.createSession('ni');
-    addAnalogInputChannel(pmt_gain,'Dev3', 1, 'Voltage');
+    addAnalogInputChannel(pmt_gain,'Dev3', 1, 'Voltage'); %%%%%
     fprintf('Initialized PMT gain readout\n')
 end
 
