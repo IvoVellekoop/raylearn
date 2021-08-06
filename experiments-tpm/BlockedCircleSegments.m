@@ -1,4 +1,4 @@
-function [rects, N, inside_circle_mask] = BlockedCircleSegments(Nd, D, cx, cy, segmentwidth, segmentheight, vis)
+function [rects, N, inside_circle_mask, X, Y] = BlockedCircleSegments(Nd, D, cx, cy, segmentwidth, segmentheight, vis)
 % Computes rectangles of segments of a block geometry. Each
 % segment is a square region with its center inside the circle
 % with diameter D and center cx, cy.
@@ -33,9 +33,10 @@ function [rects, N, inside_circle_mask] = BlockedCircleSegments(Nd, D, cx, cy, s
 %       Default: 0
 %
 % === Output: ===
-% N:        Number of segments
-% rects:    N-by-4-matrix. Each row represents a segment
-%           rectangle: [center_x, center_y, width, height]
+% N:                    Number of segments
+% rects:                N-by-4-matrix. Each row represents a segment
+%                       rectangle: [center_x, center_y, width, height]
+% inside_circle_mask:   
 
 
 % === Check if input is valid ===
