@@ -85,3 +85,10 @@ def rotate(v, u, theta):
     C = torch.cos(tensor_theta)
     S = torch.sin(tensor_theta)
     return (1-C)*dot(v, u)*u + C*v + S*cross(u, v)
+
+
+def area_para(v, w):
+    """Compute parallelogram area for ...xMx2 vectors, where 2 is vector dimension."""
+    vx, vy = v.unbind(-1)
+    wx, wy = w.unbind(-1)
+    return vx*wy - vy*wx
