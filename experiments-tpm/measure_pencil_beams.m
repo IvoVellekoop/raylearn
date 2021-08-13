@@ -17,20 +17,20 @@ dosave = 1;                         % Toggle savings
 dochecksamplename = 0;              % Toggle console sample name check
 
 % SLM Settings
+p.segment_patch_id = 2;             % Pencil Beam segment SLM patch ID
 p.ppp = 2;                          % Pixels per period for the grating. Should match Galvo setting!
 p.segmentsize_pix = 40 * p.ppp;     % Segment width in pixels
-p.N_diameter =  9;                  % Number of segments across SLM diameter
 p.beamdiameter = 0.25;              % Diameter of circular SLM segment set (relative coords)
 p.slm_offset_x = 0.01;              % Horizontal offset of rectangle SLM geometry (relative coords)
 p.slm_offset_y = 0.03;              % Vertical offset of rectangle SLM geometry (relative coords)
-p.segment_patch_id = 2;             % Pencil Beam segment SLM patch ID
+p.N_diameter = 11;                  % Number of segments across SLM diameter
 
 % Galvo Mirror settings
+p.GalvoNX =  9;                     % Number of Galvo steps, x
+p.GalvoNY =  9;                     % Number of Galvo steps, y
 p.GalvoXcenter =  1.165;            % Galvo center x
 p.GalvoYcenter = -0.055;            % Galvo center y
-p.GalvoRadius  =  0.100;            % Galvo scan radius: from center to outer
-p.GalvoNX =  7;                     % Number of Galvo steps, x
-p.GalvoNY =  7;                     % Number of Galvo steps, y
+p.GalvoRadius  =  0.090;            % Galvo scan radius: from center to outer
 % Note: the actual number of galvo steps is smaller, as the corners from the square grid
 % will be cut to make a circle
 
