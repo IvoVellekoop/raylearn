@@ -6,8 +6,9 @@ Vector: A ...xMxD torch tensor where the last dimension denotes vector component
         Usually, D=3, representing vector dimensions x, y and z. Other dimensions are used for
         parallelization. Vector Tensors can be broken up into their vector components by using
         the unbind method, and can be put together as a vector Tensor again using stack.
-        Example:
-        vx, vy, vz = v.unbind(-1)
+        Examples:
+        vx, vy, vz = v.unbind(-1)       # Removes the vector dimension
+        vx, vy, vz = components(v)      # Keeps the vector dimension by doing unsqueeze(-2) first
         w = torch.stack((wx, wy, wz), dim=-1)
 Scalar: A ...xMx1 torch tensor where the last dimension has length 1. Or, in cases where all
         elements of the Tensor have the same value, this may be replaced by a Python float or
@@ -89,6 +90,11 @@ def rotate(v, u, theta):
 
 def area_para(v, w):
     """Compute parallelogram area for ...xMx2 vectors, where 2 is vector dimension."""
-    vx, vy = v.unbind(-1)
-    wx, wy = w.unbind(-1)
+    vx, vy = components(v)
+    wx, wy = components(w)
     return vx*wy - vy*wx
+
+
+def components(v):
+    """Return spatial vector components vx,vy,vz... of ...xMxD vector v as tuple of Tensors."""
+    return v.unsqueeze(-2).unbind(-1)

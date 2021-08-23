@@ -10,7 +10,7 @@ import torch
 import numpy as np
 
 from testing import checkunitvector
-from vector_functions import unit, norm_square, rejection, reflection, rotate
+from vector_functions import unit, norm_square, rejection, reflection, rotate, components
 from ray_plane import Ray, Plane
 
 
@@ -193,7 +193,7 @@ def galvo_mirror(ray_in, galvo_plane, rotations):
     assert checkunitvector(galvo_plane.x), 'x of galvo CoordPlane must be unit vector'
     assert checkunitvector(galvo_plane.y), 'y of galvo CoordPlane must be unit vector'
 
-    rot_x, rot_y = rotations.unsqueeze(-2).unbind(-1)   # Split vector dimensions
+    rot_x, rot_y = components(rotations)        # Split vector dimensions
     mirror_normal_rotx = rotate(galvo_plane.normal, unit(galvo_plane.x), rot_x)
     mirror_normal = rotate(mirror_normal_rotx, unit(galvo_plane.y), rot_y)
     mirror_plane = Plane(galvo_plane.position_m, mirror_normal)
@@ -224,7 +224,7 @@ def slm_segment(ray_in, slm_plane, slm_coords):
                     except position_m, which will be generated from the
                     SLM data.
     """
-    x_slm, y_slm = slm_coords.unsqueeze(-2).unbind(-1)   # Split vector dimensions
+    x_slm, y_slm = components(slm_coords)    # Split vector dimensions
     position_m = slm_plane.position_m + slm_plane.x * x_slm + slm_plane.y * y_slm
     ray_out = ray_in.copy(position_m=position_m)
     return ray_out

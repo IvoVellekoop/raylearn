@@ -1,10 +1,10 @@
 """Test vector functions."""
 
-from torch import Tensor
+from torch import Tensor, randn
 import numpy as np
 
 from testing import comparetensors
-from vector_functions import rotate, unit
+from vector_functions import rotate, unit, area_para
 
 
 def test_rotate1():
@@ -27,7 +27,9 @@ def test_rotate2():
     assert comparetensors(v_rot, v_rot_test)
 
 
-if __name__ == '__main__':
-    """If file is executed as script, run the functions."""
-    test_rotate1()
-    test_rotate2()
+def test_area_para():
+    """Test computing area of parallelogram."""
+    v = randn(4, 2)
+    w = randn(4, 2)
+    area_manual = (v[:, 0]*w[:, 1] - v[:, 1]*w[:, 0]).unsqueeze(-1)
+    assert comparetensors(area_manual, area_para(v, w))

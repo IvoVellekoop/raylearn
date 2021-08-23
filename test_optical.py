@@ -5,7 +5,7 @@ from torch import Tensor, tensor, stack, meshgrid
 import numpy as np
 
 from testing import comparetensors
-from vector_functions import dot, unit, norm, cross, rejection, rotate, reflection
+from vector_functions import dot, unit, norm, cross, rejection, rotate, reflection, components
 from ray_plane import Ray, Plane, CoordPlane
 from optical import point_source, collimated_source, ideal_lens, snells,\
                     mirror, galvo_mirror, slm_segment
@@ -339,8 +339,7 @@ def test_galvo_mirror2():
 
     # Manually compute directions for comparison
     # Note! The galvo directions here are global -x&z direction
-    rot_galvox = rotations.unsqueeze(-2).unbind(-1)[0]
-    rot_galvoy = rotations.unsqueeze(-2).unbind(-1)[1]
+    rot_galvox, rot_galvoy = components(rotations)
 
     # Manual components for this particular situation
     x_dir_man = x *  torch.sin(2*rot_galvox) * torch.sin(rot_galvoy)
@@ -395,7 +394,7 @@ def test_slm_segment():
 
     # Compute output Ray and manual positions
     ray_out = slm_segment(ray_in, slm_plane, slm_coords)
-    x_slm, y_slm = slm_coords.unsqueeze(-2).unbind(-1)   # Split vector dimensions
+    x_slm, y_slm = components(slm_coords)        # Split vector dimensions
     position_man = slm_plane.position_m + x_slm * slm_plane.x + y_slm * slm_plane.y
 
     assert comparetensors(ray_out.direction, ray_in.direction)
