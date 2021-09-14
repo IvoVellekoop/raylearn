@@ -22,7 +22,7 @@ def plot_rays(ax, rays, plotkwargs={}, fraction=1):
     dimhori = 2
     dimvert = 1
     dimlabels = ['x (m)', 'y (m)', 'z (m)']
-    positions = torch.stack(ray_positions(rays, 0.1)).unbind(-1)
+    positions = stack(ray_positions(rays, 0.1)).unbind(-1)
     positions_hori = positions[dimhori].view(len(rays), -1).detach().cpu()
     positions_vert = positions[dimvert].view(len(rays), -1).detach().cpu()
 

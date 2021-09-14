@@ -228,3 +228,6 @@ def slm_segment(ray_in, slm_plane, slm_coords):
     position_m = slm_plane.position_m + slm_plane.x * x_slm + slm_plane.y * y_slm
     ray_out = ray_in.copy(position_m=position_m)
     return ray_out
+
+
+#### Create camera function that includes ray-plane intersection and coordinate transformation

@@ -71,10 +71,7 @@ class TPM(torch.nn.Module):
         y = tensor((0., 1., 0.))
         z = tensor((0., 0., 1.))
 
-        self.origin = origin
-        self.x = x
-        self.y = y
-        self.z = z
+        self.coordsystem = (origin, x, y, z)
 
         # Galvo
         self.galvo_rad_per_V = (np.pi/180) / 0.5
@@ -132,10 +129,7 @@ class TPM(torch.nn.Module):
         Properties that depend on other properties should be computed here,
         so they get recomputed whenever update is called. All lengths in meters.
         """
-        origin = self.origin
-        x = self.x
-        y = self.y
-        z = self.z
+        origin, x, y, z = self.coordsystem
 
         # SLM
         self.slm_x = rotate(x * self.slm_width, z, self.slm_angle)
@@ -188,7 +182,8 @@ class TPM(torch.nn.Module):
                             coordinates of Image plane camera.
         """
         # Initial Ray list
-        self.rays = [Ray(self.origin, -self.z)]
+        origin, x, y, z = self.coordsystem
+        self.rays = [Ray(origin, -self.z)]
 
         # Propagation to objective 1
         self.rays.append(galvo_mirror(self.rays[-1], self.galvo_plane, self.galvo_rots))
@@ -198,7 +193,7 @@ class TPM(torch.nn.Module):
         self.rays.append(ideal_lens(self.rays[-1], self.OBJ1, self.fobj1))
         self.rays.append(self.rays[-1].copy(refractive_index=self.n_water))
 
-        # # Propagation through grid target glass slide
+        # Propagation through grid target glass slide
         self.rays.append(self.rays[-1].intersect_plane(self.grid_target_front_plane))
         self.rays.append(snells(self.rays[-1], self.grid_target_front_plane.normal, self.n_target))
         self.rays.append(self.rays[-1].intersect_plane(self.grid_target_back_plane))
