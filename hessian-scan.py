@@ -3,26 +3,18 @@ Make a parameter space scan of a simple optical system and compute Hessian matri
 """
 
 import torch
-from torch import tensor, stack, meshgrid
-import numpy as np
-import h5py
+from torch import tensor
+from torch.autograd.functional import hessian
 import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
-from tqdm import tqdm
-# from torchviz import make_dot
 
-import vector_functions
-from vector_functions import norm, rotate
-from ray_plane import Ray, Plane, CoordPlane
-from plot_functions import plot_plane, plot_lens, plot_rays, plot_coords
+from ray_plane import Plane, CoordPlane
+from plot_functions import plot_plane, plot_lens, plot_rays
 from optical import collimated_source, ideal_lens
-from testing import MSE
 
 
+# Set defaults
 torch.set_default_tensor_type('torch.DoubleTensor')
-
 plt.rc('font', size=12)
-
 
 
 class System4F(torch.nn.Module):
@@ -77,6 +69,22 @@ class System4F(torch.nn.Module):
 
         return self.cam_coords
 
+    def shifterror(self, L1_shift, L2_shift):
+        # Compute ground truth
+        self.L1_shift = self.L1_shift_gt
+        self.L2_shift = self.L2_shift_gt
+        self.update()
+        cam_coords_gt = self.raytrace()
+
+        # Compute RMSE
+        self.L1_shift = L1_shift
+        self.L2_shift = L2_shift
+        self.update()
+        cam_coords = self.raytrace()
+        MSE = ((cam_coords_gt - cam_coords)**2).mean()
+        return MSE
+
+
     def plot(self):
         """Plot the 4f system and the rays."""
         fig = plt.figure(figsize=(9, 4))
@@ -95,35 +103,49 @@ class System4F(torch.nn.Module):
         plt.show()
 
 
+doplot = False
+
+# Initialize system with ground truth
 system4f = System4F()
-shift1_gt = 0
-shift2_gt = 0
-system4f.L1_shift = shift1_gt
-system4f.L2_shift = shift2_gt
+system4f.L1_shift_gt = 0
+system4f.L2_shift_gt = 0
+system4f.L1_shift = system4f.L1_shift_gt
+system4f.L2_shift = system4f.L2_shift_gt
+
+# Raytrace ground truth and plot
 system4f.update()
 cam_coords_gt = system4f.raytrace()
-system4f.plot()
+if doplot:
+    system4f.plot()
 
+# Set lens shifts
 N_shifts = 50
 shift_min = -75e-3
 shift_max =  75e-3
 system4f.L1_shift = torch.linspace(shift_min, shift_max, N_shifts).view(1, -1, 1, 1, 1)
 system4f.L2_shift = torch.linspace(shift_min, shift_max, N_shifts).view(-1, 1, 1, 1, 1)
+
+# Raytrace with lens shifts
 system4f.update()
 cam_coords = system4f.raytrace()
-
 RMSE = ((cam_coords_gt - cam_coords)**2).mean(dim=(2, 3, 4)).sqrt()
 
-# Plot scan
-fig = plt.figure(figsize=(5, 4))
-fig.dpi = 144
-ax1 = plt.gca()
-plt.imshow(RMSE, origin='lower', extent=(shift_min, shift_max, shift_min, shift_max))
-plt.colorbar()
-plt.contour(system4f.L1_shift.view(-1), system4f.L2_shift.view(-1), RMSE, levels=30, colors='k')
-plt.plot(shift1_gt, shift2_gt, '.', color='white')
-plt.text(shift1_gt, shift2_gt, ' Ground Truth', color='lightgrey')
-plt.title('RMSE (m) - Parameter scan')
-plt.xlabel('Lens 1 shift (m)')
-plt.ylabel('Lens 2 shift (m)')
-plt.show()
+# Plot scan of L1 and L2 shifts
+if doplot:
+    fig = plt.figure(figsize=(5, 4))
+    fig.dpi = 144
+    ax1 = plt.gca()
+    plt.imshow(RMSE, origin='lower', extent=(shift_min, shift_max, shift_min, shift_max))
+    plt.colorbar()
+    plt.contour(system4f.L1_shift.view(-1), system4f.L2_shift.view(-1), RMSE, levels=30, colors='k')
+    plt.plot(system4f.L1_shift_gt, system4f.L2_shift_gt, '.', color='white')
+    plt.text(system4f.L1_shift_gt, system4f.L2_shift_gt, ' Ground Truth', color='lightgrey')
+    plt.title('RMSE (m) - Parameter scan')
+    plt.xlabel('Lens 1 shift (m)')
+    plt.ylabel('Lens 2 shift (m)')
+    plt.show()
+
+
+
+hess = hessian(system4f.shifterror, (tensor((0.,)), tensor((0.,))))
+print(hess)
