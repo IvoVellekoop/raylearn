@@ -70,7 +70,7 @@ def ideal_lens(in_ray, lens, f):
     """
     OC       = lens.position_m                            # Optical Center position
     BFP      = Plane(OC - f * lens.normal, lens.normal)   # Back Focal Plane
-    P        = in_ray.intersect_plane(lens).position_m    # Ray intersection with lens plane
+    intersect        = in_ray.intersect_plane(lens)       # Ray intersection with lens plane
     chiefray = Ray(OC, in_ray.direction)                  # Chief or Principal Ray (through OC)
     focus    = chiefray.intersect_plane(BFP).position_m   # Ray intersection with Back Focal Plane
 
@@ -80,7 +80,8 @@ def ideal_lens(in_ray, lens, f):
     # Delta = 2*f - norm(A-P) - norm(P-K)
     #     Delta = f - torch.sqrt(f*f + normsq(P-L))
 
-    out_ray = in_ray.copy(position_m=P, direction=unit(focus - P))    # Output Ray
+    out_ray = in_ray.copy(position_m=intersect.position_m, pathlength_m=intersect.pathlength_m, \
+        direction=unit(focus - intersect.position_m) )    # Output Ray
     return out_ray
 
 
