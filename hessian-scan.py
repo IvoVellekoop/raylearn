@@ -34,9 +34,13 @@ class System4F(torch.nn.Module):
         z = tensor((0., 0., 1.))
         self.coordsystem = (origin, x, y, z)
 
-        # Define lenses
+        # Define focal distances
         self.f1 = 100e-3
         self.f2 = 100e-3
+        self.f3 = 100e-3
+
+        # Define static Fourier camera lens
+        self.L3 = Plane(origin + (2*self.f1 + 2*self.f2 + self.f3)*z, -z)
 
         # Define source
         self.beam_width = 10e-3
@@ -45,7 +49,8 @@ class System4F(torch.nn.Module):
         self.source_Ny = 4
 
         # Define camera
-        self.cam_plane = CoordPlane(origin + (2*self.f1 + 2*self.f2)*z, -x, y)
+        self.cam_im_plane = CoordPlane(origin + (2*self.f1 + 2*self.f2)*z, -x, y)
+        self.cam_ft_plane = CoordPlane(origin + 2*(self.f1 + self.f2 + self.f3)*z, -x, y)
 
     def update(self):
         """
@@ -56,6 +61,9 @@ class System4F(torch.nn.Module):
         self.L2 = Plane(origin + (2*self.f1 + self.f2 + self.L2_shift)*z, -z)
 
     def raytrace(self):
+        """
+        Raytrace simulation through optical system.
+        """
         # Source
         self.rays = [collimated_source(self.source_plane, self.source_Nx, self.source_Ny)]
 
@@ -63,27 +71,33 @@ class System4F(torch.nn.Module):
         self.rays.append(ideal_lens(self.rays[-1], self.L1, self.f1))
         self.rays.append(ideal_lens(self.rays[-1], self.L2, self.f2))
 
-        # Camera
-        self.rays.append(self.rays[-1].intersect_plane(self.cam_plane))
-        self.cam_coords = self.cam_plane.transform(self.rays[-1])
+        # Cameras
+        self.rays.append(self.rays[-1].intersect_plane(self.cam_im_plane))
+        self.cam_im_coords = self.cam_im_plane.transform(self.rays[-1])
+        self.rays.append(ideal_lens(self.rays[-1], self.L3, self.f3))
+        self.rays.append(self.rays[-1].intersect_plane(self.cam_ft_plane))
+        self.cam_ft_coords = self.cam_ft_plane.transform(self.rays[-1])
 
-        return self.cam_coords
+        return self.cam_im_coords, self.cam_ft_coords
 
-    def shifterror(self, L1_shift, L2_shift):
+    def shiftMSE(self, L1_shift, L2_shift):
+        """
+        Compute Mean Square Error originating from shifted lenses.
+        """
         # Compute ground truth
         self.L1_shift = self.L1_shift_gt
         self.L2_shift = self.L2_shift_gt
         self.update()
-        cam_coords_gt = self.raytrace()
+        cam_im_coords_gt, cam_ft_coords_gt = self.raytrace()
 
         # Compute RMSE
         self.L1_shift = L1_shift
         self.L2_shift = L2_shift
         self.update()
-        cam_coords = self.raytrace()
-        MSE = ((cam_coords_gt - cam_coords)**2).mean()
+        cam_im_coords, cam_ft_coords = self.raytrace()
+        MSE = ((cam_im_coords_gt - cam_im_coords)**2).mean() \
+            + ((cam_ft_coords_gt - cam_ft_coords)**2).mean()
         return MSE
-
 
     def plot(self):
         """Plot the 4f system and the rays."""
@@ -95,7 +109,9 @@ class System4F(torch.nn.Module):
         scale = 0.025
         plot_lens(ax1, self.L1, self.f1, scale, '⟷ L1\n  ')
         plot_lens(ax1, self.L2, self.f2, scale, '⟷ L2\n  ')
-        plot_plane(ax1, self.cam_plane, scale, ' Cam')
+        plot_lens(ax1, self.L3, self.f3, scale, 'L3\n  ')
+        plot_plane(ax1, self.cam_im_plane, scale, ' Cam')
+        plot_plane(ax1, self.cam_ft_plane, scale, ' Cam')
 
         # Plot rays
         plot_rays(ax1, self.rays)
@@ -103,7 +119,7 @@ class System4F(torch.nn.Module):
         plt.show()
 
 
-doplot = False
+doplot = True
 
 # Initialize system with ground truth
 system4f = System4F()
@@ -114,7 +130,7 @@ system4f.L2_shift = system4f.L2_shift_gt
 
 # Raytrace ground truth and plot
 system4f.update()
-cam_coords_gt = system4f.raytrace()
+cam_im_coords_gt, cam_ft_coords_gt = system4f.raytrace()
 if doplot:
     system4f.plot()
 
@@ -127,8 +143,9 @@ system4f.L2_shift = torch.linspace(shift_min, shift_max, N_shifts).view(-1, 1, 1
 
 # Raytrace with lens shifts
 system4f.update()
-cam_coords = system4f.raytrace()
-RMSE = ((cam_coords_gt - cam_coords)**2).mean(dim=(2, 3, 4)).sqrt()
+cam_im_coords, cam_ft_coords = system4f.raytrace()
+RMSE = (((cam_im_coords_gt - cam_im_coords)**2).mean(dim=(2, 3, 4))
+      + ((cam_ft_coords_gt - cam_ft_coords)**2).mean(dim=(2, 3, 4))).sqrt()
 
 # Plot scan of L1 and L2 shifts
 if doplot:
@@ -147,5 +164,5 @@ if doplot:
 
 
 
-hess = hessian(system4f.shifterror, (tensor((0.,)), tensor((0.,))))
+hess = hessian(system4f.shiftMSE, (tensor((0.,)), tensor((0.,))))
 print(hess)
