@@ -1,0 +1,6 @@
+=== Installing the required packages ===
+Install anaconda and run these commands to install the right packages:
+
+conda create -n raylearn -c pytorch pytorch
+conda activate raylearn
+conda install scipy numpy matplotlib h5py sympy tqdm imageio spyder pytest
