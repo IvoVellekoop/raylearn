@@ -55,7 +55,7 @@ def point_source(sourceplane, Nx, Ny, **raykwargs):
 
 
 def ideal_lens(in_ray, lens, f):
-    """WIP! pathlength not implemented. Ideal infinitely thin lens.
+    """Ideal infinitely thin lens.
 
     Input
     -----
@@ -68,20 +68,21 @@ def ideal_lens(in_ray, lens, f):
         out_ray: Ray object. Output Ray.
 
     """
-    OC       = lens.position_m                            # Optical Center position
-    BFP      = Plane(OC - f * lens.normal, lens.normal)   # Back Focal Plane
-    intersect        = in_ray.intersect_plane(lens)       # Ray intersection with lens plane
-    chiefray = Ray(OC, in_ray.direction)                  # Chief or Principal Ray (through OC)
-    focus    = chiefray.intersect_plane(BFP).position_m   # Ray intersection with Back Focal Plane
+    OC          = lens.position_m                           # Optical Center position
+    BFP         = Plane(OC - f * lens.normal, lens.normal)  # Back Focal Plane
+    chiefray    = Ray(OC, in_ray.direction)                 # Chief or Principal Ray (through OC)
+    focus       = chiefray.intersect_plane(BFP).position_m  # Ray intersection with Back Focal Plane
+    
+    intersect   = in_ray.intersect_plane(lens)              # Ray intersection with lens plane
+    newpos      = intersect.position_m                      # Position of the new ray
+    newpath     = intersect.pathlength_m                    # Pathlength of new ray at lens plane
 
     ### Compute pathlength
-    # A = in_ray_plane_intersect(in_ray_pos, in_ray_dir, FFP, lens_dir)   # Ray intersection with front focal plane
-    # K = in_ray_plane_intersect(P, new_in_ray_dir, BFP, new_in_ray_dir)  # Ray intersection with isophase plane at BFP
-    # Delta = 2*f - norm(A-P) - norm(P-K)
-    #     Delta = f - torch.sqrt(f*f + normsq(P-L))
+    # Rays further from the axis are delayed less
+    newpath += f - torch.sqrt(norm_square(intersect.position_m - OC) + f*f)
 
-    out_ray = in_ray.copy(position_m=intersect.position_m, pathlength_m=intersect.pathlength_m, \
-        direction=unit(focus - intersect.position_m) )    # Output Ray
+    out_ray = in_ray.copy(position_m=newpos, pathlength_m=newpath, \
+        direction=unit(focus - newpos) )    # Output Ray
     return out_ray
 
 
