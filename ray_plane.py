@@ -44,7 +44,7 @@ class Ray:
         distance_m = dot(plane.normal, plane.position_m - self.position_m) \
             / dot(plane.normal, self.direction)
         intersection = self.position_m + self.direction * distance_m
-        pathlength = self.pathlength_m + torch.abs(distance_m)
+        pathlength = self.pathlength_m + self.refractive_index * torch.abs(distance_m)
         return self.copy(position_m=intersection, pathlength_m=pathlength)
 
     def mask(self, mask_factors):

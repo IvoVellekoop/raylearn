@@ -401,3 +401,33 @@ def test_slm_segment():
     assert ray_out.refractive_index == n_ray
     assert ray_out.pathlength_m == pathlength_m
     assert comparetensors(ray_out.position_m, position_man)
+
+
+def test_pathlength():
+    """
+    Test path length for a collimated beam in free space and glass
+    """
+    origin = tensor((0., 0., 0.))
+    x = tensor((1., 0., 0.))
+    y = tensor((0., 1., 0.))
+    
+    # medium consists of two slices with thickness 0.1m
+    n1 = 1.0
+    n2 = 1.5
+
+    d = 0.1
+    
+    sourceplane = CoordPlane(origin, x, y)
+    interfaceplane = CoordPlane(origin + tensor((0., 0., d)), x, y)
+    outputplane = CoordPlane(origin + tensor((0., 0., 2*d)), x, y)
+    
+    ray_in = collimated_source(sourceplane,1,1, refractive_index=n1)
+    
+    # calculate new position and direction/IOR
+    ray_out = ray_in.intersect_plane(interfaceplane)
+    ray_out = snells(ray_out, interfaceplane.normal, n2)
+    
+    ray_out = ray_out.intersect_plane(outputplane)
+
+    gt_pathlength = d*n1 + d*n2
+    assert(comparetensors(ray_out.pathlength_m, gt_pathlength))
