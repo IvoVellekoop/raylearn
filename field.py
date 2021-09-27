@@ -5,7 +5,7 @@ Functions for converting sets of rays to a field with amplitude and phase
 
 import numpy as np
 
-from optical import Ray
+from ray_plane import Ray
 from interpolate import interpolate2d
 
 
