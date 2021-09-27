@@ -105,6 +105,9 @@ def test_ideal_lens_collimated_source():
     assert comparetensors(on_lens_ray.position_m, src.intersect_plane(lens).position_m)
     assert comparetensors(focussed_ray.position_m, chief_ray_at_BFP.position_m)
 
+    # Light in focus should be in phase
+    assert comparetensors(focussed_ray.pathlength_m, focussed_ray.pathlength_m[0,0])
+
 
 def test_ideal_lens_lens_law_positive():
     """Test lens law with point source through ideal positive lens."""
@@ -132,6 +135,7 @@ def test_ideal_lens_lens_law_positive():
     # Check whether focus is formed at distance s2
     focussed_ray = ideal_lens(src, lens, f).intersect_plane(image_plane)
     assert comparetensors(focussed_ray.position_m.std(dim=(0,1)), 0)
+    assert comparetensors(focussed_ray.pathlength_m, focussed_ray.pathlength_m[0,0])
 
 
 def test_ideal_lens_lens_law_negative():
@@ -430,4 +434,4 @@ def test_pathlength():
     ray_out = ray_out.intersect_plane(outputplane)
 
     gt_pathlength = d*n1 + d*n2
-    assert(comparetensors(ray_out.pathlength_m, gt_pathlength))
+    assert comparetensors(ray_out.pathlength_m, gt_pathlength) 
