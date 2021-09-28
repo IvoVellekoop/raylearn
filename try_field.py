@@ -8,7 +8,7 @@ from ray_plane import Ray, Plane, CoordPlane
 from plot_functions import plot_plane, plot_lens, plot_rays
 from optical import point_source, collimated_source, ideal_lens 
 from interpolate import interpolate2d
-from field import pathlength_to_phase
+from field import field_from_rays, coord_grid
 
 class FocusingSystem():
 
@@ -20,12 +20,12 @@ class FocusingSystem():
         z = tensor((0., 0., 1.))
 
         # Define source
-        self.beam_width = 10e-3
+        self.beam_width = 0.1e-3
         self.sourceplane = CoordPlane(origin, -x*self.beam_width, y*self.beam_width)
-        self.source_Nx = 4
-        self.source_Ny = 4
+        self.source_Nx = 21
+        self.source_Ny = 21
 
-        self.f1 = 100e-3
+        self.f1 = 1e-3
         self.L1 = Plane(origin + self.f1 * z, -z)
 
         # Define camera
@@ -95,24 +95,17 @@ class PlaneWaveSystem:
         plt.show()
 
 # Simple system for testing
-system = PlaneWaveSystem()
+system = FocusingSystem()
 cam_coords = system.raytrace()
 system.plot()
 
 # Interpolation
-planepts = 100
-max_size = 1.5*system.beam_width
-x_array = system.cam_im_plane.x * linspace(-max_size, max_size, planepts).view(planepts, 1, 1)
-y_array = system.cam_im_plane.y * linspace(-max_size, max_size, planepts).view(1, planepts, 1)
-field_coords = x_array + y_array
-# Wat hier fout gaat: field_coords is nu 20x20x3 ipv 20x20x2. 
-field_coords = torch.narrow(field_coords, 2, 0, 2) # Maken van field_coords kan vast netter dan dit
+planepts = 120
+max_size = 0.6*system.beam_width
 
-values_out_unfolded, mask = interpolate2d(cam_coords, system.rays[-1].pathlength_m, field_coords)
+field_coords = coord_grid(limits=(-max_size, max_size, -max_size,max_size), resolution=(planepts,planepts))
 
-field = pathlength_to_phase(values_out_unfolded, 1e-6)
-field_out = torch.sum(mask * field, (0, 1, 2))
-pathlength_out = torch.sum(mask * values_out_unfolded, (0,1,2))
+field_out = field_from_rays(system.rays[-1], system.cam_im_plane, field_coords)
 
 fig = plt.figure(figsize=(5, 4))
 fig.dpi = 144
