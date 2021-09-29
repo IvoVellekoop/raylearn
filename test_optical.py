@@ -435,3 +435,41 @@ def test_pathlength():
 
     gt_pathlength = d*n1 + d*n2
     assert comparetensors(ray_out.pathlength_m, gt_pathlength) 
+
+def test_pathlength2():
+    """
+    Test path length for a lens system
+    """
+    origin = tensor((0., 0., 0.))
+    x = tensor((1., 0., 0.))
+    y = tensor((0., 1., 0.))
+    z = tensor((0., 0., 1.))
+
+    beamwidth = 10e-3
+    src_plane = CoordPlane(origin + y*beamwidth, x*beamwidth, y*beamwidth*np.cos(-0.1) - z*beamwidth*np.sin(-0.1))
+    f = 100e-3
+    lens_plane = Plane(origin + f*z, -z-0.1*y - 0.1*x)
+    cam_plane = Plane(lens_plane.position_m - f*lens_plane.normal, lens_plane.normal)
+
+    rays = [collimated_source(src_plane, 3, 3)]
+    rays.append(ideal_lens(rays[-1], lens_plane, f))
+    rays.append(rays[-1].intersect_plane(cam_plane))
+
+    import matplotlib.pyplot as plt 
+    from plot_functions import plot_lens, plot_plane, plot_rays
+    
+    fig = plt.figure(figsize=(9, 4))
+    fig.dpi = 144
+    ax1 = plt.gca()
+
+    # Plot lenses and planes
+    scale = 0.025
+    plot_lens(ax1, lens_plane, f, scale, '⟷ L1\n  ')
+    plot_plane(ax1, cam_plane, scale, ' Cam')
+
+    # Plot rays
+    plot_rays(ax1, rays)
+
+    plt.show()
+
+    assert comparetensors(rays[-1].pathlength_m, rays[-1].pathlength_m[0][0])

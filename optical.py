@@ -10,7 +10,7 @@ import torch
 import numpy as np
 
 from testing import checkunitvector
-from vector_functions import unit, norm_square, rejection, reflection, rotate, components
+from vector_functions import unit, dot, norm, norm_square, rejection, reflection, rotate, components
 from ray_plane import Ray, Plane
 
 
@@ -79,7 +79,11 @@ def ideal_lens(in_ray, lens, f):
 
     ### Compute pathlength
     # Rays further from the axis are delayed less
-    newpath += f - torch.sqrt(norm_square(intersect.position_m - OC) + f*f)
+
+    chiefraylength = norm(focus - OC) - dot(newpos - OC, chiefray.direction)
+    thisraylength = norm(focus - newpos)
+    
+    newpath += chiefraylength - thisraylength
 
     out_ray = in_ray.copy(position_m=newpos, pathlength_m=newpath, \
         direction=unit(focus - newpos) )    # Output Ray
