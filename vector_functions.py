@@ -98,3 +98,10 @@ def area_para(v, w):
 def components(v):
     """Return spatial vector components vx,vy,vz... of ...xMxD vector v as tuple of Tensors."""
     return v.unsqueeze(-2).unbind(-1)
+
+def cartesian3d():
+    origin = torch.tensor((0., 0., 0.))
+    x = torch.tensor((1., 0., 0.))
+    y = torch.tensor((0., 1., 0.))
+    z = torch.tensor((0., 0., 1.))
+    return origin, x, y, z

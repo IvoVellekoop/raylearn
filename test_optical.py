@@ -5,7 +5,8 @@ from torch import Tensor, tensor, stack, meshgrid
 import numpy as np
 
 from testing import comparetensors
-from vector_functions import dot, unit, norm, cross, rejection, rotate, reflection, components
+from vector_functions import dot, unit, norm, cross, rejection, rotate,\
+                             reflection, components, cartesian3d
 from ray_plane import Ray, Plane, CoordPlane
 from optical import point_source, collimated_source, ideal_lens, snells,\
                     mirror, galvo_mirror, slm_segment
@@ -411,9 +412,7 @@ def test_pathlength():
     """
     Test path length for a collimated beam in free space and glass
     """
-    origin = tensor((0., 0., 0.))
-    x = tensor((1., 0., 0.))
-    y = tensor((0., 1., 0.))
+    origin, x, y, z = cartesian3d()
     
     # medium consists of two slices with thickness 0.1m
     n1 = 1.0
@@ -422,8 +421,8 @@ def test_pathlength():
     d = 0.1
     
     sourceplane = CoordPlane(origin, x, y)
-    interfaceplane = CoordPlane(origin + tensor((0., 0., d)), x, y)
-    outputplane = CoordPlane(origin + tensor((0., 0., 2*d)), x, y)
+    interfaceplane = CoordPlane(origin + d*z, x, y)
+    outputplane = CoordPlane(origin + 2*d*z, x, y)
     
     ray_in = collimated_source(sourceplane,1,1, refractive_index=n1)
     
@@ -440,10 +439,7 @@ def test_pathlength2():
     """
     Test path length for a lens system
     """
-    origin = tensor((0., 0., 0.))
-    x = tensor((1., 0., 0.))
-    y = tensor((0., 1., 0.))
-    z = tensor((0., 0., 1.))
+    origin, x, y, z = cartesian3d()
 
     beamwidth = 10e-3
     src_plane = CoordPlane(origin + y*beamwidth, x*beamwidth, y*beamwidth*np.cos(-0.1) - z*beamwidth*np.sin(-0.1))
