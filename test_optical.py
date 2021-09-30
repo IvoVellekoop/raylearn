@@ -455,21 +455,4 @@ def test_pathlength2():
     rays.append(ideal_lens(rays[-1], lens_plane, f))
     rays.append(rays[-1].intersect_plane(cam_plane))
 
-    import matplotlib.pyplot as plt 
-    from plot_functions import plot_lens, plot_plane, plot_rays
-    
-    fig = plt.figure(figsize=(9, 4))
-    fig.dpi = 144
-    ax1 = plt.gca()
-
-    # Plot lenses and planes
-    scale = 0.025
-    plot_lens(ax1, lens_plane, f, scale, '⟷ L1\n  ')
-    plot_plane(ax1, cam_plane, scale, ' Cam')
-
-    # Plot rays
-    plot_rays(ax1, rays)
-
-    plt.show()
-
     assert comparetensors(rays[-1].pathlength_m, rays[-1].pathlength_m[0][0])
