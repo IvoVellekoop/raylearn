@@ -50,8 +50,8 @@ def point_source(sourceplane, Nx, Ny, **raykwargs):
     x_array = sourceplane.x * torch.linspace(-1.0, 1.0, Nx).view(Nx, 1, 1)
     y_array = sourceplane.y * torch.linspace(-1.0, 1.0, Ny).view(1, Ny, 1)
     direction = unit(sourceplane.normal + x_array + y_array)
-
-    return Ray(sourceplane.position_m, direction, **raykwargs)
+    position = torch.tile(sourceplane.position_m.view([1,1,3]),[Nx,Ny,1])
+    return Ray(position, direction, **raykwargs)
 
 
 def ideal_lens(in_ray, lens, f):
