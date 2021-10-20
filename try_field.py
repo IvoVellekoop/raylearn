@@ -85,8 +85,8 @@ class PointsourceSystem():
         # Define source
         self.beam_width = 0.8
         self.sourceplane = CoordPlane(origin, x*self.beam_width, y*self.beam_width)
-        self.source_Nx = 7
-        self.source_Ny = 7
+        self.source_Nx = 51
+        self.source_Ny = 51
 
         # Define camera
 
@@ -182,12 +182,20 @@ plt.ylabel('y [m]')
 plt.show()
 
 # Interpolation
-planepts = 200
+planepts = 600
 max_size = 75e-6
 
 field_coords = coord_grid(limits=(-max_size, max_size, -max_size,max_size), resolution=(planepts,planepts))
 
-field_out = field_from_rays(system.rays[-2], system.cam_im_plane, field_coords)
+field_out = torch.empty(planepts,planepts,1, dtype=torch.cfloat)
+for i,row in enumerate(field_coords):
+    field_row = field_from_rays(system.rays[-1], system.cam_im_plane, row.unsqueeze(0))
+    field_out[i] = field_row
+    if np.mod(i,10) == 0: # display progress
+        print(i)
+
+# Interpolate the whole field at once, uses too much memory
+# field_out = field_from_rays(system.rays[-1], system.cam_im_plane, field_coords)
 
 fig = plt.figure(figsize=(5, 4))
 fig.dpi = 144
@@ -198,3 +206,6 @@ plt.title('Field at camera plane')
 plt.xlabel('x [m]')
 plt.ylabel('y [m]')
 plt.show()
+
+from scipy.io import savemat
+savemat('outfield51.mat', mdict={'field_out': field_out.numpy()})
