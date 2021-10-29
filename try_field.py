@@ -208,4 +208,9 @@ plt.ylabel('y [m]')
 plt.show()
 
 from scipy.io import savemat
-savemat('outfield51.mat', mdict={'field_out': field_out.numpy()})
+# savemat('outfield11.mat', mdict={'field_out': field_out.numpy()})
+pos = cam_coords
+path = system.rays[-1].pathlength_m
+data = torch.cat((pos,path),2)
+from shadertest import shadertest
+t = shadertest(data.numpy())
