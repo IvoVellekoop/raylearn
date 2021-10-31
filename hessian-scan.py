@@ -119,7 +119,7 @@ class System4F(torch.nn.Module):
         plt.show()
 
 
-doplot = True
+doplot = False
 
 # Initialize system with ground truth
 system4f = System4F()
@@ -160,9 +160,23 @@ if doplot:
     plt.title('RMSE (m) - Parameter scan')
     plt.xlabel('Lens 1 shift (m)')
     plt.ylabel('Lens 2 shift (m)')
+
+    # Compute hessian matrix
+    hessian_x = tensor((0.,))
+    hessian_y = tensor((0.,))
+    hessian_matrix = tensor(hessian(system4f.shiftMSE, (hessian_x, hessian_y)))
+
+    eigen = torch.linalg.eigh(hessian_matrix)
+    print(eigen)
+    eigenvectors = eigen.eigenvectors
+    eigenvalues = eigen.eigenvalues
+
+    plt.arrow(hessian_x, hessian_y, eigenvectors[0, 0]*0.2*shift_max, eigenvectors[0, 1]*0.2*shift_max)
+    plt.arrow(hessian_x, hessian_y, eigenvectors[1, 0]*0.2*shift_max, eigenvectors[1, 1]*0.2*shift_max)
+    plt.text(hessian_x + eigenvectors[0, 0]*0.2*shift_max, hessian_y + eigenvectors[0, 1]*0.2*shift_max,
+             f'  {eigenvalues[0]:.3f}', color='tab:blue', verticalalignment='center')
+    plt.text(hessian_x + eigenvectors[1, 0]*0.2*shift_max, hessian_y + eigenvectors[1, 1]*0.2*shift_max,
+             f'  {eigenvalues[1]:.3f}', color='tab:blue', verticalalignment='center')
+
     plt.show()
 
-
-
-hess = hessian(system4f.shiftMSE, (tensor((0.,)), tensor((0.,))))
-print(hess)
