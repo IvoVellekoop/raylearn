@@ -15,6 +15,10 @@ from vector_functions import cartesian3d
 torch.set_default_tensor_type('torch.DoubleTensor')
 plt.rc('font', size=12)
 
+""""
+This is a playground to test interpolation functions
+"""
+
 class FocusingSystem():
 
     def __init__(self):
@@ -185,32 +189,37 @@ plt.show()
 planepts = 600
 max_size = 75e-6
 
-field_coords = coord_grid(limits=(-max_size, max_size, -max_size,max_size), resolution=(planepts,planepts))
+# field_coords = coord_grid(limits=(-max_size, max_size, -max_size,max_size), resolution=(planepts,planepts))
 
-field_out = torch.empty(planepts,planepts,1, dtype=torch.cfloat)
-for i,row in enumerate(field_coords):
-    field_row = field_from_rays(system.rays[-1], system.cam_im_plane, row.unsqueeze(0))
-    field_out[i] = field_row
-    if np.mod(i,10) == 0: # display progress
-        print(i)
+# # Loop rows to interpolate larger sets of rays (very slow)
+# field_out = torch.empty(planepts,planepts,1, dtype=torch.cfloat)
+# for i,row in enumerate(field_coords):
+#     field_row = field_from_rays(system.rays[-1], system.cam_im_plane, row.unsqueeze(0))
+#     field_out[i] = field_row
+#     if np.mod(i,10) == 0: # display progress
+#         print("%.1f%%"%(i/field_coords.shape[0] * 100))
 
-# Interpolate the whole field at once, uses too much memory
+# # Interpolate the whole field at once, uses too much memory
 # field_out = field_from_rays(system.rays[-1], system.cam_im_plane, field_coords)
 
-fig = plt.figure(figsize=(5, 4))
-fig.dpi = 144
-ax1 = plt.gca()
-plt.imshow(torch.angle(field_out), extent=(-max_size, max_size, -max_size, max_size), interpolation='none', origin='lower')
-plt.colorbar()
-plt.title('Field at camera plane')
-plt.xlabel('x [m]')
-plt.ylabel('y [m]')
-plt.show()
+# # Display interpolated field
+# fig = plt.figure(figsize=(5, 4))
+# fig.dpi = 144
+# ax1 = plt.gca()
+# plt.imshow(torch.angle(field_out), extent=(-max_size, max_size, -max_size, max_size), interpolation='none', origin='lower')
+# plt.colorbar()
+# plt.title('Field at camera plane')
+# plt.xlabel('x [m]')
+# plt.ylabel('y [m]')
+# plt.show()
 
-from scipy.io import savemat
+# # Save interpolated field to file
+# from scipy.io import savemat
 # savemat('outfield11.mat', mdict={'field_out': field_out.numpy()})
+
+# Try interpolation in a shader (very fast)
 pos = cam_coords
 path = system.rays[-1].pathlength_m
 data = torch.cat((pos,path),2)
-from shadertest import shadertest
-t = shadertest(data.numpy())
+from ShaderInterpolator import ShaderInterpolator
+t = ShaderInterpolator(data.numpy())
