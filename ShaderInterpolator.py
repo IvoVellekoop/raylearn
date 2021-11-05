@@ -2,6 +2,7 @@ from OpenGL import GL
 from OpenGL import GLUT
 from OpenGL.GL import shaders
 from OpenGL.GL import arrays
+import glfw
 import numpy as np
 
 def calculate_elements(nx, ny):
@@ -93,19 +94,15 @@ class ShaderInterpolator:
         GL.glVertexAttribPointer(1, 1, GL.GL_DOUBLE, GL.GL_FALSE, 24, self.vbo+16)
         
         GL.glDrawElements(GL.GL_TRIANGLES, (self.nx - 1)*(self.ny - 1)*6, GL.GL_UNSIGNED_INT, None)
-        GLUT.glutSwapBuffers()
 
     def __init__(self, data):
         # Create OpenGL context
-        GLUT.glutInit()
-        GLUT.glutInitContextVersion(4,4)
-        GLUT.glutInitContextProfile(GLUT.GLUT_CORE_PROFILE)
-        GLUT.glutInitWindowPosition(100,100)
-        GLUT.glutInitWindowSize(600,600)
-        window = GLUT.glutCreateWindow("A window!")
-        
-        # Callback function to run each frame
-        GLUT.glutDisplayFunc(self.draw_frame)
+        glfw.init()
+        glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 4)
+        glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 4)
+        glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
+        self.window = glfw.create_window(600, 600, "A Window", None, None)
+        glfw.make_context_current(self.window)
         
         # Prepare GPU resources
         self.load_shaders()
@@ -118,4 +115,14 @@ class ShaderInterpolator:
         # Default blendEquation is already GL_ADD
         #GL.glBlendEquation(GL.GL_ADD)
         
-        GLUT.glutMainLoop()
+        while not glfw.window_should_close(self.window):
+            self.draw_frame()
+            glfw.swap_buffers(self.window)
+
+            glfw.poll_events()
+        
+        # Clean up resources
+        self.vbo.delete()
+        self.ibo.delete()
+        GL.glDeleteProgram(self.program)
+        glfw.terminate()
