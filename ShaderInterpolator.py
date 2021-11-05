@@ -49,9 +49,11 @@ class ShaderInterpolator:
         #define PI 3.141593
 
         in float fragmentColor;
+        uniform float lambda;
         out vec3 color;
         void main() { 
-            color = vec3(mod(fragmentColor*1000000,1),0,0);
+            float phi = fragmentColor * 2*PI/lambda;
+            color = vec3(cos(phi),sin(phi),0);
         }
         """
 
@@ -92,6 +94,9 @@ class ShaderInterpolator:
         GL.glVertexAttribPointer(0, 2, GL.GL_DOUBLE, GL.GL_FALSE, 24, self.vbo)
         # Pathlength/'color'. One double, stride 3*8 bytes, offset 2*8 bytes
         GL.glVertexAttribPointer(1, 1, GL.GL_DOUBLE, GL.GL_FALSE, 24, self.vbo+16)
+        # Wavelength
+        lambda_loc = GL.glGetUniformLocation(self.program, "lambda")
+        GL.glUniform1f(lambda_loc, 1e-6) # TODO Make wavelength configurable
         
         GL.glDrawElements(GL.GL_TRIANGLES, (self.nx - 1)*(self.ny - 1)*6, GL.GL_UNSIGNED_INT, None)
 
@@ -109,7 +114,7 @@ class ShaderInterpolator:
         self.load_data(data)
 
         # Enable blending for addition of fields
-        GL.glClearColor(0, 0.5, 0, 1)
+        GL.glClearColor(0, 0, 0, 1)
         GL.glEnable(GL.GL_BLEND) 
         GL.glBlendFunc(GL.GL_ONE, GL.GL_ONE)
         # Default blendEquation is already GL_ADD
