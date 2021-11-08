@@ -5,6 +5,13 @@ from OpenGL.GL import arrays
 import glfw
 import numpy as np
 
+def interpolate_shader(data):
+    """
+    Interpolate data using OpenGL shader. Data should be a numpy array. 
+    """
+    s = ShaderInterpolator(data)
+    return s.get_field()
+
 def calculate_elements(nx, ny):
     """
     Helper function for lazy triangulation of a grid.
@@ -50,10 +57,10 @@ class ShaderInterpolator:
 
         in float fragmentColor;
         uniform float lambda;
-        out vec3 color;
+        out vec4 color;
         void main() { 
             float phi = fragmentColor * 2*PI/lambda;
-            color = vec3(cos(phi),sin(phi),0);
+            color = vec4(cos(phi),sin(phi),0,0);
         }
         """
 
@@ -81,6 +88,9 @@ class ShaderInterpolator:
         
         elements = calculate_elements(self.nx,self.ny)
         self.ibo = GL.arrays.vbo.VBO(elements, target=GL.GL_ELEMENT_ARRAY_BUFFER)
+
+    def get_field(self):
+        return self.field_out
         
     def draw_frame(self):
         GL.glClear(GL.GL_COLOR_BUFFER_BIT)
@@ -114,20 +124,37 @@ class ShaderInterpolator:
         self.load_data(data)
 
         # Enable blending for addition of fields
-        GL.glClearColor(0, 0, 0, 1)
+        GL.glClearColor(0, 0, 0, 0)
         GL.glEnable(GL.GL_BLEND) 
         GL.glBlendFunc(GL.GL_ONE, GL.GL_ONE)
         # Default blendEquation is already GL_ADD
         #GL.glBlendEquation(GL.GL_ADD)
-        
+
+        # Create output framebuffers
+        self.rb = GL.glGenRenderbuffers(1)
+        GL.glBindRenderbuffer(GL.GL_RENDERBUFFER, self.rb)
+        GL.glRenderbufferStorage(GL.GL_RENDERBUFFER, GL.GL_RGBA32F, 600, 600) # 600^2 pixels, 4-channel 32-bit float
+        self.fb = GL.glGenFramebuffers(1)
+        GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self.fb) # read/write framebuffer
+        GL.glFramebufferRenderbuffer(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT0, GL.GL_RENDERBUFFER, self.rb)
+
+        # Draw to framebuffer
+        self.draw_frame()
+        image_buffer = GL.glReadPixels(0, 0, 600, 600, GL.GL_RGBA, GL.GL_FLOAT)
+        self.field_out = image_buffer[:,:,0] + 1j*image_buffer[:,:,1]
+
+        # Main loop, draw to window
+        GL.glBindFramebuffer(GL.GL_FRAMEBUFFER,0)
+        #GL.glViewport(0, 0, 0, 0)
         while not glfw.window_should_close(self.window):
             self.draw_frame()
             glfw.swap_buffers(self.window)
-
             glfw.poll_events()
         
         # Clean up resources
         self.vbo.delete()
         self.ibo.delete()
         GL.glDeleteProgram(self.program)
+        # GL.glDeleteRenderbuffers(1, self.rb) # This crashes for some reason
+        # GL.glDeleteFramebuffers(1, self.fb)
         glfw.terminate()

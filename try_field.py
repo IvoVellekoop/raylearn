@@ -202,24 +202,24 @@ max_size = 75e-6
 # # Interpolate the whole field at once, uses too much memory
 # field_out = field_from_rays(system.rays[-1], system.cam_im_plane, field_coords)
 
-# # Display interpolated field
-# fig = plt.figure(figsize=(5, 4))
-# fig.dpi = 144
-# ax1 = plt.gca()
-# plt.imshow(torch.angle(field_out), extent=(-max_size, max_size, -max_size, max_size), interpolation='none', origin='lower')
-# plt.colorbar()
-# plt.title('Field at camera plane')
-# plt.xlabel('x [m]')
-# plt.ylabel('y [m]')
-# plt.show()
-
-# # Save interpolated field to file
-# from scipy.io import savemat
-# savemat('outfield11.mat', mdict={'field_out': field_out.numpy()})
-
 # Try interpolation in a shader (very fast)
 pos = cam_coords
 path = system.rays[-1].pathlength_m
 data = torch.cat((pos,path),2)
-from ShaderInterpolator import ShaderInterpolator
-t = ShaderInterpolator(data.numpy())
+from ShaderInterpolator import interpolate_shader
+field_out = torch.tensor(interpolate_shader(data.numpy()))
+
+# Display interpolated field
+fig = plt.figure(figsize=(5, 4))
+fig.dpi = 144
+ax1 = plt.gca()
+plt.imshow(torch.angle(field_out), extent=(-max_size, max_size, -max_size, max_size), interpolation='none', origin='lower')
+plt.colorbar()
+plt.title('Field at camera plane')
+plt.xlabel('x [m]')
+plt.ylabel('y [m]')
+plt.show()
+
+# # Save interpolated field to file
+# from scipy.io import savemat
+# savemat('outfield11.mat', mdict={'field_out': field_out.numpy()})
