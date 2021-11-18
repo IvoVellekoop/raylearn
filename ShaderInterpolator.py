@@ -5,11 +5,19 @@ from OpenGL.GL import arrays
 import glfw
 import numpy as np
 
-def interpolate_shader(data):
+def interpolate_shader(data, npoints=(600,600), wavelength_m = 1e-6):
     """
     Interpolate data using OpenGL shader. Data should be a numpy array. 
+
+    parameters:
+    data            Nx-by-Ny-by-3 numpy array of rays to be interpolated,
+                    in [x,y,pathlength] format. 
+    npoints         (x,y)-resolution of calculated field. Tuple, defaults 
+                    to (600,600) pixels
+    wavelength_m    Wavelength of the light, used to calculate phase 
+
     """
-    s = ShaderInterpolator(data)
+    s = ShaderInterpolator(data, npoints, wavelength_m)
     return s.get_field()
 
 def calculate_elements(nx, ny):
@@ -81,7 +89,7 @@ class ShaderInterpolator:
         self.vao = GL.glGenVertexArrays(1)
         GL.glBindVertexArray(self.vao)
 
-        data[:,:,0:2] /= 100e-6 # TODO make display range adjustable
+        data[:,:,0:2] /= 75e-6 # TODO make display range adjustable
         meanpath = np.mean(data[:,:,2])
         data[:,:,2] -= meanpath
         self.vbo = GL.arrays.vbo.VBO(data)
@@ -106,17 +114,20 @@ class ShaderInterpolator:
         GL.glVertexAttribPointer(1, 1, GL.GL_DOUBLE, GL.GL_FALSE, 24, self.vbo+16)
         # Wavelength
         lambda_loc = GL.glGetUniformLocation(self.program, "lambda")
-        GL.glUniform1f(lambda_loc, 1e-6) # TODO Make wavelength configurable
+        GL.glUniform1f(lambda_loc, self.wavelength_m)
         
         GL.glDrawElements(GL.GL_TRIANGLES, (self.nx - 1)*(self.ny - 1)*6, GL.GL_UNSIGNED_INT, None)
 
-    def __init__(self, data):
+    def __init__(self, data, npoints, wavelength_m):
+        # Set parameters
+        self.wavelength_m = wavelength_m
+
         # Create OpenGL context
         glfw.init()
         glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 4)
         glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 4)
         glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
-        self.window = glfw.create_window(600, 600, "A Window", None, None)
+        self.window = glfw.create_window(npoints[1], npoints[0], "A Window", None, None)
         glfw.make_context_current(self.window)
         
         # Prepare GPU resources
@@ -141,6 +152,7 @@ class ShaderInterpolator:
         # Draw to framebuffer
         self.draw_frame()
         image_buffer = GL.glReadPixels(0, 0, 600, 600, GL.GL_RGBA, GL.GL_FLOAT)
+        # Convert to complex field
         self.field_out = image_buffer[:,:,0] + 1j*image_buffer[:,:,1]
 
         # Main loop, draw to window
