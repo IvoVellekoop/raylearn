@@ -35,9 +35,13 @@ def field_from_rays(rays, camera_plane, field_coords, wavelength_m=1e-6):
 def coord_grid(limits=(-1., 1., -1., 1.), resolution=(100,100)):
     """
     Create an X-by-Y-by-2 tensor with coordinates to be used for interpolation
+    
+    Uses torch.arange(), so the upper limits are *not* included.
     """
-    x_array = torch.tensor((1,0)) * torch.linspace(limits[0], limits[1], resolution[0]).view(1, resolution[0], 1)
-    y_array = torch.tensor((0,1)) * torch.linspace(limits[2], limits[3], resolution[1]).view(resolution[1], 1, 1)
+    x_gridsize = (limits[1] - limits[0]) / resolution[0]
+    y_gridsize = (limits[3] - limits[2]) / resolution[1]
+    x_array = torch.tensor((1,0)) * torch.arange(limits[0],limits[1], x_gridsize).view(1, resolution[0], 1)
+    y_array = torch.tensor((0,1)) * torch.arange(limits[2],limits[3],y_gridsize).view(resolution[1], 1, 1)
 
     field_coords = x_array + y_array
 
