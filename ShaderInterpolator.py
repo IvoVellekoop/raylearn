@@ -5,7 +5,7 @@ from OpenGL.GL import arrays
 import glfw
 import numpy as np
 
-def interpolate_shader(data, npoints=(600,600), wavelength_m = 1e-6):
+def interpolate_shader(data, npoints=(600,600), limits=(-100e-6,100e-6, -100e-6,100e-6), wavelength_m = 1e-6):
     """
     Interpolate data using OpenGL shader. Data should be a numpy array. 
 
@@ -15,9 +15,11 @@ def interpolate_shader(data, npoints=(600,600), wavelength_m = 1e-6):
     npoints         (x,y)-resolution of calculated field. Tuple, defaults 
                     to (600,600) pixels
     wavelength_m    Wavelength of the light, used to calculate phase 
+    limits          The area of the output plane where field interpolation 
+                    should be performed. Tuple, (x_min, x_max, y_min, y_max)
 
     """
-    s = ShaderInterpolator(data, npoints, wavelength_m)
+    s = ShaderInterpolator(data, npoints, limits, wavelength_m)
     return s.get_field()
 
 def calculate_elements(nx, ny):
@@ -40,6 +42,28 @@ def calculate_elements(nx, ny):
             index += 6
     return elements
 
+def coordinate_matrix(resolution, limits):
+    """
+    Helper function to transpose the rays and interpolate
+    at the correct coordinates.
+    """
+
+    range_x = limits[1] - limits[0]
+    range_y = limits[3] - limits[2]
+    pixelsize_x = range_x / resolution[0]
+    pixelsize_y = range_y / resolution[1]
+
+    scale_x = 2/range_x
+    scale_y = 2/range_y
+    offset_x = scale_x * 0.5 * (pixelsize_x - (limits[0]+limits[1]))
+    offset_y = scale_y * 0.5 * (pixelsize_y - (limits[2]+limits[3]))
+
+    M = [ scale_x,       0, 0, offset_x,
+                0, scale_y, 0, offset_y,
+                0,       0, 1,        0,
+                0,       0, 0,        1 ]
+    return M
+
 class ShaderInterpolator:
     """
     Interpolate path length on the GPU through a shader.
@@ -51,11 +75,12 @@ class ShaderInterpolator:
 
         layout(location = 0) in vec2 vertexPosition_modelspace;
         layout(location = 1) in float vertexColor;
+        uniform mat4 MVP;
         out float fragmentColor;
 
         void main() { 
             fragmentColor = vertexColor;
-            gl_Position = vec4(vertexPosition_modelspace,1.0,1.0); 
+            gl_Position = MVP * vec4(vertexPosition_modelspace,1.0,1.0); 
         }
         """
 
@@ -89,7 +114,6 @@ class ShaderInterpolator:
         self.vao = GL.glGenVertexArrays(1)
         GL.glBindVertexArray(self.vao)
 
-        data[:,:,0:2] /= 75e-6 # TODO make display range adjustable
         meanpath = np.mean(data[:,:,2])
         data[:,:,2] -= meanpath
         self.vbo = GL.arrays.vbo.VBO(data)
@@ -115,12 +139,18 @@ class ShaderInterpolator:
         # Wavelength
         lambda_loc = GL.glGetUniformLocation(self.program, "lambda")
         GL.glUniform1f(lambda_loc, self.wavelength_m)
+        # Coordinate system
+        mvp_loc = GL.glGetUniformLocation(self.program, "MVP")
+        GL.glUniformMatrix4fv(mvp_loc, 1, GL.GL_TRUE, self.MVP) # GLTrue because matrix needs to be transposed
         
         GL.glDrawElements(GL.GL_TRIANGLES, (self.nx - 1)*(self.ny - 1)*6, GL.GL_UNSIGNED_INT, None)
 
-    def __init__(self, data, npoints, wavelength_m):
+    def __init__(self, data, npoints, limits, wavelength_m):
         # Set parameters
         self.wavelength_m = wavelength_m
+        
+        # Calculate coordinate transformation
+        self.MVP = coordinate_matrix(npoints, limits)
 
         # Create OpenGL context
         glfw.init()

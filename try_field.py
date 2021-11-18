@@ -207,7 +207,7 @@ pos = cam_coords
 path = system.rays[-1].pathlength_m
 data = torch.cat((pos,path),2)
 from ShaderInterpolator import interpolate_shader
-field_out_shader = torch.tensor(interpolate_shader(data.numpy()))
+field_out_shader = torch.tensor(interpolate_shader(data.numpy(), limits=(-max_size, max_size, -max_size,max_size), npoints=(planepts,planepts)))
 
 # Display interpolated field
 fig = plt.figure(figsize=(5, 4))
