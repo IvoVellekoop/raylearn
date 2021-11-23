@@ -13,20 +13,22 @@ if forcereset || ~exist('dirs', 'var')
 end
 
 % Settings
-doshowplot = 1;                     % Toggle showing plot of each found position (for debugging)
-dosave = 0;                         % Toggle saving
+doshowplot = 0;                     % Toggle showing plot of each found position (for debugging)
+dosave = 1;                         % Toggle saving
 meanthreshfactor = 5;               % This factor scales the threshold
 bgcornersize = 10;                  % Corner size in pixels. These will be used for noise level estimation.
 percentile = 97;                    % Percentile of the corner pixel values to use
 percentilefactor = 2;               % Multiply percentile pixel value with this
 medfiltsize = 5;                    % Size of the median filter
-inputpattern = [dirs.localdata '/raylearn_pencil_beam*'];
+inputpattern = [dirs.localdata '/raylearn-data/TPM/pencil-beam-raw/*/raylearn_pencil_beam*'];
 % inputpattern = [dirs.localdata '\raylearn-data\TPM\pencil-beams-split\04-May-2021-grid\raylearn_pencil_beam*'];
 outputgroupfolder = [dirs.localdata '/raylearn-data/TPM/pencil-beam-positions'];
 
 % Process
+assert(exist(dirs.localdata, 'dir'), 'Directory "%s" doesn''t exist', dirs.localdata)
 dirlist = dir(inputpattern);        % List files to be processed
-D = length(dirlist);
+D = length(dirlist);                % Number of measurements
+assert(D > 0, 'Directory list is empty. Please check input pattern.')
 
 % Compute total size of files
 bytestotal = 0;

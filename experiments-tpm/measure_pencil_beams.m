@@ -102,7 +102,7 @@ if dosave
     % Create save directory
     filenameprefix = 'raylearn_pencil_beam';
     p.savename = sprintf('%s_%f_%s', filenameprefix, now, p.samplename);
-    p.savedir = fullfile([dirs.expdata '\raylearn-data\TPM\' date '-' p.samplename], p.savename);
+    p.savedir = fullfile([dirs.expdata '\raylearn-data\TPM\pencil-beam-raw\' date '-' p.samplename], p.savename);
     try mkdir(p.savedir); catch 'MATLAB:MKDIR:DirectoryExists'; end
     fprintf('\nSave Directory: %s\n', p.savedir)
 end
