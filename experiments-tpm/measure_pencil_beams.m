@@ -3,15 +3,15 @@
 % with various angles and record the outgoing pencil beams.
 
 %% Reset variables and hardware connections
-doreset = 1;
+doreset = 0;
 
-if doreset
+if doreset || ~exist('slm', 'var') || ~exist('daqs', 'var')  || ~exist('cam_ft', 'var')
     close all; clear; clc
     setup_raylearn_exptpm
 end
 
 %% Settings
-p.samplename = 'empty';
+p.samplename = '400um';
 doshowcams = 0;                     % Toggle show what the cameras see
 dosave = 1;                         % Toggle savings
 dochecksamplename = 0;              % Toggle console sample name check
@@ -19,18 +19,18 @@ dochecksamplename = 0;              % Toggle console sample name check
 % SLM Settings
 p.segment_patch_id = 2;             % Pencil Beam segment SLM patch ID
 p.ppp = 2;                          % Pixels per period for the grating. Should match Galvo setting!
-p.segmentsize_pix = 40 * p.ppp;     % Segment width in pixels
-p.beamdiameter = 0.25;              % Diameter of circular SLM segment set (relative coords)
-p.slm_offset_x = 0.01;              % Horizontal offset of rectangle SLM geometry (relative coords)
-p.slm_offset_y = 0.03;              % Vertical offset of rectangle SLM geometry (relative coords)
-p.N_diameter = 11;                  % Number of segments across SLM diameter
+p.segmentsize_pix = 50 * p.ppp;     % Segment width in pixels
+p.beamdiameter = 0.37;              % Diameter of circular SLM segment set (relative coords)
+p.slm_offset_x = 0.00;              % Horizontal offset of rectangle SLM geometry (relative coords)
+p.slm_offset_y = 0.00;              % Vertical offset of rectangle SLM geometry (relative coords)
+p.N_diameter =  7;                  % Number of segments across SLM diameter
 
 % Galvo Mirror settings
-p.GalvoNX =  9;                     % Number of Galvo steps, x
-p.GalvoNY =  9;                     % Number of Galvo steps, y
-p.GalvoXcenter =  1.165;            % Galvo center x
-p.GalvoYcenter = -0.055;            % Galvo center y
-p.GalvoRadius  =  0.090;            % Galvo scan radius: from center to outer
+p.GalvoNX =  3;                     % Number of Galvo steps, x
+p.GalvoNY =  3;                     % Number of Galvo steps, y
+p.GalvoXcenter = -0.5538;           % Galvo center x
+p.GalvoYcenter =  0.0667;           % Galvo center y
+p.GalvoRadius  =  0.045; %0.1800;           % Galvo scan radius: from center to outer
 % Note: the actual number of galvo steps is smaller, as the corners from the square grid
 % will be cut to make a circle
 
@@ -72,6 +72,11 @@ p.galvoXs = single(galvoXsq(p.galvo_scan_mask));
 p.galvoYs = single(galvoYsq(p.galvo_scan_mask));
 G = numel(p.galvoXs);
 
+% 
+% p.galvoXs = p.GalvoXcenter; %%%%%%%%%%%%
+% p.galvoYs = p.GalvoYcenter;
+% G = 1;
+% %%%%%%%%%%%%%%%%%%
 
 %% Capture dark frames
 outputSingleScan(daqs, [p.GalvoXcenter, p.GalvoYcenter]);   % Set Galvo
