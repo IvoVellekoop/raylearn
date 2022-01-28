@@ -61,7 +61,7 @@ end
 %% Connect to Image Plane Camera
 if active_devices.cam_img
     copt_img.ExposureTime = 1/60*10^6;
-    copt_img.Id = 'Camera/22241376:Basler';
+    copt_img.Id = 'Camera/23572269:Basler';
     copt_img.Width = 1088;
     copt_img.Height = 1088;
     cam_img = Camera(copt_img);
@@ -94,8 +94,8 @@ if active_devices.sample_stage
 
     % limit Zaber travel range to prevent stage from hitting top microscope
     % objective
-    z1.travel_range = 4.8e4+[-12.5e3, 12.5e3]; 
-    z2.travel_range = 4.25e4+[-12.5e3, 12.5e3]; 
+    z1.travel_range = [51840 140000];
+    z2.travel_range = [640 203520]; 
     disp(['Current position Motor 1: ',num2str(z1.getPosition())]);
     disp(['Current position Motor 2: ',num2str(z2.getPosition())]);
     fprintf('Initialized sample stage\n')
