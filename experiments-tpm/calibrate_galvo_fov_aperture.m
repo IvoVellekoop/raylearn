@@ -1,8 +1,8 @@
 %% Calibrate aperture Galvos field of view
 
-doreset = 1;
+doreset = 0;
 
-if doreset
+if doreset || ~exist('slm', 'var') || ~exist('daqs', 'var')  || ~exist('cam_ft', 'var')
     close all; clear; clc
     setup_raylearn_exptpm
 end
@@ -15,12 +15,12 @@ ppp = 2;                            % Pixels per period on SLM grating
 bg_patch_id = 2;                    % Background grating Patch ID
 
 % Galvo Mirror settings
-p.GalvoXcenter = single(0.50);      % Galvo center x
+p.GalvoXcenter = single(0.00);      % Galvo center x
 p.GalvoYcenter = single(0.00);      % Galvo center y
-p.GalvoXmax    = single(1.50);      % Galvo center to outer, x
-p.GalvoYmax    = single(0.35);      % Galvo center to outer, y
+p.GalvoXmax    = single(1.25);      % Galvo center to outer, x
+p.GalvoYmax    = single(0.40);      % Galvo center to outer, y
 p.GalvoNX      = single(80);        % Number of Galvo steps, x
-p.GalvoNY      = single(20);        % Number of Galvo steps, y
+p.GalvoNY      = single(25);        % Number of Galvo steps, y
 
 %% Initialization
 % Set background grating
@@ -95,7 +95,7 @@ outputSingleScan(daqs, [0, 0]);   % Set Galvo Mirror
 %% Plot end result
 figure(2)
 imagesc(sqrt(galvoscan'), 'XData', p.galvoXs1d, 'YData', p.galvoYs1d)
-title('Galvo Scan sqrt(Mean Intensity)')
+title(sprintf('Galvo Scan sqrt(Mean Intensity) | ppp=%.2f', ppp))
 xlabel('Galvo voltage X')
 ylabel('Galvo voltage Y')
 axis image
