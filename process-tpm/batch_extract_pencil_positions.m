@@ -82,14 +82,21 @@ for d = 1:D
             cam_img_mean_intensity = nan(F, G);
             cam_img_mean_masked_intensity = nan(F, G);
             found_spot = false(F, G);
+
+            frame_ft_sum = zeros(size(frames_ft(:,:,1)));
+            frame_img_sum = zeros(size(frames_img(:,:,1)));
         end
+
+        % Sum of all frames
+        frame_ft_sum = frame_ft_sum + sum(frames_ft, 3);
+        frame_img_sum = frame_img_sum + sum(frames_img, 3);
 
         
         % Loop over frames
         for g=1:G
             frame_ft = frames_ft(:,:,g);
             frame_img = frames_img(:,:,g);
-            
+
             % Extract pencil beam spot position
             [col_ft, row_ft, mean_intensity_ft, mean_masked_intensity_ft, threshold_ft, framemask_ft, found_ft] = extract_pencil_position_from_frame(...
                 frame_ft, meanthreshfactor, bgcornersize, percentile, percentilefactor, medfiltsize);
