@@ -1,7 +1,5 @@
 """
-The Two Photon Microscope with a Grid Target.
-
-Fit measurements of an absorbing Grid Target in the Two Photon Microscope.
+The Two Photon Microscope.
 """
 
 import torch
@@ -13,10 +11,9 @@ from matplotlib.gridspec import GridSpec
 from tqdm import tqdm
 # from torchviz import make_dot
 
-import vector_functions
-from vector_functions import norm, rotate
+from vector_functions import rotate, cartesian3d
 from ray_plane import Ray, Plane, CoordPlane
-from plot_functions import plot_plane, plot_lens, plot_rays, plot_coords
+from plot_functions import plot_plane, plot_lens, plot_rays, plot_coords, format_prefix
 from optical import ideal_lens, snells, galvo_mirror, slm_segment, intensity_mask_smooth_grid
 from testing import MSE
 
@@ -62,16 +59,11 @@ class TPM(torch.nn.Module):
         # https://refractiveindex.info/?shelf=glass&book=soda-lime&page=Rubin-clear
         # https://refractiveindex.info/?shelf=glass&book=SCHOTT-multipurpose&page=D263TECO
         self.n_water = 1.3304
-        self.n_target = 1.5191
         self.n_coverslip = 1.5185
 
         # Define coordinate system
-        origin = tensor((0., 0., 0.))
-        x = tensor((1., 0., 0.))
-        y = tensor((0., 1., 0.))
-        z = tensor((0., 0., 1.))
-
-        self.coordsystem = (origin, x, y, z)
+        self.coordsystem = cartesian3d()
+        origin, x, y, z = self.coordsystem
 
         # Galvo
         self.galvo_rad_per_V = (np.pi/180) / 0.5
@@ -82,11 +74,8 @@ class TPM(torch.nn.Module):
         self.slm_height = 10.7e-3
         self.slm_angle = tensor((0.,))              # Rotation angle around optical axis
 
-        # SLM coords and Galvo rotations
-        self.slm_coords = tensor(matfile['p/rects'])[0:2, :].T.view(-1, 2)
-        self.galvo_volts = tensor((matfile['p/galvoXs'], matfile['p/galvoYs'])).T \
-                          - tensor((matfile['p/GalvoXcenter'], matfile['p/GalvoYcenter'])).view(1, 1, 2)
-        self.galvo_rots = self.galvo_volts * self.galvo_rad_per_V
+        # Coverslip
+        self.coverslip_thickness = tensor((170e-6,))
 
         # Focal distances (m)
         self.f5 = 150e-3
@@ -106,21 +95,23 @@ class TPM(torch.nn.Module):
         self.L7 = Plane(self.L5.position_m + (self.f5 + self.f7)*z, -z)
         self.OBJ1 = Plane(self.L7.position_m + (self.f7 + self.fobj1)*z, -z)
 
-        # Grid Target
-        # https://www.thorlabs.com/thorproduct.cfm?partnumber=R1L3S3P
-        self.grid_target_x_spacing = 50e-6
-        self.grid_target_y_spacing = 50e-6
-        self.grid_target_thickness = 0.
-        self.grid_target_zshift = tensor((0.,))
-
         # Lens planes transmission arm
         self.obj2_zshift = tensor((0.,))
         self.L9_zshift = tensor((0.,))
+        self.L10_zshift = tensor((0.,))
 
         # Camera planes
         self.cam_pixel_size = 5.5e-6
         self.cam_ft_shift = tensor((0., 0., 0.))
         self.cam_im_shift = tensor((0., 0., 0.))
+
+    def set_measurement(self, matfile):
+        # SLM coords and Galvo rotations
+        self.slm_coords = tensor(matfile['p/rects'])[0:2, :].T.view(-1, 2)
+        self.galvo_volts = tensor((matfile['p/galvoXs'], matfile['p/galvoYs'])).T \
+                          - tensor((matfile['p/GalvoXcenter'], matfile['p/GalvoYcenter'])).view(1, 1, 2)
+        ######### Correct with SLM ppp instead
+        self.galvo_rots = self.galvo_volts * self.galvo_rad_per_V
 
     def update(self):
         """
@@ -134,37 +125,31 @@ class TPM(torch.nn.Module):
         # SLM
         self.slm_x = rotate(x * self.slm_width, z, self.slm_angle)
         self.slm_y = rotate(y * self.slm_height, z, self.slm_angle)
-        self.slm_plane = CoordPlane(origin, self.slm_x, self.slm_y)
+        self.slm_plane = CoordPlane(origin + self.slm_zshift * z, self.slm_x, self.slm_y)
 
         # Galvo
         self.galvo_x = rotate(x, z, self.galvo_angle)
         self.galvo_y = rotate(y, z, self.galvo_angle)
         self.galvo_plane = CoordPlane(origin, self.galvo_x, self.galvo_y)
-        
-        # Grid target
-        self.sample_plane = CoordPlane(self.OBJ1.position_m + self.fobj1*z, -x, y)
-        self.grid_target_back_plane = CoordPlane(
-            self.sample_plane.position_m + z*self.grid_target_zshift,
-            self.grid_target_x_spacing * -x,
-            self.grid_target_y_spacing * y)
-        self.grid_target_front_plane = Plane(
-            self.grid_target_back_plane.position_m - self.grid_target_thickness*z, -z)
 
+        # Sample plane and coverslip
+        coverslip_front_to_sample_plane = (170e-6 - self.coverslip_thickness) * z
+        self.coverslip_front_plane = CoordPlane(
+            self.OBJ1.position_m + self.fobj1*z + coverslip_front_to_sample_plane, -x, y)
+        self.sample_plane = CoordPlane(self.OBJ1.position_m + self.fobj1*z, -x, y)
 
         # Objective
         self.OBJ2 = Plane(self.sample_plane.position_m + self.fobj2*z + self.obj2_zshift*z, -z)
-        self.L9 = Plane(self.OBJ2.position_m + (self.fobj2 + self.f9)*z + self.L9_zshift, -z)
-        self.L10 = Plane(self.L9.position_m + (self.f9 + self.f10)*z, -z)
-        self.L11 = Plane(self.L10.position_m + (self.f10 + self.f11)*z, -z)
+        self.L9 = Plane(self.OBJ2.position_m + (self.fobj2 + self.f9 + self.L9_zshift)*z, -z)
+        self.L10 = Plane(self.L9.position_m + (self.f9 + self.f10)*z + self.L10_zshift*z, -z)
 
         # Cameras
+        self.cam_im_plane = CoordPlane(self.L9.position_m + self.f9*z + self.cam_im_shift,
+                                       self.cam_pixel_size * -x,
+                                       self.cam_pixel_size * y)
         self.cam_ft_plane = CoordPlane(self.L10.position_m + self.f10*z + self.cam_ft_shift,
                                        self.cam_pixel_size * -x,
-                                       self.cam_pixel_size * y)
-        self.cam_im_plane = CoordPlane(self.L11.position_m + self.f11*z + self.cam_im_shift,
-                                       self.cam_pixel_size * -x,
-                                       self.cam_pixel_size * y)
-
+                                       self.cam_pixel_size * -y)
 
     def raytrace(self):
         """
@@ -183,7 +168,7 @@ class TPM(torch.nn.Module):
         """
         # Initial Ray list
         origin, x, y, z = self.coordsystem
-        self.rays = [Ray(origin, -self.z)]
+        self.rays = [Ray(origin, -z)]
 
         # Propagation to objective 1
         self.rays.append(galvo_mirror(self.rays[-1], self.galvo_plane, self.galvo_rots))
@@ -193,99 +178,106 @@ class TPM(torch.nn.Module):
         self.rays.append(ideal_lens(self.rays[-1], self.OBJ1, self.fobj1))
         self.rays.append(self.rays[-1].copy(refractive_index=self.n_water))
 
-        # Propagation through grid target glass slide
-        self.rays.append(self.rays[-1].intersect_plane(self.grid_target_front_plane))
-        self.rays.append(snells(self.rays[-1], self.grid_target_front_plane.normal, self.n_target))
-        self.rays.append(self.rays[-1].intersect_plane(self.grid_target_back_plane))
-        self.rays.append(intensity_mask_smooth_grid(self.rays[-1], self.grid_target_back_plane, 4))
+        # Propagation through coverslip
+        self.rays.append(self.rays[-1].intersect_plane(self.coverslip_front_plane))
+        self.rays.append(snells(self.rays[-1], self.coverslip_front_plane.normal, self.n_coverslip))
+        self.rays.append(self.rays[-1].intersect_plane(self.sample_plane))
+        # self.rays.append(snells(self.rays[-1], self.sample_plane.normal, 1.))
 
-        # Propagation from objective 2
-        self.rays.append(snells(self.rays[-1], self.grid_target_back_plane.normal, self.n_coverslip))
+        # # Propagation from objective 2
         self.rays.append(self.rays[-1].copy(refractive_index=1.0))
         self.rays.append(ideal_lens(self.rays[-1], self.OBJ2, self.fobj2))
         self.rays.append(ideal_lens(self.rays[-1], self.L9, self.f9))
+
+        # Propagation onto cameras
+        cam_im_ray = self.rays[-1].intersect_plane(self.cam_im_plane)
+        self.rays.append(cam_im_ray)
         self.rays.append(ideal_lens(self.rays[-1], self.L10, self.f10))
         cam_ft_ray = self.rays[-1].intersect_plane(self.cam_ft_plane)
         self.rays.append(cam_ft_ray)
-        self.rays.append(ideal_lens(self.rays[-1], self.L11, self.f11))
-        cam_im_ray = self.rays[-1].intersect_plane(self.cam_im_plane)
-        self.rays.append(cam_im_ray)
 
         # Cameras
-        self.cam_ft_coords = self.cam_ft_plane.transform(cam_ft_ray)
-        self.cam_im_coords = self.cam_im_plane.transform(cam_im_ray)
+        self.cam_ft_coords = self.cam_ft_plane.transform_rays(cam_ft_ray)
+        self.cam_im_coords = self.cam_im_plane.transform_rays(cam_im_ray)
 
-        return self.cam_ft_coords, self.cam_im_coords, cam_ft_ray.intensity, cam_im_ray.intensity
+        return self.cam_ft_coords, self.cam_im_coords
 
     def plot(self):
         """Plot the TPM setup and the current rays."""
+        origin, x, y, z = self.coordsystem
+        viewplane = CoordPlane(origin, z, y)
+
         fig = plt.figure(figsize=(15, 4))
         fig.dpi = 144
         ax1 = plt.gca()
 
         # Plot lenses and planes
-        scale = 0.020
-        plot_plane(ax1, self.slm_plane, 1, ' SLM')
-        plot_plane(ax1, self.galvo_plane, scale, ' GM')
-        plot_lens(ax1, self.L5, self.f5, scale, 'L5\n')
-        plot_lens(ax1, self.L7, self.f7, scale, 'L7\n')
+        scale = 0.015
+        plot_plane(ax1, viewplane, self.slm_plane, 1, ' SLM')
+        plot_plane(ax1, viewplane, self.galvo_plane, scale, ' Galvo')
+        plot_lens(ax1, viewplane, self.L5, self.f5, scale, 'L5\n')
+        plot_lens(ax1, viewplane, self.L7, self.f7, scale, 'L7\n')
 
-        plot_lens(ax1, self.OBJ1, self.fobj1, scale, 'OBJ1\n')
-        plot_plane(ax1, self.grid_target_front_plane, scale*0.8, ' grid target\n front')
-        plot_plane(ax1, self.grid_target_back_plane, scale*6e4, ' grid target\n back')
-        plot_lens(ax1, self.OBJ2, self.fobj2, scale, 'OBJ2\n')
+        plot_lens(ax1, viewplane, self.OBJ1, self.fobj1, scale, 'OBJ1\n')
+        plot_plane(ax1, viewplane, self.coverslip_front_plane, scale*0.8, ' coverslip\n front')
+        plot_plane(ax1, viewplane, self.sample_plane, scale, ' sample plane')
+        plot_lens(ax1, viewplane, self.OBJ2, self.fobj2, 0.75*scale, 'OBJ2\n')
 
-        plot_lens(ax1, self.L9, self.f9, scale, 'L9\n')
-        plot_lens(ax1, self.L10, self.f10, scale, 'L10\n')
-        plot_lens(ax1, self.L11, self.f11, scale, 'L11\n')
+        plot_lens(ax1, viewplane, self.L9, self.f9, scale, 'L9\n')
+        plot_lens(ax1, viewplane, self.L10, self.f10, scale, 'L10\n')
 
-        plot_plane(ax1, self.cam_ft_plane, 2000, 'Fourier Cam')
-        plot_plane(ax1, self.cam_im_plane, 2000, 'Image Cam')
+        plot_plane(ax1, viewplane, self.cam_ft_plane, 2000, 'Fourier Cam')
+        plot_plane(ax1, viewplane, self.cam_im_plane, 2000, 'Image Cam')
 
         # Plot rays
         ray2_exp_pos = self.rays[2].position_m.expand(self.rays[3].position_m.shape)
         ray2_exp = self.rays[2].copy(position_m=ray2_exp_pos)
         raylist = [ray2_exp] + self.rays[3:]
-        plot_rays(ax1, raylist, fraction=0.03)
+        plot_rays(ax1, viewplane, raylist, fraction=0.1)
 
         plt.show()
 
 
 # Import measurement
-# cam_ft_coords_gt, cam_im_coords_gt, intensity_ft_gt, intensity_im_gt = tpm.raytrace()
-matpath = 'LocalData/pencil-beam-positions/26-Feb-2021-empty/raylearn_pencil_beam_738213.520505_empty.mat'
+# matpath = 'LocalData/raylearn-data/TPM/pencil-beam-positions/17-Nov-2021-400um/raylearn_pencil_beam_738477.786123_400um.mat'
+matpath = 'LocalData/raylearn-data/TPM/pencil-beam-positions/17-Nov-2021-empty/raylearn_pencil_beam_738477.729080_empty.mat'
 matfile = h5py.File(matpath, 'r')
 
 cam_size_pix = tensor((1088., 1088.)).view(1, 1, 2)
-cam_ft_coords_gt = tensor((matfile['cam_ft_col'],
-                           matfile['cam_ft_row'])).permute(1, 2, 0) - cam_size_pix/2 + 50
-cam_im_coords_gt = tensor((matfile['cam_img_col'],
-                           matfile['cam_img_row'])).permute(1, 2, 0) - cam_size_pix/2
 
-##### Don't use image cam coords close to edge
-cam_im_coords_gt[cam_im_coords_gt.abs() > cam_size_pix*0.45] = np.nan
+cam_ft_offset = tensor((-30., 45.)).view(1, 1, 2)
+cam_ft_coords_gt = tensor((matfile['cam_ft_col'], matfile['cam_ft_row'])).permute(1, 2, 0) \
+                    - cam_size_pix/2 - cam_ft_offset
+
+cam_im_offset = tensor((-65., -12.)).view(1, 1, 2)
+cam_im_coords_gt = tensor((matfile['cam_img_col'], matfile['cam_img_row'])).permute(1, 2, 0) \
+                    - cam_size_pix/2 - cam_im_offset
 
 
+# Create TPM object and perform initial raytrace
 tpm = TPM()
+tpm.set_measurement(matfile)
 tpm.update()
 tpm.raytrace()
-# tpm.plot()
 
 # Define Inital Guess
 tpm.slm_angle = tensor((0.,), requires_grad=True)
 tpm.galvo_angle = tensor((0.,), requires_grad=True)
-tpm.cam_ft_shift = tensor((0., 0., 0.), requires_grad=True)
-tpm.cam_im_shift = tensor((0., 0., 0.), requires_grad=True)
-tpm.grid_target_zshift = tensor((0.,), requires_grad=True)
-tpm.obj2_zshift = tensor((0.,), requires_grad=True)
+tpm.cam_ft_shift = tensor((0., 0., -3e-3), requires_grad=False)
+tpm.cam_im_shift = tensor((0., 0., 0.), requires_grad=False)
+tpm.obj2_zshift = tensor((0.,), requires_grad=False)
 tpm.L9_zshift = tensor((0.,), requires_grad=True)
-params_obj = (tpm.obj2_zshift,)
-params_other = (tpm.slm_angle,
-                tpm.galvo_angle,
-                tpm.cam_ft_shift,
-                tpm.cam_im_shift,
-                tpm.grid_target_zshift,
-                tpm.L9_zshift)
+tpm.L10_zshift = tensor((0.,), requires_grad=False)
+tpm.coverslip_thickness = tensor((170e-6,), requires_grad=False)
+
+params_angle = {
+    'SLM angle': tpm.slm_angle,
+    'Galvo angle': tpm.galvo_angle,
+}
+
+params_other = {
+}
+
 tpm.update()
 
 # Trace computational graph
@@ -293,174 +285,291 @@ tpm.update()
 
 # Define optimizer
 optimizer = torch.optim.Adam([
-        {'lr': 5.0e-5, 'params': params_obj},
-        {'lr': 1.0e-3, 'params': params_other},
-    ], lr=1.0e-3)
+        {'lr': 1.0e-3, 'params': params_angle.values()},
+        {'lr': 1.0e-4, 'params': params_other.values()},
+    ], lr=1.0e-5)
 
-iterations = 151
+iterations = 200
 errors = torch.zeros(iterations)
+
+
+params_angle_log = {}
+for name in params_angle:
+    params_angle_log[name] = torch.zeros(iterations)
+
+params_other_log = {}
+for name in params_other:
+    params_other_log[name] = torch.zeros(iterations)
+
 trange = tqdm(range(iterations), desc='error: -')
 
-#######
-fig, ax = plt.subplots(figsize=(7, 7));
-cam_ft_coords_gt[(norm(cam_ft_coords_gt) > 300).expand(cam_ft_coords_gt.shape)] = np.nan
-not_nan_mask_ft_gt = cam_ft_coords_gt.isnan().logical_not()
-for i in range(97):
-    plot_coords(ax, cam_ft_coords_gt[:,i,:],
-                {'color': [np.random.rand(),np.random.rand(),np.random.rand()]});
-plt.show()
-#######
+# Plot
+fig, ax = plt.subplots(nrows=2, figsize=(5, 10))
+fig.dpi = 144
 
 
 for t in trange:
     # === Learn === #
     # Forward pass
     tpm.update()
-    cam_ft_coords, cam_im_coords, intensity_ft, intensity_im = tpm.raytrace()
-    #####
-    cam_im_coords[cam_im_coords.abs() > cam_size_pix*0.45] = np.nan
-    std_im = (cam_im_coords - cam_im_coords_gt).nan_to_num(nan=0.0).abs().std()
-    cam_im_coords[(cam_im_coords - cam_im_coords_gt).nan_to_num(nan=0.0).abs() > 3*std_im] = np.nan
-    #####
+    cam_ft_coords, cam_im_coords = tpm.raytrace()
 
     # Compute and print error
     error = MSE(cam_ft_coords_gt, cam_ft_coords) \
-        + MSE(cam_im_coords_gt, cam_im_coords)  # \
-        #+ MSE(intensity_im_gt, intensity_im)
+        + MSE(cam_im_coords_gt, cam_im_coords) \
 
     error_value = error.detach().item()
     errors[t] = error_value
 
-    # trange.desc = f'error: {error_value:<8.3g}, thick: {tpm.grid_target_thickness.detach()}'
+    for name in params_angle:
+        params_angle_log[name][t] = params_angle[name].detach().item()
+
+    for name in params_other:
+        params_other_log[name][t] = params_other[name][-1].detach().item()
+
+    trange.desc = f'error: {error_value:<8.3g}' \
+        + f'cam ft zshift: {format_prefix(tpm.cam_ft_shift[2], "8.3f")}m'
 
     # error.backward(retain_graph=True)
     error.backward()
     optimizer.step()
     optimizer.zero_grad()
 
-    if t % 25 == 0:
-        fig, ax = plt.subplots(nrows=2, figsize=(5, 10))
-        fig.dpi = 144
+    if t % 40 == 0 and True:
+        # Fourier cam
+        cam_ft_coord_pairs_x, cam_ft_coord_pairs_y = \
+                torch.stack((cam_ft_coords_gt, cam_ft_coords)).detach().unbind(-1)
 
-        # Plot error
-        plot_coords(ax[0], cam_ft_coords_gt[44,:,:], {'label':'measured'})
-        plot_coords(ax[0], cam_ft_coords[44,:,:], {'label':'sim'})
+        ax[0].clear()
+        ax[0].plot(cam_ft_coord_pairs_x.view(2, -1), cam_ft_coord_pairs_y.view(2, -1),
+                   color='lightgrey')
+        plot_coords(ax[0], cam_ft_coords_gt[:, :, :], {'label': 'measured'})
+        plot_coords(ax[0], cam_ft_coords[:, :, :], {'label': 'sim'})
+
         ax[0].set_ylabel('y (pix)')
         ax[0].set_xlabel('x (pix)')
         ax[0].legend(loc=1)
-        ax[0].set_title(f'Fourier Plane Cam | iter: {t}')
+        ax[0].set_title(f'Fourier Cam | zshift={format_prefix(tpm.cam_ft_shift[2])}m | iter: {t}')
 
-        plot_coords(ax[1], cam_im_coords_gt[45, :, :], {'label': 'measured'})
-        plot_coords(ax[1], cam_im_coords[45, :, :], {'label': 'sim'})
+        # Image cam
+        cam_im_coord_pairs_x, cam_im_coord_pairs_y = \
+            torch.stack((cam_im_coords_gt, cam_im_coords)).detach().unbind(-1)
+
+        ax[1].clear()
+        ax[1].plot(cam_im_coord_pairs_x.view(2, -1), cam_im_coord_pairs_y.view(2, -1),
+                   color='lightgrey')
+        plot_coords(ax[1], cam_im_coords_gt[:, :, :], {'label': 'measured'})
+        plot_coords(ax[1], cam_im_coords[:, :, :], {'label': 'sim'})
+
         ax[1].set_ylabel('y (pix)')
         ax[1].set_xlabel('x (pix)')
         ax[1].legend(loc=1)
-        ax[1].set_title(f'Image Plane Cam | iter: {t}')
+        ax[1].set_title(f'Image Cam | iter: {t}')
 
-        plt.show()
+        plt.draw()
+        plt.pause(1e-4)
 
-print(f'\n\nPrediction: {tpm.slm_angle.detach()}')
+print(f'\ncam_ft_shift z: {format_prefix(tpm.cam_ft_shift[2])}m\n')
 
-#####
-cam_im_coords_gt[cam_im_coords.isnan()] = np.nan
-#####
+print(f'\nL9 zshift z: {format_prefix(tpm.L9_zshift)}m\n')
+
+
+##### === Check radial error relation ===
+error_per_pencil = ((cam_ft_coords - cam_ft_coords_gt).mean(dim=0) ** 2).sum(dim=1).sqrt().view(-1).detach()
+dist_to_center = (cam_ft_coords_gt.mean(dim=0) ** 2).sum(dim=1).sqrt().view(-1).detach()
+
+fig = plt.figure(figsize=(15, 4))
+fig.dpi = 144
+ax1 = plt.gca()
+
+plt.plot(dist_to_center, error_per_pencil, '.')
+plt.xlabel('Distance to center')
+plt.ylabel('Error per pencil beam')
+
+plt.show()
+##### ===================================
+
+
+# import time
+# time.sleep(100000)
+
+
+# fig, ax1 = plt.subplots(figsize=(7, 7))
+# fig.dpi = 144
+
+# # Plot error
+# errorcolor = 'tab:red'
+# RMSEs = np.sqrt(errors.detach().cpu())
+# ax1.plot(RMSEs, label='error', color=errorcolor)
+# ax1.set_ylabel('Error (pix)')
+# ax1.set_ylim((0, max(RMSEs)))
+# ax1.legend()
+
+# ax2 = ax1.twinx()
+# for name in params_angle_log:
+#     ax2.plot(params_angle_log[name], label=name)
+# for name in params_other_log:
+#     ax2.plot(params_other_log[name]*1e2, label=name)
+# ax2.set_ylabel('Parameter (cm | rad)')
+# ax2.legend()
+# 
+# fig.tight_layout()  # otherwise the right y-label is slightly clipped
+# plt.title('Learning parameters')
+# plt.show()
+
+
+# === Glass plate === #
+
+tpm.set_measurement(matfile)
+tpm.update()
+tpm.raytrace()
+
+
+# Import measurement
+matpath = 'LocalData/raylearn-data/TPM/pencil-beam-positions/17-Nov-2021-400um/raylearn_pencil_beam_738477.768870_400um.mat'
+# matpath = 'LocalData/raylearn-data/TPM/pencil-beam-positions/17-Nov-2021-empty/raylearn_pencil_beam_738477.729080_empty.mat'
+matfile = h5py.File(matpath, 'r')
+
+cam_size_pix = tensor((1088., 1088.)).view(1, 1, 2)
+
+cam_ft_offset = tensor((-30., 45.)).view(1, 1, 2)
+cam_ft_coords_gt = tensor((matfile['cam_ft_col'], matfile['cam_ft_row'])).permute(1, 2, 0) \
+                    - cam_size_pix/2 - cam_ft_offset
+
+cam_im_offset = tensor((-65., -12.)).view(1, 1, 2)
+cam_im_coords_gt = tensor((matfile['cam_img_col'], matfile['cam_img_row'])).permute(1, 2, 0) \
+                    - cam_size_pix/2 - cam_im_offset
+
+# Parameters
+tpm.coverslip_thickness = tensor((300e-6,), requires_grad=True)
+
+params_coverslip = {
+    'Coverslip Thickness': tpm.coverslip_thickness,
+}
+
+tpm.set_measurement(matfile)
+tpm.update()
+
+# Trace computational graph
+# tpm.traced_raytrace = torch.jit.trace_module(tpm, {'raytrace': []})
+
+# Define optimizer
+optimizer = torch.optim.Adam([
+        {'lr': 1.0e-4, 'params': params_coverslip.values()},
+    ], lr=1.0e-5)
+
+iterations = 250
+errors = torch.zeros(iterations)
+
+
+params_coverslip_log = {}
+for name in params_coverslip:
+    params_coverslip_log[name] = torch.zeros(iterations)
+
+trange = tqdm(range(iterations), desc='error: -')
+
+
+for t in trange:
+    # === Learn === #
+    # Forward pass
+    tpm.update()
+    cam_ft_coords, cam_im_coords = tpm.raytrace()
+
+    # Compute and print error
+    error = MSE(cam_ft_coords_gt, cam_ft_coords) \
+        + MSE(cam_im_coords_gt, cam_im_coords) \
+
+    error_value = error.detach().item()
+    errors[t] = error_value
+
+    for name in params_coverslip:
+        params_coverslip_log[name][t] = params_coverslip[name][-1].detach().item()
+
+    trange.desc = f'error: {error_value:<8.3g}' \
+        + f'coverslip thickness: {format_prefix(tpm.coverslip_thickness, "8.3f")}m'
+
+    # error.backward(retain_graph=True)
+    error.backward()
+    optimizer.step()
+    optimizer.zero_grad()
+
+    # Plot
+    if t % 40 == 0 and True:
+        # Fourier cam
+        cam_ft_coord_pairs_x, cam_ft_coord_pairs_y = \
+                torch.stack((cam_ft_coords_gt, cam_ft_coords)).detach().unbind(-1)
+
+        ax[0].clear()
+        ax[0].plot(cam_ft_coord_pairs_x.view(2, -1), cam_ft_coord_pairs_y.view(2, -1),
+                   color='lightgrey')
+        plot_coords(ax[0], cam_ft_coords_gt[:, :, :], {'label': 'measured'})
+        plot_coords(ax[0], cam_ft_coords[:, :, :], {'label': 'sim'})
+
+        ax[0].set_ylabel('y (pix)')
+        ax[0].set_xlabel('x (pix)')
+        ax[0].legend(loc=1)
+        ax[0].set_title(f'Fourier Cam | coverslip={format_prefix(tpm.coverslip_thickness)}m | iter: {t}')
+
+        # Image cam
+        cam_im_coord_pairs_x, cam_im_coord_pairs_y = \
+            torch.stack((cam_im_coords_gt, cam_im_coords)).detach().unbind(-1)
+
+        ax[1].clear()
+        ax[1].plot(cam_im_coord_pairs_x.view(2, -1), cam_im_coord_pairs_y.view(2, -1),
+                   color='lightgrey')
+        plot_coords(ax[1], cam_im_coords_gt[:, :, :], {'label': 'measured'})
+        plot_coords(ax[1], cam_im_coords[:, :, :], {'label': 'sim'})
+
+        ax[1].set_ylabel('y (pix)')
+        ax[1].set_xlabel('x (pix)')
+        ax[1].legend(loc=1)
+        ax[1].set_title(f'Image Cam | iter: {t}')
+
+        plt.draw()
+        plt.pause(1e-4)
+
+
+print(f'\ncoverslip thickness: {format_prefix(tpm.coverslip_thickness)}m\n')
+
+
+# tpm.plot()
 
 
 fig, ax1 = plt.subplots(figsize=(7, 7))
 fig.dpi = 144
 
-# Plot error
-errorcolor = 'tab:red'
-RMSEs = np.sqrt(errors.detach().cpu())
-ax1.plot(RMSEs, label='error', color=errorcolor)
-ax1.set_ylabel('Error (pix)')
-ax1.set_ylim((0, max(RMSEs)))
-ax1.legend()
+
+# # Plot error
+# errorcolor = 'tab:red'
+# RMSEs = np.sqrt(errors.detach().cpu())
+# ax1.plot(RMSEs, label='error', color=errorcolor)
+# ax1.set_ylabel('Error (pix)')
+# ax1.set_ylim((0, max(RMSEs)))
+# ax1.legend()
+
+# ax2 = ax1.twinx()
+# for name in params_coverslip_log:
+#     ax2.plot(params_coverslip_log[name]*1e6, label=name)
+# ax2.set_ylabel('Parameter (um | rad)')
+# ax2.legend()
 
 # fig.tight_layout()  # otherwise the right y-label is slightly clipped
-plt.title('Learning parameters')
-plt.show()
+# plt.title('Learning parameters')
+# plt.show()
 
 
-# %%
-# from time import sleep
-# for i in range(87):
-#     fig, ax = plt.subplots(nrows=2, figsize=(5, 10))
-#     fig.dpi = 144
+##### === Check radial error relation ===
+error_per_pencil = ((cam_ft_coords - cam_ft_coords_gt).mean(dim=0) ** 2).sum(dim=1).sqrt().view(-1).detach()
+dist_to_center = (cam_ft_coords_gt.mean(dim=0) ** 2).sum(dim=1).sqrt().view(-1).detach()
 
-#     # Plot error
-#     plot_coords(ax[0], cam_ft_coords_gt[i,:,:], {'label':'measured'})
-#     plot_coords(ax[0], cam_ft_coords[i,:,:], {'label':'sim'})
-#     ax[0].set_ylabel('y (pix)')
-#     ax[0].set_xlabel('x (pix)')
-#     ax[0].legend(loc=1)
-#     ax[0].set_title(f'Fourier Plane Cam | slice {i},:')
-
-#     plot_coords(ax[1], cam_im_coords_gt[:, i, :], {'label': 'measured'})
-#     plot_coords(ax[1], cam_im_coords[:, i, :], {'label': 'sim'})
-#     ax[1].set_ylabel('y (pix)')
-#     ax[1].set_xlabel('x (pix)')
-#     ax[1].legend(loc=1)
-#     ax[1].set_title(f'Image Plane Cam | slice :,{i}')
-
-#     sleep(0.3)
-#     plt.show()
-
-
-# %%
-xdiff_im, ydiff_im = (cam_im_coords_gt - cam_im_coords).detach().unbind(-1)
-x_im_gt, y_im_gt = cam_im_coords_gt.detach().unbind(-1)
-
-fig, ax = plt.subplots(nrows=2, figsize=(5, 10))
+fig = plt.figure(figsize=(15, 4))
 fig.dpi = 144
+ax1 = plt.gca()
 
-ax[0].plot(x_im_gt, xdiff_im, '.')
-ax[0].set_xlabel('x_im_gt (pix)')
-ax[0].set_ylabel('xdiff_im (pix)')
-ax[0].set_title('Image Plane x error')
-
-ax[1].plot(y_im_gt, ydiff_im, '.')
-ax[1].set_xlabel('y_im_gt (pix)')
-ax[1].set_ylabel('ydiff_im (pix)')
-ax[1].set_title('Image Plane y error')
+plt.plot(dist_to_center, error_per_pencil, '.')
+plt.xlabel('Distance to center')
+plt.ylabel('Error per pencil beam')
 
 plt.show()
-
-# %%
-xdiff_im, ydiff_im = (cam_im_coords_gt - cam_im_coords).detach().unbind(-1)
-x_galvo, y_galvo = tpm.galvo_rots.detach().expand(cam_im_coords_gt.shape).unbind(-1)
-
-fig, ax = plt.subplots(nrows=2, figsize=(5, 10))
-fig.dpi = 144
-
-ax[0].plot(x_galvo, xdiff_im, '.')
-ax[0].set_xlabel('x_galvo (rad)')
-ax[0].set_ylabel('xdiff_im (pix)')
-ax[0].set_title('Image Plane x error')
-
-ax[1].plot(y_galvo, ydiff_im, '.')
-ax[1].set_xlabel('y_galvo (rad)')
-ax[1].set_ylabel('ydiff_im (pix)')
-ax[1].set_title('Image Plane y error')
-
-plt.show()
-
-
-# %%
-xdiff_im, ydiff_im = (cam_im_coords_gt - cam_im_coords).detach().unbind(-1)
-x_slm, y_slm = tpm.slm_coords.detach().expand(cam_im_coords_gt.shape).unbind(-1)
-
-fig, ax = plt.subplots(nrows=2, figsize=(5, 10))
-fig.dpi = 144
-
-ax[0].plot(x_slm, xdiff_im, '.')
-ax[0].set_xlabel('x_slm (slm heights)')
-ax[0].set_ylabel('xdiff_im (pix)')
-ax[0].set_title('Image Plane x error')
-
-ax[1].plot(y_slm, ydiff_im, '.')
-ax[1].set_xlabel('y_slm (slm heights)')
-ax[1].set_ylabel('ydiff_im (pix)')
-ax[1].set_title('Image Plane y error')
-
-plt.show()
+##### ===================================
+pass

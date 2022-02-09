@@ -68,26 +68,58 @@ def ideal_lens(in_ray, lens, f):
         out_ray: Ray object. Output Ray.
 
     """
-    OC          = lens.position_m                           # Optical Center position
-    BFP         = Plane(OC - f * lens.normal, lens.normal)  # Back Focal Plane
-    chiefray    = Ray(OC, in_ray.direction)                 # Chief or Principal Ray (through OC)
-    focus       = chiefray.intersect_plane(BFP).position_m  # Ray intersection with Back Focal Plane
-    
-    intersect   = in_ray.intersect_plane(lens)              # Ray intersection with lens plane
-    newpos      = intersect.position_m                      # Position of the new ray
-    newpath     = intersect.pathlength_m                    # Pathlength of new ray at lens plane
 
-    ### Compute pathlength
-    # Rays further from the axis are delayed less
+    # Flip lens normal if in_ray is coming from opposite direction (required for backpropagation)
+    normal = -lens.normal * torch.sign(dot(lens.normal, in_ray.direction))
 
-    chiefraylength = norm(focus - OC) - dot(newpos - OC, chiefray.direction)
-    thisraylength = norm(focus - newpos)
-    
-    newpath += chiefraylength - thisraylength
+    # Define useful points for lens
+    L = lens.position_m                                     # Lens position
+    F1 = L + f*normal                                       # Front focal point
+    F2 = L - f*normal                                       # Back focal point
 
-    out_ray = in_ray.copy(position_m=newpos, pathlength_m=newpath, \
-        direction=unit(focus - newpos) )    # Output Ray
-    return out_ray
+    # Compute outgoing Ray position and direction
+    S_Ray = in_ray.intersect_plane(Plane(F1, normal))       # Propagate Ray to Front focal plane
+    P = S_Ray.intersect_plane(lens).position_m              # Intersection with lens plane
+    out_dir = unit(L - S_Ray.position_m)                    # Out Ray direction
+
+    # Compute pathlength
+    PW_distance_m = dot(out_dir, F2 - P)                    # Distance P to W
+    new_pathlength_m = S_Ray.pathlength_m \
+        + (2*f - PW_distance_m)                             # Compute pathlength
+
+    ##################
+    # # Pathlength paraxial approximation (parabolic wavefront correction)
+    # new_pathlength_m = in_ray.intersect_plane(lens).pathlength_m \
+    #                  - in_ray.refractive_index * norm_square(P - L) / (2*f)
+
+    # # Pathlength correction spherical wavefront
+    # new_pathlength_m = in_ray.intersect_plane(lens).pathlength_m \
+    #                  - in_ray.refractive_index * (torch.sqrt(f*f + norm_square(P-L)) - f)
+    ##################
+
+    # Return outgoing Ray
+    return S_Ray.copy(position_m=P, direction=out_dir, pathlength_m=new_pathlength_m)
+
+#    OC          = lens.position_m                           # Optical Center position
+#    BFP         = Plane(OC - f * lens.normal, lens.normal)  # Back Focal Plane
+#    chiefray    = Ray(OC, in_ray.direction)                 # Chief or Principal Ray (through OC)
+#    focus       = chiefray.intersect_plane(BFP).position_m  # Ray intersection with Back Focal Plane
+#
+#    intersect   = in_ray.intersect_plane(lens)              # Ray intersection with lens plane
+#    newpos      = intersect.position_m                      # Position of the new ray
+#    newpath     = intersect.pathlength_m                    # Pathlength of new ray at lens plane
+#
+#    ### Compute pathlength
+#    # Rays further from the axis are delayed less
+#
+#    chiefraylength = norm(focus - OC) - dot(newpos - OC, chiefray.direction)
+#    thisraylength = norm(focus - newpos)
+#
+#    newpath += chiefraylength - thisraylength
+#
+#    out_ray = in_ray.copy(position_m=newpos, pathlength_m=newpath,
+#        direction=unit(focus - newpos) )    # Output Ray
+#    return out_ray
 
 
 def smooth_grid(xy, power):
@@ -223,6 +255,7 @@ def slm_segment(ray_in, slm_plane, slm_coords):
                     the physical size of the SLM from edge to edge.
         SLM_coords  Tensor. Coordinates of the output ray positions in relative
                     SLM coordinates, i.e. ranging from top to bottom = [-0.5, 0.5].
+                    Aspect ratio = 1.
 
     Output
     ------

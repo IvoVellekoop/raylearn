@@ -25,7 +25,7 @@ class Ray:
         position_m          Vector. Ray position in meters
         direction           Vector. Ray direction unit vector
         refractive_index    Scalar. Refractive index of medium
-        pathlength          Scalar. Total optical pathlength in meters
+        pathlength_m        Scalar. Total optical pathlength in meters
         weight              Scalar. Total weight. Adjusts contribution to objective function.
 
     """
@@ -41,11 +41,16 @@ class Ray:
 
     def intersect_plane(self, plane):
         """Return new Ray at intersection with Plane or CoordPlane."""
-        distance_m = dot(plane.normal, plane.position_m - self.position_m) \
-            / dot(plane.normal, self.direction)
+        distance_m = self.ray_distance_to_plane(plane)
         intersection = self.position_m + self.direction * distance_m
-        pathlength = self.pathlength_m + self.refractive_index * torch.abs(distance_m)
-        return self.copy(position_m=intersection, pathlength_m=pathlength)
+        new_pathlength_m = self.pathlength_m + self.refractive_index * distance_m
+        return self.copy(position_m=intersection, pathlength_m=new_pathlength_m)
+
+    def ray_distance_to_plane(self, plane):
+        """Return distance to Plane along Ray."""
+        return dot(plane.normal, plane.position_m - self.position_m) \
+            / dot(plane.normal, self.direction)
+
 
     def mask(self, mask_factors):
         """Mask Ray with given mask_factors array."""
@@ -112,9 +117,15 @@ class CoordPlane():
         """Compute normal vector of the plane. Computed from the x & y component vectors."""
         return unit(cross(self.x, self.y))
 
-    def transform(self, rays):
+    def transform_points(self, points_m):
         """Transform vector array to coordinates of the CoordPlane x & y."""
-        p = rays.position_m - self.position_m
+        p = points_m - self.position_m
         x = dot(p, self.x) / norm_square(self.x)
         y = dot(p, self.y) / norm_square(self.y)
         return torch.cat((x, y), -1)
+
+    def transform_rays(self, rays):
+        """Transform Ray position to coordinates of the CoordPlane x & y."""
+        ##### Away with ya!
+        return self.transform_points(rays.position_m)
+

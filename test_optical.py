@@ -12,6 +12,12 @@ from optical import point_source, collimated_source, ideal_lens, snells,\
                     mirror, galvo_mirror, slm_segment
 
 
+###############
+import matplotlib.pyplot as plt
+from plot_functions import plot_plane, plot_lens, plot_rays
+###############
+
+
 def test_sources():
     """
     Test point source and collimated source.
@@ -57,40 +63,41 @@ def test_ideal_lens_point_source():
     Ny = 4
 
     # Define point source
-    src_pos = Tensor((2,5,4))
-    src_x = Tensor((1,6,9))
-    src_y_prime = Tensor((4,2,0))
+    src_pos = Tensor((2,1,4))
+    src_x = Tensor((0.5,0.3,0.2))
+    src_y_prime = Tensor((0,3,1))
     src_y = unit(rejection(src_y_prime, src_x))
     src = point_source(CoordPlane(src_pos, src_x, src_y), Nx, Ny)
 
     # Define lens at distance f
     f = 3
     lens_dir = unit(Tensor((2,3,-5)))
-    lens_pos = src_pos - f * lens_dir + rejection(Tensor((2, -1, 0.1)), lens_dir)
+    lens_pos = src_pos - f * lens_dir + rejection(Tensor((0, -1, 0.1)), lens_dir)
     lens = Plane(lens_pos, lens_dir)
 
     # Check output rays point source through lens
     outray = ideal_lens(src, lens, f)
+
     assert comparetensors(outray.position_m, src.intersect_plane(lens).position_m)
     assert comparetensors(outray.direction, unit(lens_pos - src_pos))
 
 
 def test_ideal_lens_collimated_source():
     """Test collimated source through lens."""
-    Nx = 1
+    Nx = 3
     Ny = 5
 
     # Define collimated source
-    src_pos = Tensor((-1,4,6))
-    src_x = Tensor((3,4,2))
+    src_pos = Tensor((-3,2,5))
+    src_x = Tensor((2,3,1))
     src_y_prime = Tensor((-5,-6,-1))
-    src_y = unit(rejection(src_y_prime, src_x))
+    src_y = 3*unit(rejection(src_y_prime, src_x))
     src_plane = CoordPlane(src_pos, src_x, src_y)
     src = collimated_source(src_plane, Nx, Ny)
 
     # Define lens
     f = 6
-    lens_dir = unit(Tensor((8,1,-3)))
+    lens_dir = rotate(-src_plane.normal, unit(src_x), 0.15)
     lens_pos = Tensor((-2,-0.1,9))
     lens = Plane(lens_pos, lens_dir)
 
@@ -103,11 +110,30 @@ def test_ideal_lens_collimated_source():
     focussed_ray = on_lens_ray.intersect_plane(BFP)
     chief_ray_at_BFP = Ray(lens_pos, src_plane.normal).intersect_plane(BFP)
 
+    breakpoint()
+
+    #########################
+    fig = plt.figure(figsize=(7, 4))
+    fig.dpi = 144
+    ax1 = plt.gca()
+
+    # Plot lenses and planes
+    viewplane = CoordPlane(Tensor((0,0,0)), src_plane.normal, unit(src_y))
+    plot_lens(ax1, viewplane, lens, f, 6, 'Lens')
+    plot_plane(ax1, viewplane, BFP, 3)
+
+    # Plot rays
+    plot_rays(ax1, viewplane, [src, on_lens_ray, endray])
+
+    plt.show()
+    #########################
+
     assert comparetensors(on_lens_ray.position_m, src.intersect_plane(lens).position_m)
     assert comparetensors(focussed_ray.position_m, chief_ray_at_BFP.position_m)
 
     # Light in focus should be in phase
-    assert comparetensors(focussed_ray.pathlength_m, focussed_ray.pathlength_m[0,0])
+    print(focussed_ray.pathlength_m)
+    assert comparetensors(focussed_ray.pathlength_m, focussed_ray.pathlength_m[0,0,0])
 
 
 def test_ideal_lens_lens_law_positive():
@@ -117,17 +143,19 @@ def test_ideal_lens_lens_law_positive():
 
     # Define point source
     src_pos = Tensor((1,0,3))
-    src_x = Tensor((-0.4,1,2))
-    src_y_prime = Tensor((0,-0.9,4))
+    src_x = Tensor((1.6,1,0))
+    src_y_prime = Tensor((0, 9, 4))
     src_y = unit(rejection(src_y_prime, src_x))
-    src = point_source(CoordPlane(src_pos, src_x, src_y), Nx, Ny)
+    src_plane = CoordPlane(src_pos, src_x, src_y)
+    src = point_source(src_plane, Nx, Ny)
 
     # Define lens at distance s1
     f = 3
     s1 = 2.6 * f
     s2 = 1 / (1/f - 1/s1)
-    lens_dir = unit(Tensor((2,1,-6)))
-    lens_pos = src_pos - s1 * lens_dir + rejection(Tensor((0.3,1.2,-0.4)), lens_dir)
+    # lens_dir = unit(Tensor((2,1,-6)))
+    lens_dir = -src_plane.normal
+    lens_pos = src_pos - s1 * lens_dir + 0*rejection(Tensor((0.3,1.2,-0.4)), lens_dir)
     lens = Plane(lens_pos, lens_dir)
 
     image_plane_pos = lens_pos - s2 * lens_dir + rejection(Tensor((-1,3,0.2)), lens_dir)
