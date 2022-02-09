@@ -81,7 +81,8 @@ def rotate(v, u, theta):
     if isinstance(theta, torch.Tensor):
         tensor_theta = theta                    # Already a Tensor
     else:
-        tensor_theta = torch.Tensor((theta,))   # Turn into Tensor
+        # Turn into Tensor (only works for Python scalars or single number Tensors)
+        tensor_theta = torch.Tensor((theta,))
 
     C = torch.cos(tensor_theta)
     S = torch.sin(tensor_theta)
@@ -98,6 +99,7 @@ def area_para(v, w):
 def components(v):
     """Return spatial vector components vx,vy,vz... of ...xMxD vector v as tuple of Tensors."""
     return v.unsqueeze(-2).unbind(-1)
+
 
 def cartesian3d():
     origin = torch.tensor((0., 0., 0.))
