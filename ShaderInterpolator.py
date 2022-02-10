@@ -5,6 +5,18 @@ from OpenGL.GL import arrays
 import glfw
 import numpy as np
 
+"""
+Functions to interpolate raytracer output rays/pathlength to complex field. 
+
+Only importing interpolate_shader is necessary, the rest are helper functions
+and encapsulation of OpenGL state.
+
+This code uses OpenGL functions for hardware-accelerated interpolation, make 
+sure that pyOpenGL and pyGlfw are installed and your video drivers are set up
+correctly. You may need to manually override the anaconda-provided libstdc++ to
+match your system version.
+"""
+
 def interpolate_shader(data, npoints=(600,600), limits=(-100e-6,100e-6, -100e-6,100e-6), wavelength_m = 1e-6):
     """
     Interpolate data using OpenGL shader. Data should be a numpy array. 
@@ -69,6 +81,33 @@ class ShaderInterpolator:
     Interpolate path length on the GPU through a shader.
     """
     
+    def opengl_setup(self, resolution):
+        """
+        Set up OpenGL context and buffers 
+        """
+        # Create window
+        glfw.init()
+        glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 4)
+        glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 4)
+        glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
+        self.window = glfw.create_window(resolution[1], resolution[0], "A Window", None, None)
+        glfw.make_context_current(self.window)
+
+        # Enable blending for addition of fields
+        GL.glClearColor(0, 0, 0, 0)
+        GL.glEnable(GL.GL_BLEND) 
+        GL.glBlendFunc(GL.GL_ONE, GL.GL_ONE)
+        # Default blendEquation is already GL_ADD
+        #GL.glBlendEquation(GL.GL_ADD)
+
+        # Create output framebuffers
+        self.rb = GL.glGenRenderbuffers(1)
+        GL.glBindRenderbuffer(GL.GL_RENDERBUFFER, self.rb)
+        GL.glRenderbufferStorage(GL.GL_RENDERBUFFER, GL.GL_RGBA32F, 600, 600) # 600^2 pixels, 4-channel 32-bit float
+        self.fb = GL.glGenFramebuffers(1)
+        GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self.fb) # read/write framebuffer
+        GL.glFramebufferRenderbuffer(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT0, GL.GL_RENDERBUFFER, self.rb)
+
     def load_shaders(self): 
         vertexsource = """
         #version 440 core
@@ -120,29 +159,36 @@ class ShaderInterpolator:
         
         elements = calculate_elements(self.nx,self.ny)
         self.ibo = GL.arrays.vbo.VBO(elements, target=GL.GL_ELEMENT_ARRAY_BUFFER)
-
-    def get_field(self):
-        return self.field_out
         
     def draw_frame(self):
+        """
+        Draw a single frame using the interpolation shader. 
+        """
+        
+        # Bind buffers
         GL.glClear(GL.GL_COLOR_BUFFER_BIT)
         self.vbo.bind()
         self.ibo.bind()
         GL.glUseProgram(self.program)
-        GL.glEnableVertexAttribArray(0) # input 0: vertexPosition_modelspace 
-        GL.glEnableVertexAttribArray(1) # input 1: vertexColor
         
+        # Set up inputs
         # Position. Two doubles, stride 3*8 bytes
+        GL.glEnableVertexAttribArray(0) # input 0: vertexPosition_modelspace 
         GL.glVertexAttribPointer(0, 2, GL.GL_DOUBLE, GL.GL_FALSE, 24, self.vbo)
+        
         # Pathlength/'color'. One double, stride 3*8 bytes, offset 2*8 bytes
+        GL.glEnableVertexAttribArray(1) # input 1: vertexColor
         GL.glVertexAttribPointer(1, 1, GL.GL_DOUBLE, GL.GL_FALSE, 24, self.vbo+16)
+        
         # Wavelength
         lambda_loc = GL.glGetUniformLocation(self.program, "lambda")
         GL.glUniform1f(lambda_loc, self.wavelength_m)
+        
         # Coordinate system
         mvp_loc = GL.glGetUniformLocation(self.program, "MVP")
         GL.glUniformMatrix4fv(mvp_loc, 1, GL.GL_TRUE, self.MVP) # GLTrue because matrix needs to be transposed
         
+        # Actual draw call
         GL.glDrawElements(GL.GL_TRIANGLES, (self.nx - 1)*(self.ny - 1)*6, GL.GL_UNSIGNED_INT, None)
 
     def __init__(self, data, npoints, limits, wavelength_m):
@@ -153,31 +199,11 @@ class ShaderInterpolator:
         self.MVP = coordinate_matrix(npoints, limits)
 
         # Create OpenGL context
-        glfw.init()
-        glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 4)
-        glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 4)
-        glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
-        self.window = glfw.create_window(npoints[1], npoints[0], "A Window", None, None)
-        glfw.make_context_current(self.window)
+        self.opengl_setup(npoints)
         
         # Prepare GPU resources
         self.load_shaders()
         self.load_data(data)
-
-        # Enable blending for addition of fields
-        GL.glClearColor(0, 0, 0, 0)
-        GL.glEnable(GL.GL_BLEND) 
-        GL.glBlendFunc(GL.GL_ONE, GL.GL_ONE)
-        # Default blendEquation is already GL_ADD
-        #GL.glBlendEquation(GL.GL_ADD)
-
-        # Create output framebuffers
-        self.rb = GL.glGenRenderbuffers(1)
-        GL.glBindRenderbuffer(GL.GL_RENDERBUFFER, self.rb)
-        GL.glRenderbufferStorage(GL.GL_RENDERBUFFER, GL.GL_RGBA32F, 600, 600) # 600^2 pixels, 4-channel 32-bit float
-        self.fb = GL.glGenFramebuffers(1)
-        GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self.fb) # read/write framebuffer
-        GL.glFramebufferRenderbuffer(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT0, GL.GL_RENDERBUFFER, self.rb)
 
         # Draw to framebuffer
         self.draw_frame()
@@ -185,13 +211,13 @@ class ShaderInterpolator:
         # Convert to complex field
         self.field_out = image_buffer[:,:,0] + 1j*image_buffer[:,:,1]
 
-        # Main loop, draw to window
-        GL.glBindFramebuffer(GL.GL_FRAMEBUFFER,0)
-        #GL.glViewport(0, 0, 0, 0)
-        while not glfw.window_should_close(self.window):
-            self.draw_frame()
-            glfw.swap_buffers(self.window)
-            glfw.poll_events()
+        # # Main loop, draw to window. Not necessary for calculation but may be useful for debugging
+        # GL.glBindFramebuffer(GL.GL_FRAMEBUFFER,0)
+        # #GL.glViewport(0, 0, 0, 0)
+        # while not glfw.window_should_close(self.window):
+        #     self.draw_frame()
+        #     glfw.swap_buffers(self.window)
+        #     glfw.poll_events()
         
         # Clean up resources
         self.vbo.delete()
@@ -200,3 +226,6 @@ class ShaderInterpolator:
         # GL.glDeleteRenderbuffers(1, self.rb) # This crashes for some reason
         # GL.glDeleteFramebuffers(1, self.fb)
         glfw.terminate()
+
+    def get_field(self):
+        return self.field_out
