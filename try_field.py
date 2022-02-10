@@ -10,6 +10,7 @@ from optical import point_source, collimated_source, ideal_lens, snells
 from interpolate import interpolate2d
 from field import field_from_rays, coord_grid
 from vector_functions import cartesian3d
+from interpolate_shader import interpolate_shader
 
 # Set defaults
 torch.set_default_tensor_type('torch.DoubleTensor')
@@ -206,7 +207,6 @@ for i,row in enumerate(field_coords):
 pos = cam_coords
 path = system.rays[-1].pathlength_m
 data = torch.cat((pos,path),2)
-from ShaderInterpolator import interpolate_shader
 field_out_shader = torch.tensor(interpolate_shader(data.numpy(), limits=(-max_size, max_size, -max_size,max_size), npoints=(planepts,planepts)))
 
 # Display interpolated field
