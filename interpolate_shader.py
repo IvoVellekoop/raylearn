@@ -207,7 +207,7 @@ class ShaderInterpolator:
 
         # Draw to framebuffer
         self.draw_frame()
-        image_buffer = GL.glReadPixels(0, 0, 600, 600, GL.GL_RGBA, GL.GL_FLOAT)
+        image_buffer = GL.glReadPixels(0, 0, npoints[0], npoints[1], GL.GL_RGBA, GL.GL_FLOAT)
         # Convert to complex field
         self.field_out = image_buffer[:,:,0] + 1j*image_buffer[:,:,1]
 
