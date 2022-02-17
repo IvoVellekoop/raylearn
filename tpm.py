@@ -73,6 +73,7 @@ class TPM(torch.nn.Module):
         self.slm_width = 10.7e-3
         self.slm_height = 10.7e-3
         self.slm_angle = tensor((0.,))              # Rotation angle around optical axis
+        self.slm_zshift = tensor((0.,))
 
         # Coverslip
         self.coverslip_thickness = tensor((170e-6,))
@@ -117,7 +118,7 @@ class TPM(torch.nn.Module):
         """
         Update dependent properties. These depend on parameters to be learned.
 
-        Properties that depend on other properties should be computed here,
+        Properties that depend on dynamic properties should be computed here,
         so they get recomputed whenever update is called. All lengths in meters.
         """
         origin, x, y, z = self.coordsystem
@@ -147,7 +148,7 @@ class TPM(torch.nn.Module):
         self.cam_im_plane = CoordPlane(self.L9.position_m + self.f9*z + self.cam_im_shift,
                                        self.cam_pixel_size * -x,
                                        self.cam_pixel_size * y)
-        self.cam_ft_plane = CoordPlane(self.L10.position_m + self.f10*z + self.cam_ft_shift,
+        self.cam_ft_plane = CoordPlane(self.L10.position_m + self.f10*z + self.cam_ft_shift*(x+y),
                                        self.cam_pixel_size * -x,
                                        self.cam_pixel_size * -y)
 
@@ -202,57 +203,42 @@ class TPM(torch.nn.Module):
 
         return self.cam_ft_coords, self.cam_im_coords
 
-    def plot(self):
+    def plot(self, ax=plt.gca()):
         """Plot the TPM setup and the current rays."""
-        origin, x, y, z = self.coordsystem
-        viewplane = CoordPlane(origin, z, y)
-
-        fig = plt.figure(figsize=(15, 4))
-        fig.dpi = 144
-        ax1 = plt.gca()
 
         # Plot lenses and planes
-        scale = 0.015
-        plot_plane(ax1, viewplane, self.slm_plane, 1, ' SLM')
-        plot_plane(ax1, viewplane, self.galvo_plane, scale, ' Galvo')
-        plot_lens(ax1, viewplane, self.L5, self.f5, scale, 'L5\n')
-        plot_lens(ax1, viewplane, self.L7, self.f7, scale, 'L7\n')
+        scale = 0.008
+        plot_plane(ax, self.slm_plane, 1, ' SLM')
+        plot_plane(ax, self.galvo_plane, scale, ' Galvo')
+        plot_lens(ax, self.L5, self.f5, scale, ' L5\n')
+        plot_lens(ax, self.L7, self.f7, scale, ' L7\n')
 
-        plot_lens(ax1, viewplane, self.OBJ1, self.fobj1, scale, 'OBJ1\n')
-        plot_plane(ax1, viewplane, self.coverslip_front_plane, scale*0.8, ' coverslip\n front')
-        plot_plane(ax1, viewplane, self.sample_plane, scale, ' sample plane')
-        plot_lens(ax1, viewplane, self.OBJ2, self.fobj2, 0.75*scale, 'OBJ2\n')
+        plot_lens(ax, self.OBJ1, self.fobj1, scale, ' OBJ1\n')
+        plot_plane(ax, self.coverslip_front_plane, scale*0.8, '', ' coverslip\n front')
+        plot_plane(ax, self.sample_plane, scale*0.7, '', ' sample plane')
+        plot_lens(ax, self.OBJ2, self.fobj2, 0.75*scale, 'OBJ2\n')
 
-        plot_lens(ax1, viewplane, self.L9, self.f9, scale, 'L9\n')
-        plot_lens(ax1, viewplane, self.L10, self.f10, scale, 'L10\n')
+        plot_lens(ax, self.L9, self.f9, scale, ' L9\n')
+        plot_lens(ax, self.L10, self.f10, scale, 'L10\n')
 
-        plot_plane(ax1, viewplane, self.cam_ft_plane, 2000, 'Fourier Cam')
-        plot_plane(ax1, viewplane, self.cam_im_plane, 2000, 'Image Cam')
+        plot_plane(ax, self.cam_ft_plane, 2000, ' Fourier Cam')
+        plot_plane(ax, self.cam_im_plane, 2000, ' Image Cam')
 
         # Plot rays
         ray2_exp_pos = self.rays[2].position_m.expand(self.rays[3].position_m.shape)
         ray2_exp = self.rays[2].copy(position_m=ray2_exp_pos)
         raylist = [ray2_exp] + self.rays[3:]
-        plot_rays(ax1, viewplane, raylist, fraction=0.1)
-
-        plt.show()
+        plot_rays(ax, raylist, fraction=0.05)
 
 
 # Import measurement
 # matpath = 'LocalData/raylearn-data/TPM/pencil-beam-positions/17-Nov-2021-400um/raylearn_pencil_beam_738477.786123_400um.mat'
-matpath = 'LocalData/raylearn-data/TPM/pencil-beam-positions/17-Nov-2021-empty/raylearn_pencil_beam_738477.729080_empty.mat'
+# matpath = 'LocalData/raylearn-data/TPM/pencil-beam-positions/17-Nov-2021-empty/raylearn_pencil_beam_738477.729080_empty.mat'
+matpath = 'LocalData/raylearn-data/TPM/pencil-beam-positions/10-Feb-2022-empty/raylearn_pencil_beam_738562.645439_empty.mat'
 matfile = h5py.File(matpath, 'r')
 
-cam_size_pix = tensor((1088., 1088.)).view(1, 1, 2)
-
-cam_ft_offset = tensor((-30., 45.)).view(1, 1, 2)
-cam_ft_coords_gt = tensor((matfile['cam_ft_col'], matfile['cam_ft_row'])).permute(1, 2, 0) \
-                    - cam_size_pix/2 - cam_ft_offset
-
-cam_im_offset = tensor((-65., -12.)).view(1, 1, 2)
-cam_im_coords_gt = tensor((matfile['cam_img_col'], matfile['cam_img_row'])).permute(1, 2, 0) \
-                    - cam_size_pix/2 - cam_im_offset
-
+cam_ft_coords_gt = tensor((matfile['cam_ft_col'], matfile['cam_ft_row'])).permute(1, 2, 0)
+cam_im_coords_gt = tensor((matfile['cam_img_col'], matfile['cam_img_row'])).permute(1, 2, 0)
 
 # Create TPM object and perform initial raytrace
 tpm = TPM()
@@ -261,11 +247,12 @@ tpm.update()
 tpm.raytrace()
 
 # Define Inital Guess
+tpm.slm_zshift = tensor((0.,), requires_grad=True)
 tpm.slm_angle = tensor((0.,), requires_grad=True)
 tpm.galvo_angle = tensor((0.,), requires_grad=True)
-tpm.cam_ft_shift = tensor((0., 0., -3e-3), requires_grad=False)
-tpm.cam_im_shift = tensor((0., 0., 0.), requires_grad=False)
-tpm.obj2_zshift = tensor((0.,), requires_grad=False)
+tpm.cam_ft_shift = tensor((0., 0., 0*-3e-3), requires_grad=True)
+tpm.cam_im_shift = tensor((0., 0., 0.), requires_grad=True)
+tpm.obj2_zshift = tensor((0.,), requires_grad=True)
 tpm.L9_zshift = tensor((0.,), requires_grad=True)
 tpm.L10_zshift = tensor((0.,), requires_grad=False)
 tpm.coverslip_thickness = tensor((170e-6,), requires_grad=False)
@@ -276,6 +263,8 @@ params_angle = {
 }
 
 params_other = {
+    'SLM zshift': tpm.slm_zshift,
+    'cam ft shift': tpm.cam_ft_shift,
 }
 
 tpm.update()
@@ -286,10 +275,10 @@ tpm.update()
 # Define optimizer
 optimizer = torch.optim.Adam([
         {'lr': 1.0e-3, 'params': params_angle.values()},
-        {'lr': 1.0e-4, 'params': params_other.values()},
+        {'lr': 1.0e-3, 'params': params_other.values()},
     ], lr=1.0e-5)
 
-iterations = 200
+iterations = 1200
 errors = torch.zeros(iterations)
 
 
@@ -304,8 +293,10 @@ for name in params_other:
 trange = tqdm(range(iterations), desc='error: -')
 
 # Plot
-fig, ax = plt.subplots(nrows=2, figsize=(5, 10))
-fig.dpi = 144
+fig, ax = plt.subplots(nrows=2, figsize=(5, 10), dpi=120)
+
+fig_tpm = plt.figure(figsize=(15, 4), dpi=120)
+ax_tpm = plt.gca()
 
 
 for t in trange:
@@ -328,14 +319,14 @@ for t in trange:
         params_other_log[name][t] = params_other[name][-1].detach().item()
 
     trange.desc = f'error: {error_value:<8.3g}' \
-        + f'cam ft zshift: {format_prefix(tpm.cam_ft_shift[2], "8.3f")}m'
+        + f'slm zshift: {format_prefix(tpm.slm_zshift, "8.3f")}m'
 
     # error.backward(retain_graph=True)
     error.backward()
     optimizer.step()
     optimizer.zero_grad()
 
-    if t % 40 == 0 and True:
+    if t % 50 == 0 and True:
         # Fourier cam
         cam_ft_coord_pairs_x, cam_ft_coord_pairs_y = \
                 torch.stack((cam_ft_coords_gt, cam_ft_coords)).detach().unbind(-1)
@@ -349,7 +340,7 @@ for t in trange:
         ax[0].set_ylabel('y (pix)')
         ax[0].set_xlabel('x (pix)')
         ax[0].legend(loc=1)
-        ax[0].set_title(f'Fourier Cam | zshift={format_prefix(tpm.cam_ft_shift[2])}m | iter: {t}')
+        ax[0].set_title(f'Fourier Cam | slm zshift={format_prefix(tpm.slm_zshift)}m | iter: {t}')
 
         # Image cam
         cam_im_coord_pairs_x, cam_im_coord_pairs_y = \
@@ -367,56 +358,38 @@ for t in trange:
         ax[1].set_title(f'Image Cam | iter: {t}')
 
         plt.draw()
-        plt.pause(1e-4)
 
-print(f'\ncam_ft_shift z: {format_prefix(tpm.cam_ft_shift[2])}m\n')
+        ax_tpm.clear()
+        tpm.plot(ax_tpm)
 
-print(f'\nL9 zshift z: {format_prefix(tpm.L9_zshift)}m\n')
+        plt.draw()
+        plt.pause(1e-3)
+
+print(f'\nslm zshift: {format_prefix(tpm.slm_zshift)}m\n')
 
 
-##### === Check radial error relation ===
-error_per_pencil = ((cam_ft_coords - cam_ft_coords_gt).mean(dim=0) ** 2).sum(dim=1).sqrt().view(-1).detach()
-dist_to_center = (cam_ft_coords_gt.mean(dim=0) ** 2).sum(dim=1).sqrt().view(-1).detach()
-
-fig = plt.figure(figsize=(15, 4))
+fig, ax1 = plt.subplots(figsize=(7, 7))
 fig.dpi = 144
-ax1 = plt.gca()
 
-plt.plot(dist_to_center, error_per_pencil, '.')
-plt.xlabel('Distance to center')
-plt.ylabel('Error per pencil beam')
+# Plot error
+errorcolor = 'darkred'
+RMSEs = np.sqrt(errors.detach().cpu())
+ax1.plot(RMSEs, label='error', color=errorcolor)
+ax1.set_ylabel('Error (pix)')
+ax1.set_ylim((0, max(RMSEs)))
+ax1.legend(loc=2)
 
+ax2 = ax1.twinx()
+for name in params_angle_log:
+    ax2.plot(params_angle_log[name], label=name)
+for name in params_other_log:
+    ax2.plot(params_other_log[name]*1e2, label=name)
+ax2.set_ylabel('Parameter (cm | rad)')
+ax2.legend(loc=1)
+
+fig.tight_layout()  # otherwise the right y-label is slightly clipped
+plt.title('Learning parameters')
 plt.show()
-##### ===================================
-
-
-# import time
-# time.sleep(100000)
-
-
-# fig, ax1 = plt.subplots(figsize=(7, 7))
-# fig.dpi = 144
-
-# # Plot error
-# errorcolor = 'tab:red'
-# RMSEs = np.sqrt(errors.detach().cpu())
-# ax1.plot(RMSEs, label='error', color=errorcolor)
-# ax1.set_ylabel('Error (pix)')
-# ax1.set_ylim((0, max(RMSEs)))
-# ax1.legend()
-
-# ax2 = ax1.twinx()
-# for name in params_angle_log:
-#     ax2.plot(params_angle_log[name], label=name)
-# for name in params_other_log:
-#     ax2.plot(params_other_log[name]*1e2, label=name)
-# ax2.set_ylabel('Parameter (cm | rad)')
-# ax2.legend()
-# 
-# fig.tight_layout()  # otherwise the right y-label is slightly clipped
-# plt.title('Learning parameters')
-# plt.show()
-
 
 # === Glass plate === #
 
@@ -430,15 +403,8 @@ matpath = 'LocalData/raylearn-data/TPM/pencil-beam-positions/17-Nov-2021-400um/r
 # matpath = 'LocalData/raylearn-data/TPM/pencil-beam-positions/17-Nov-2021-empty/raylearn_pencil_beam_738477.729080_empty.mat'
 matfile = h5py.File(matpath, 'r')
 
-cam_size_pix = tensor((1088., 1088.)).view(1, 1, 2)
-
-cam_ft_offset = tensor((-30., 45.)).view(1, 1, 2)
-cam_ft_coords_gt = tensor((matfile['cam_ft_col'], matfile['cam_ft_row'])).permute(1, 2, 0) \
-                    - cam_size_pix/2 - cam_ft_offset
-
-cam_im_offset = tensor((-65., -12.)).view(1, 1, 2)
-cam_im_coords_gt = tensor((matfile['cam_img_col'], matfile['cam_img_row'])).permute(1, 2, 0) \
-                    - cam_size_pix/2 - cam_im_offset
+cam_ft_coords_gt = tensor((matfile['cam_ft_col'], matfile['cam_ft_row'])).permute(1, 2, 0)
+cam_im_coords_gt = tensor((matfile['cam_img_col'], matfile['cam_img_row'])).permute(1, 2, 0)
 
 # Parameters
 tpm.coverslip_thickness = tensor((300e-6,), requires_grad=True)
@@ -468,6 +434,10 @@ for name in params_coverslip:
 
 trange = tqdm(range(iterations), desc='error: -')
 
+
+# Plot
+fig, ax = plt.subplots(nrows=2, figsize=(5, 10))
+fig.dpi = 144
 
 for t in trange:
     # === Learn === #
@@ -526,19 +496,19 @@ for t in trange:
         ax[1].set_title(f'Image Cam | iter: {t}')
 
         plt.draw()
-        plt.pause(1e-4)
+        plt.pause(1e-3)
 
 
 print(f'\ncoverslip thickness: {format_prefix(tpm.coverslip_thickness)}m\n')
 
 
 # tpm.plot()
-
-
-fig, ax1 = plt.subplots(figsize=(7, 7))
-fig.dpi = 144
-
-
+# 
+# 
+# fig, ax1 = plt.subplots(figsize=(7, 7))
+# fig.dpi = 144
+# 
+# 
 # # Plot error
 # errorcolor = 'tab:red'
 # RMSEs = np.sqrt(errors.detach().cpu())
@@ -558,18 +528,18 @@ fig.dpi = 144
 # plt.show()
 
 
-##### === Check radial error relation ===
-error_per_pencil = ((cam_ft_coords - cam_ft_coords_gt).mean(dim=0) ** 2).sum(dim=1).sqrt().view(-1).detach()
-dist_to_center = (cam_ft_coords_gt.mean(dim=0) ** 2).sum(dim=1).sqrt().view(-1).detach()
-
-fig = plt.figure(figsize=(15, 4))
-fig.dpi = 144
-ax1 = plt.gca()
-
-plt.plot(dist_to_center, error_per_pencil, '.')
-plt.xlabel('Distance to center')
-plt.ylabel('Error per pencil beam')
-
-plt.show()
-##### ===================================
-pass
+# ##### === Check radial error relation ===
+# error_per_pencil = ((cam_ft_coords - cam_ft_coords_gt).mean(dim=0) ** 2).sum(dim=1).sqrt().view(-1).detach()
+# dist_to_center = (cam_ft_coords_gt.mean(dim=0) ** 2).sum(dim=1).sqrt().view(-1).detach()
+# 
+# fig = plt.figure(figsize=(15, 4))
+# fig.dpi = 144
+# ax1 = plt.gca()
+# 
+# plt.plot(dist_to_center, error_per_pencil, '.')
+# plt.xlabel('Distance to center')
+# plt.ylabel('Error per pencil beam')
+# 
+# plt.show()
+# ##### ===================================
+# pass
