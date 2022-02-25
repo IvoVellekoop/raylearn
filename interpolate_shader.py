@@ -90,7 +90,7 @@ class ShaderInterpolator:
         glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 4)
         glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 4)
         glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
-        self.window = glfw.create_window(resolution[1], resolution[0], "A Window", None, None)
+        self.window = glfw.create_window(resolution[0], resolution[1], "A Window", None, None)
         glfw.make_context_current(self.window)
 
         # Enable blending for addition of fields
@@ -103,7 +103,7 @@ class ShaderInterpolator:
         # Create output framebuffers
         self.rb = GL.glGenRenderbuffers(1)
         GL.glBindRenderbuffer(GL.GL_RENDERBUFFER, self.rb)
-        GL.glRenderbufferStorage(GL.GL_RENDERBUFFER, GL.GL_RGBA32F, 600, 600) # 600^2 pixels, 4-channel 32-bit float
+        GL.glRenderbufferStorage(GL.GL_RENDERBUFFER, GL.GL_RGBA32F, resolution[0], resolution[1]) # x-by-y pixels, 4-channel 32-bit float
         self.fb = GL.glGenFramebuffers(1)
         GL.glBindFramebuffer(GL.GL_FRAMEBUFFER, self.fb) # read/write framebuffer
         GL.glFramebufferRenderbuffer(GL.GL_FRAMEBUFFER, GL.GL_COLOR_ATTACHMENT0, GL.GL_RENDERBUFFER, self.rb)
@@ -208,9 +208,11 @@ class ShaderInterpolator:
         # Draw to framebuffer
         self.draw_frame()
         image_buffer = GL.glReadPixels(0, 0, npoints[0], npoints[1], GL.GL_RGBA, GL.GL_FLOAT)
+        # Convert array from column-major to row-major
+        image_out = np.frombuffer(image_buffer, dtype=np.float32).reshape(npoints[1],npoints[0], 4)
         # Convert to complex field
-        self.field_out = image_buffer[:,:,0] + 1j*image_buffer[:,:,1]
-
+        self.field_out = image_out[:,:,0] + 1j*image_out[:,:,1]
+        
         # # Main loop, draw to window. Not necessary for calculation but may be useful for debugging
         # GL.glBindFramebuffer(GL.GL_FRAMEBUFFER,0)
         # #GL.glViewport(0, 0, 0, 0)
