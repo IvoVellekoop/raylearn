@@ -1,18 +1,23 @@
 % ===== Directory Configuration ===== %
-% Script for setting relative directories.
+% Script for setting relative directories in one central place.
+% E.g. if your experimental data moves, you can update its path here.
 %
-% Future users, please:
-%  - Use variables set in this script rather than 'hard coding'
-%    directories in scripts, to keep things in one place.
+% If you want to modify these paths for local use only:
+% - Feel free to override the defined paths with manual paths (e.g. C:\here\is\my\datafolder).
+% - Use path variables set in this script rather than putting
+%   addpath commands in scripts, to keep things in one place.
+% - However, please don't git-push changes that only work on your computer.
+%
+% If you plan to modify this for global use:
+%  - Use variables set in this script rather than putting
+%    addpath commands in scripts, to keep things in one place.
 %  - Please keep it platform independent.
 %  - Use relative paths, for portability.
-%  - Keep stuff within the main directory, for portability.
+%  - When appropriate, keep stuff within the main directory, for portability.
 %  - If this is impossible or impractical, consider using symlinks.
-%  - If something should be excluded from git,
-%    i.e. generated data, use .gitignore.
-%  - If you keep your code on a cloud service such as Dropbox, you can also
-%    exclude directories. Which is probably useful if you have large
-%    data files.
+%  - If something should be excluded from git, i.e. generated data, use .gitignore.
+%  - If you keep your code on a cloud service such as Dropbox, you can also exclude
+%    directories. Which is probably useful if you have large data files.
 
 
 % Directory variables
