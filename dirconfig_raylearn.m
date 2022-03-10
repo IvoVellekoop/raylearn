@@ -29,6 +29,7 @@ dirs.localdata = fullfile(char(dirs.repo), 'LocalData');      % Local Data
 
 
 %% Add repo paths
+restoredefaultpath
 addrepo(fullfile(dirs.main, 'raylearn'))
 addrepo(fullfile(dirs.main, 'utilities'))
 addrepo(fullfile(dirs.main, 'hardware'))
