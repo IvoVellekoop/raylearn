@@ -2,7 +2,7 @@
 clear; close all; clc
 
 % Define location paths
-addpath(fileparts(fileparts(mfilename('fullpath'))))   % Parent dir
+addpath(fileparts(fileparts(mfilename('fullpath'))))   % Grand parent dir
 dirconfig_raylearn
 
 
