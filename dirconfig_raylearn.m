@@ -15,13 +15,9 @@
 %    data files.
 
 
-% Location of current m-file as string array
-mfilearray = strsplit(string(mfilename('fullpath')), filesep);
-
-
 % Directory variables
-dirs.main = char(join(mfilearray(1:end-2), filesep));         % Allprojects dir
-dirs.repo = char(join(mfilearray(1:end-1), filesep));         % repo directory
+dirs.repo = fileparts(mfilename('fullpath'));                 % repo directory
+dirs.main = fileparts(dirs.repo);                             % Allprojects dir
 dirs.simdata = fullfile(char(dirs.repo), 'SimulationData');   % Simulation Data
 dirs.expdata = fullfile(char(dirs.repo), 'ExperimentalData'); % Experimental Data
 dirs.localdata = fullfile(char(dirs.repo), 'LocalData');      % Local Data
