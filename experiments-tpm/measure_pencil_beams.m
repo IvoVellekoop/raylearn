@@ -5,15 +5,15 @@
 %% Reset variables and hardware connections
 doreset = 0;
 
-if doreset || ~exist('slm', 'var') || ~exist('daqs', 'var')  || ~exist('cam_ft', 'var')
+if doreset || ~exist('slm', 'var') || ~exist('daqs', 'var')  || ~exist('cam_ft', 'var')  || ~exist('cam_img', 'var')
     close all; clear; clc
     setup_raylearn_exptpm
 end
 
 %% Settings
-p.samplename = '400um';
-doshowcams = 0;                     % Toggle show what the cameras see
-dosave = 1;                         % Toggle savings
+p.samplename = '170um';
+doshowcams = 1;                     % Toggle show what the cameras see
+dosave = 0;                         % Toggle savings
 dochecksamplename = 0;              % Toggle console sample name check
 
 % SLM Settings
@@ -28,9 +28,9 @@ p.N_diameter =  7;                  % Number of segments across SLM diameter
 % Galvo Mirror settings
 p.GalvoNX =  3;                     % Number of Galvo steps, x
 p.GalvoNY =  3;                     % Number of Galvo steps, y
-p.GalvoXcenter = -0.5538;           % Galvo center x
-p.GalvoYcenter =  0.0667;           % Galvo center y
-p.GalvoRadius  =  0.045; %0.1800;           % Galvo scan radius: from center to outer
+p.GalvoXcenter = -0.565;            % Galvo center x
+p.GalvoYcenter =  0.041;            % Galvo center y
+p.GalvoRadius  =  0.050;            % Galvo scan radius: from center to outer
 % Note: the actual number of galvo steps is smaller, as the corners from the square grid
 % will be cut to make a circle
 
