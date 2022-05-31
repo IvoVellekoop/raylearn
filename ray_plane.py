@@ -26,12 +26,14 @@ class Ray:
         direction           Vector. Ray direction unit vector
         refractive_index    Scalar. Refractive index of medium
         pathlength_m        Scalar. Total optical pathlength in meters
+        intensity           Scalar. Intensity of the light ray.
         weight              Scalar. Total weight. Adjusts contribution to objective function.
 
     """
 
     def __init__(self, position_m, direction, refractive_index=1, pathlength_m=0, intensity=1, weight=1):
         self.position_m = position_m                # Vector. Position in m
+        ################ Build in check for Tensor class
         self.direction = direction                  # Vector. Direction unit vector
         ### Check unit vector?
         self.refractive_index = refractive_index    # Scalar. Refractive index of medium

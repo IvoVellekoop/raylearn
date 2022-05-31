@@ -1,10 +1,21 @@
-"""Plot functions."""
+"""
+Plot functions.
+
+Functions for plotting Rays, Planes, stuff to draw your defined optical elements, etc.
+"""
 
 import torch
-from torch import stack
+from torch import stack, tensor, Tensor
 import numpy as np
-from vector_functions import unit, rejection
+from vector_functions import norm, unit, rejection, cartesian3d
 from ray_plane import Plane, CoordPlane
+
+
+def default_viewplane():
+    """Define default viewplane for plot functions."""
+    origin, x, y, z = cartesian3d()
+    viewplane = CoordPlane(origin, z, y)
+    return viewplane
 
 
 def format_prefix(number, formatspec='.2f'):
@@ -40,18 +51,54 @@ def format_prefix(number, formatspec='.2f'):
 
 
 def ray_positions(raylist):
-    """Take list or tuple of rays and return list of rays."""
+    """
+    Take list or tuple of rays and return tuple of ray positions.
+
+    Input
+    -----
+        raylist     List or tuple of Ray objects.
+
+    Output
+    ------
+        positions   Tuple of expanded position Tensors.
+
+    Since Rays can have various dimensions of position arrays, the position array with the
+    largest number of elements is used to expand dimensions to.
+
+    """
+    
+    # # Get max number of dimensions
+    # dimtuple = tuple(ray.position_m.dim() for ray in raylist)
+    # maxdim = torch.tensor(dimtuple).max()
+
+    # # Initialize bigshape (will hold shape to expand to)
+    # bigshape = torch.ones(maxdim)
+    # for ray in raylist:
+    #     bigshape = 
+
+    ####### Doesn't work for e.g. [(3), (4,1,3), (1,2,3)]
+    ####### Will this scenario occur though?
     numels = tuple(torch.numel(x.position_m) for x in raylist)  # Total elements per Ray position
     biggest_raypos = raylist[np.argmax(numels)].position_m      # Ray with biggest position array
+    positions = tuple(x.position_m.expand_as(biggest_raypos) for x in raylist)
 
     # Expand each position array and return as tuple
-    return tuple(x.position_m.expand_as(biggest_raypos) for x in raylist)
+    return positions
 
 
-def plot_rays(ax, viewplane, rays, plotkwargs={}, fraction=1):
-    """Plot rays."""
+def plot_rays(ax, rays, viewplane=default_viewplane(), plotkwargs={}, fraction=1):
+    """
+    Plot rays
 
-    ######## add default viewplane function
+    Input
+    -----
+        ax          Matplotlib Axis object. Figure axis to plot on.
+        rays        List or tuple of Ray objects. The ray positions will be plotted.
+        viewplane   CoordPlane. Viewing plane to project positions onto.
+        plotkwargs  Dictionary. Keyword arguments to be passed onto the plot function.
+        fraction    Float. This fraction of randomly picked rays from the rays list will
+                    be plotted. Can be useful when dealing with many rays, as this can be slow.
+    """
 
     # Prepare variables
     positions = viewplane.transform_points(stack(ray_positions(rays))).unbind(-1)
@@ -59,7 +106,8 @@ def plot_rays(ax, viewplane, rays, plotkwargs={}, fraction=1):
     positions_vert = positions[1].view(len(rays), -1).detach().cpu()
 
     # Select a fraction of the rays
-    mask = torch.rand(1, positions_hori.shape[-1]) < fraction
+    randomgenerator = torch.random.manual_seed(1)
+    mask = torch.rand((1, positions_hori.shape[-1]), generator=randomgenerator) < fraction
     positions_hori_select = positions_hori.masked_select(mask).view(len(rays), -1)
     positions_vert_select = positions_vert.masked_select(mask).view(len(rays), -1)
 
@@ -78,24 +126,51 @@ def plot_coords(ax, coords, plotkwargs={'color': 'tab:blue'}):
     return ln
 
 
-def plot_plane(ax, viewplane, plane_to_plot, scale=1, text='', plotkwargs={'color': 'black'}):
-    """Plot a plane.
-
-    WIP: currently assumes: dimhori = 2, dimvert = 1, text at point B.
-    Improvement: Choose a plotting plane
+def plot_plane(ax, plane_to_plot, scale=1, text1='', text2='', viewplane=default_viewplane(), plotkwargs={'color': 'black'}):
     """
-    # Get properties
+    Plot a plane.
+
+    A square orthogonal to the plane normal is projected onto the viewplane, resulting in a
+    parallelogram or line. If plane_to_plot is a CoordPlane, its x- and y-vectors are used
+    to define the square. If plane_to_plot is a Plane, orthonormal x- and y-vectors are created
+    using a vector rejection of the viewplane on the plane_to_plot.
+
+    Input
+    -----
+        ax              Matplotlib Axis object. Figure axis to plot on.
+        plane_to_plot   Plane or CoordPlane. The Plane or CoordPlane that will be plotted.
+        scale           Float. Scale factor for the projected square representing the plane.
+        text1           String. Text label 1. Is put at one of the square corners.
+        text2           String. Text label 2. Is put at another of the square corners.
+        viewplane       CoordPlane. Viewing plane to project positions onto.
+        plotkwargs      Dictionary. Keyword arguments to be passed onto the plot function.
+
+    Output
+    ------
+        ln              Matplotlib Line2D object representing the plotted data.
+
+    """
+    # Define x and y vector lying on the CoordPlane or Plane to be plotted
     position_m = plane_to_plot.position_m.detach()
+
     if isinstance(plane_to_plot, CoordPlane):
+
         x = scale * plane_to_plot.x.detach()
         y = scale * plane_to_plot.y.detach()
-    elif isinstance(plane_to_plot, Plane):
-        ###### Not a reliable way to get orthogonal basis vectors on the plane,
-        ###### as this an cause /0 errors when vectors are parallel
-        x = scale * unit(rejection(viewplane.normal, plane_to_plot.normal.detach()))
-        y = scale * unit(rejection(viewplane.y, plane_to_plot.normal.detach()))
 
-    # Compute 4 corner points of plane
+    elif isinstance(plane_to_plot, Plane):
+        x_rej = rejection(viewplane.normal, plane_to_plot.normal.detach())
+        y_rej = rejection(viewplane.y, plane_to_plot.normal.detach())
+        if norm(x_rej) > 0:
+            x = scale * unit(x_rej)
+        else:
+            x = Tensor((0., 0., 0.))
+        if norm(x_rej) > 0:
+            y = scale * unit(y_rej)
+        else:
+            y = Tensor((0., 0., 0.))
+
+    # Compute 4 corner points of plane square around plane position
     A = position_m + x + y
     B = position_m + x - y
     C = position_m - x - y
@@ -109,12 +184,33 @@ def plot_plane(ax, viewplane, plane_to_plot, scale=1, text='', plotkwargs={'colo
 
     ln = ax.plot((Ax, Bx, Cx, Dx, Ax),
                  (Ay, By, Cy, Dy, Ay), **plotkwargs)
-    ax.text(Bx, By, text)
+    ax.text(Bx, By, text1)
+    ax.text(Dx, Dy, text2)
     return ln
 
 
-def plot_lens(ax, viewplane, lensplane, f, scale, pretext='', plotkwargs={'color': 'black'}):
-    """Plot lens."""
-    text = pretext + f' f={f*1e3:.2f}mm'
-    ln = plot_plane(ax, viewplane, lensplane, scale, text, plotkwargs)
+def plot_lens(ax, lensplane, f, scale, pretext1='', text2='', viewplane=default_viewplane(), plotkwargs={'color': 'black'}):
+    """
+    Plot a lens plane
+
+    A square orthogonal to the lensplane normal is projected onto the viewplane, resulting in a
+    parallelogram or line. See plot_plane for details.
+
+    Input
+    -----
+        ax              Matplotlib Axis object. Figure axis to plot on.
+        lensplane       Plane or CoordPlane. The Plane or CoordPlane that will be plotted.
+        f               Float. Focal distance of lens for annotation.
+        scale           Float. Scale factor for the projected square representing the plane.
+        pretext         String. Extra pre-text for text label 1. Is put at one of the corners.
+        viewplane       CoordPlane. Viewing plane to project positions onto.
+        plotkwargs      Dictionary. Keyword arguments to be passed onto the plot function.
+
+    Output
+    ------
+        ln              Matplotlib Line2D object representing the plotted data.
+
+    """
+    text1 = pretext1 + f' f={format_prefix(f, ".1f")}m'     # Write pretext and focal distance
+    ln = plot_plane(ax, lensplane, scale, text1, text2, viewplane, plotkwargs)
     return ln

@@ -74,9 +74,11 @@ def cross(v, w):
 
 def rotate(v, u, theta):
     """
-    Rotate vector v theta radians around unit vector u.
+    Rotate vector v theta radians around unit vector u, using Rodriques' rotation formula.
 
-    For derivation see: http://ksuweb.kennesaw.edu/~plaval/math4490/rotgen.pdf
+    For derivation see:
+    - http://ksuweb.kennesaw.edu/~plaval/math4490/rotgen.pdf
+    - https://en.wikipedia.org/w/index.php?title=Rodrigues%27_rotation_formula
     """
     if isinstance(theta, torch.Tensor):
         tensor_theta = theta                    # Already a Tensor
