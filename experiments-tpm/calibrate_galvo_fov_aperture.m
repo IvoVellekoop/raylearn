@@ -17,10 +17,10 @@ bg_patch_id = 2;                    % Background grating Patch ID
 % Galvo Mirror settings
 p.GalvoXcenter = single(0.00);      % Galvo center x
 p.GalvoYcenter = single(0.00);      % Galvo center y
-p.GalvoXmax    = single(1.00);      % Galvo center to outer, x
-p.GalvoYmax    = single(0.30);      % Galvo center to outer, y
-p.GalvoNX      = single(100);       % Number of Galvo steps, x
-p.GalvoNY      = single(30);        % Number of Galvo steps, y
+p.GalvoXmax    = single(0.70);      % Galvo center to outer, x
+p.GalvoYmax    = single(0.20);      % Galvo center to outer, y
+p.GalvoNX      = single(80);        % Number of Galvo steps, x
+p.GalvoNY      = single(25);        % Number of Galvo steps, y
 
 %% Initialization
 % Set background grating
@@ -73,7 +73,7 @@ for gx = 1:p.GalvoNX                        % Loop over Galvo tilts
         if doshowcams && ~mod(g, update_plot_every)
             figure(fig_galvoscan)
             subplot(1,2,1)
-            frame_ft_normalized  = frame_ft  ./ max(frame_img, [], [1 2]);
+            frame_ft_normalized  = frame_ft  ./ max(frame_ft, [], [1 2]);
             frame_img_normalized = frame_img ./ max(frame_img, [], [1 2]);
             color_coded_frame = cat(3, frame_img_normalized, frame_ft_normalized, frame_ft_normalized);
             imagesc(color_coded_frame);

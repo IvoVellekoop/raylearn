@@ -11,26 +11,26 @@ if doreset || ~exist('slm', 'var') || ~exist('daqs', 'var')  || ~exist('cam_ft',
 end
 
 %% Settings
-p.samplename = '170um+400um';
-doshowcams = 0;                     % Toggle show what the cameras see
-dosave = 1;                         % Toggle savings
+p.samplename = '170um_aligned_to_slm';
+doshowcams = 1;                     % Toggle show what the cameras see
+dosave = 0;                         % Toggle savings
 dochecksamplename = 0;              % Toggle console sample name check
 
 % SLM Settings
 p.segment_patch_id = 2;             % Pencil Beam segment SLM patch ID
 p.ppp = 2;                          % Pixels per period for the grating. Should match Galvo setting!
 p.segmentsize_pix = 50 * p.ppp;     % Segment width in pixels
-p.beamdiameter = 0.60;              % Diameter of circular SLM segment set (relative coords)
+p.beamdiameter = 0.70;              % Diameter of circular SLM segment set (relative coords)
 p.slm_offset_x = 0.00;              % Horizontal offset of rectangle SLM geometry (relative coords)
 p.slm_offset_y = 0.00;              % Vertical offset of rectangle SLM geometry (relative coords)
 p.N_diameter =  7;                  % Number of segments across SLM diameter
 
 % Galvo Mirror settings
-p.GalvoNX =  3;                     % Number of Galvo steps, x
-p.GalvoNY =  3;                     % Number of Galvo steps, y
-p.GalvoXcenter = -0.565;            % Galvo center x
-p.GalvoYcenter =  0.041;            % Galvo center y
-p.GalvoRadius  =  0.030;            % Galvo scan radius: from center to outer
+p.GalvoNX =  5;                     % Number of Galvo steps, x
+p.GalvoNY =  5;                     % Number of Galvo steps, y
+p.GalvoXcenter = -0.558;            % Galvo center x
+p.GalvoYcenter =  0.050;            % Galvo center y
+p.GalvoRadius  =  0.035;            % Galvo scan radius: from center to outer
 % Note: the actual number of galvo steps is smaller, as the corners from the square grid
 % will be cut to make a circle
 
