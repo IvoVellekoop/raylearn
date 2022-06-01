@@ -11,16 +11,16 @@ if doreset || ~exist('slm', 'var') || ~exist('daqs', 'var')  || ~exist('cam_ft',
 end
 
 %% Settings
-p.samplename = '170um_aligned_to_slm';
-doshowcams = 1;                     % Toggle show what the cameras see
-dosave = 0;                         % Toggle savings
+p.samplename = '400um_aligned_to_slm';
+doshowcams = 0;                     % Toggle show what the cameras see
+dosave = 1;                         % Toggle savings
 dochecksamplename = 0;              % Toggle console sample name check
 
 % SLM Settings
 p.segment_patch_id = 2;             % Pencil Beam segment SLM patch ID
 p.ppp = 2;                          % Pixels per period for the grating. Should match Galvo setting!
 p.segmentsize_pix = 50 * p.ppp;     % Segment width in pixels
-p.beamdiameter = 0.70;              % Diameter of circular SLM segment set (relative coords)
+p.beamdiameter = 0.50;              % Diameter of circular SLM segment set (relative coords)
 p.slm_offset_x = 0.00;              % Horizontal offset of rectangle SLM geometry (relative coords)
 p.slm_offset_y = 0.00;              % Vertical offset of rectangle SLM geometry (relative coords)
 p.N_diameter =  7;                  % Number of segments across SLM diameter
@@ -30,7 +30,7 @@ p.GalvoNX =  5;                     % Number of Galvo steps, x
 p.GalvoNY =  5;                     % Number of Galvo steps, y
 p.GalvoXcenter = -0.558;            % Galvo center x
 p.GalvoYcenter =  0.050;            % Galvo center y
-p.GalvoRadius  =  0.035;            % Galvo scan radius: from center to outer
+p.GalvoRadius  =  0.030;            % Galvo scan radius: from center to outer
 % Note: the actual number of galvo steps is smaller, as the corners from the square grid
 % will be cut to make a circle
 
@@ -110,7 +110,8 @@ if dosave
     % Create save directory
     filenameprefix = 'raylearn_pencil_beam';
     p.savename = sprintf('%s_%f_%s', filenameprefix, now, p.samplename);
-    p.savedir = fullfile([dirs.expdata '\raylearn-data\TPM\pencil-beam-raw\' date '-' p.samplename], p.savename);
+    p.subdir = ['\raylearn-data\TPM\pencil-beam-raw\' date '-' p.samplename];
+    p.savedir = fullfile([dirs.localdata p.subdir], p.savename);
     try mkdir(p.savedir); catch 'MATLAB:MKDIR:DirectoryExists'; end
     fprintf('\nSave Directory: %s\n', p.savedir)
 end
@@ -183,3 +184,9 @@ for s = 1:S                        % Loop over SLM segments
 end
 
 
+if dosave
+    disp('Moving save files to network data folder...')
+    p.networkdatadir = fullfile([dirs.expdata p.subdir], p.savename);
+    movefile(p.savedir, p.networkdatadir)
+    fprintf('\nDone moving files to:\n%s\n', p.networkdatadir)
+end
