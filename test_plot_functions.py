@@ -25,10 +25,10 @@ def test_format_prefix():
     assert(format_prefix(tensor((23e-9,), requires_grad=True), '.2f') == '23.00n')
 
 
-@pytest.mark.skip(reason='unfinished')
 def test_ray_positions():
     """
-    Test ray positions.
+    Test ray positions. This function extracts ray positions from a ray list
+    and expands them so the shapes are compatible (also for plotting).
     """
     # Create positions and direction
     N1 = 4

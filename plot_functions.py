@@ -52,7 +52,10 @@ def format_prefix(number, formatspec='.2f'):
 
 def ray_positions(raylist):
     """
-    Take list or tuple of rays and return tuple of ray positions.
+    Take list or tuple of rays and return tuple of ray positions. The positions are expanded 
+    according to broadcasting semantics, so the shapes are compatible (also for plotting).
+    See also:
+    https://pytorch.org/docs/stable/notes/broadcasting.html#broadcasting-semantics
 
     Input
     -----
@@ -61,29 +64,11 @@ def ray_positions(raylist):
     Output
     ------
         positions   Tuple of expanded position Tensors.
-
-    Since Rays can have various dimensions of position arrays, the position array with the
-    largest number of elements is used to expand dimensions to.
-
     """
-    
-    # # Get max number of dimensions
-    # dimtuple = tuple(ray.position_m.dim() for ray in raylist)
-    # maxdim = torch.tensor(dimtuple).max()
 
-    # # Initialize bigshape (will hold shape to expand to)
-    # bigshape = torch.ones(maxdim)
-    # for ray in raylist:
-    #     bigshape = 
-
-    ####### Doesn't work for e.g. [(3), (4,1,3), (1,2,3)]
-    ####### Will this scenario occur though?
-    numels = tuple(torch.numel(x.position_m) for x in raylist)  # Total elements per Ray position
-    biggest_raypos = raylist[np.argmax(numels)].position_m      # Ray with biggest position array
-    positions = tuple(x.position_m.expand_as(biggest_raypos) for x in raylist)
-
-    # Expand each position array and return as tuple
-    return positions
+    positions_tuple = tuple(ray.position_m for ray in raylist)      # Extract positions as tuple
+    positions_expanded = torch.broadcast_tensors(*positions_tuple)  # Expand
+    return positions_expanded
 
 
 def plot_rays(ax, rays, viewplane=default_viewplane(), plotkwargs={}, fraction=1):
