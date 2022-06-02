@@ -3,18 +3,17 @@ The Two Photon Microscope.
 """
 
 import torch
-from torch import tensor, stack, meshgrid
+from torch import tensor
 import numpy as np
 import h5py
 import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
 from tqdm import tqdm
 # from torchviz import make_dot
 
 from vector_functions import rotate, cartesian3d
 from ray_plane import Ray, Plane, CoordPlane
 from plot_functions import plot_plane, plot_lens, plot_rays, plot_coords, format_prefix
-from optical import ideal_lens, snells, galvo_mirror, slm_segment, intensity_mask_smooth_grid
+from optical import ideal_lens, snells, galvo_mirror, slm_segment
 from testing import MSE
 
 
@@ -28,7 +27,7 @@ torch.set_default_tensor_type('torch.DoubleTensor')
 plt.rc('font', size=12)
 
 
-class TPM():#torch.nn.Module):
+class TPM(): #torch.nn.Module):
     """
     The Two Photon Microscope.
 
