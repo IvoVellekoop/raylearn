@@ -28,7 +28,7 @@ torch.set_default_tensor_type('torch.DoubleTensor')
 plt.rc('font', size=12)
 
 
-class TPM(torch.nn.Module):
+class TPM():#torch.nn.Module):
     """
     The Two Photon Microscope.
 
@@ -51,7 +51,7 @@ class TPM(torch.nn.Module):
         Hence the Galvo Mirrors and SLM are all defined on the same position,
         skipping the 4F system lenses in between them.
         """
-        super().__init__()
+        #super().__init__()
 
         # Define refractive indices at wavelength of 715nm
         # References:
@@ -65,14 +65,26 @@ class TPM(torch.nn.Module):
         self.coordsystem = cartesian3d()
         origin, x, y, z = self.coordsystem
 
-        # Galvo
-        self.galvo_rad_per_V = (np.pi/180) / 0.5
-        self.galvo_angle = tensor((0.,))            # Rotation angle around optical axis
+        # Galvo Mirrors
+        # Thorlabs GVS111(/M)
+        # https://bmpi.wiki.utwente.nl/doku.php?id=instrumentation:galvo:galvo_scanners
+        # https://www.thorlabs.com/newgrouppage9.cfm?objectgroup_id=7616&pn=GVS111/M#7617
+        # Optical scan angle = 2x mechanical angle
+        # https://docs.scanimage.org/Configuration/Scanners/Resonant%2BScanner.html
+        # https://bmpi.wiki.utwente.nl/lib/exe/fetch.php?media=instrumentation:galvo:gvs111_m-manual.pdf
+        galvo_volts_per_optical_degree = 0.5
+        ########### galvo_volts_per_mechanical_degree = #############
+        self.galvo_rad_per_V = (np.pi/180) / galvo_volts_per_optical_degree
+        self.galvo_angle = tensor((0.067,))            # Rotation angle around optical axis
 
         # SLM
+        # Meadowlark 1920x1152 XY Phase Series
+        # https://bmpi.wiki.utwente.nl/doku.php?id=instrumentation:slm:meadowlark_slm
+        # https://www.meadowlark.com/store/data_sheet/SLM%20-%201920%20x%201152%20Data%20Sheet%20021021.pdf
+        # https://www.meadowlark.com/images/files/Specification%20Backgrounder%20for%20XY%20Series%20Phase%20SLMS%20-%20SB0520.pdf
         self.slm_width = 10.7e-3
         self.slm_height = 10.7e-3
-        self.slm_angle = tensor((0.,))              # Rotation angle around optical axis
+        self.slm_angle = tensor((-0.030,))              # Rotation angle around optical axis
         self.slm_zshift = tensor((0.,))
 
         # Coverslip
@@ -87,9 +99,11 @@ class TPM(torch.nn.Module):
         self.obj1_tubelength = 200e-3           # Objective standard tubelength
         self.obj1_magnification = 16            # Objective magnification
         self.fobj1 = self.obj1_tubelength / self.obj1_magnification
+        # self.fobj1 = 13.8e-3  #### Measured
         self.obj2_tubelength = 165e-3           # Objective standard tubelength
         self.obj2_magnification = 100           # Objective magnification
-        self.fobj2 = self.obj2_tubelength / self.obj2_magnification
+        # self.fobj2 = self.obj2_tubelength / self.obj2_magnification
+        self.fobj2 = 1.621e-3
 
         # Lens planes to sample plane
         self.L5 = Plane(origin + self.f5*z, -z)
@@ -97,14 +111,20 @@ class TPM(torch.nn.Module):
         self.OBJ1 = Plane(self.L7.position_m + (self.f7 + self.fobj1)*z, -z)
 
         # Lens planes transmission arm
+        self.sample_zshift = tensor((0.,))
         self.obj2_zshift = tensor((0.,))
         self.L9_zshift = tensor((0.,))
         self.L10_zshift = tensor((0.,))
 
         # Camera planes
+        # Basler acA2000-165umNIR
+        # https://www.baslerweb.com/en/products/cameras/area-scan-cameras/ace/aca2000-165umnir/
         self.cam_pixel_size = 5.5e-6
-        self.cam_ft_shift = tensor((0., 0., 0.))
-        self.cam_im_shift = tensor((0., 0., 0.))
+        self.cam_ft_xshift = tensor((2.7e-3,))
+        self.cam_ft_yshift = tensor((2.83e-3,))
+        self.cam_im_xshift = tensor((0.,))
+        self.cam_im_yshift = tensor((0.,))
+        self.cam_im_zshift = tensor((0.,))
 
     def set_measurement(self, matfile):
         # SLM coords and Galvo rotations
@@ -137,7 +157,8 @@ class TPM(torch.nn.Module):
         coverslip_front_to_sample_plane = (170e-6 - self.coverslip_thickness) * z
         self.coverslip_front_plane = CoordPlane(
             self.OBJ1.position_m + self.fobj1*z + coverslip_front_to_sample_plane, -x, y)
-        self.sample_plane = CoordPlane(self.OBJ1.position_m + self.fobj1*z, -x, y)
+        self.sample_plane = CoordPlane(self.OBJ1.position_m + self.fobj1*z +
+                                       self.sample_zshift * z, -x, y)
 
         # Objective
         self.OBJ2 = Plane(self.sample_plane.position_m + self.fobj2*z + self.obj2_zshift*z, -z)
@@ -145,10 +166,13 @@ class TPM(torch.nn.Module):
         self.L10 = Plane(self.L9.position_m + (self.f9 + self.f10)*z + self.L10_zshift*z, -z)
 
         # Cameras
-        self.cam_im_plane = CoordPlane(self.L9.position_m + self.f9*z + self.cam_im_shift,
+        self.cam_im_plane = CoordPlane(self.L9.position_m + self.f9*z +
+                                       self.cam_im_xshift*x + self.cam_im_yshift*y +
+                                       self.cam_im_zshift*z,
                                        self.cam_pixel_size * -x,
                                        self.cam_pixel_size * y)
-        self.cam_ft_plane = CoordPlane(self.L10.position_m + self.f10*z + self.cam_ft_shift*(x+y),
+        self.cam_ft_plane = CoordPlane(self.L10.position_m + self.f10*z +
+                                       self.cam_ft_xshift*x + self.cam_ft_yshift*y,
                                        self.cam_pixel_size * -x,
                                        self.cam_pixel_size * -y)
 
@@ -173,6 +197,7 @@ class TPM(torch.nn.Module):
 
         # Propagation to objective 1
         self.rays.append(galvo_mirror(self.rays[-1], self.galvo_plane, self.galvo_rots))
+        self.rays.append(self.rays[-1].intersect_plane(self.slm_plane))
         self.rays.append(slm_segment(self.rays[-1], self.slm_plane, self.slm_coords))
         self.rays.append(ideal_lens(self.rays[-1], self.L5, self.f5))
         self.rays.append(ideal_lens(self.rays[-1], self.L7, self.f7))
@@ -208,8 +233,8 @@ class TPM(torch.nn.Module):
 
         # Plot lenses and planes
         scale = 0.008
-        plot_plane(ax, self.slm_plane, 1, ' SLM')
-        plot_plane(ax, self.galvo_plane, scale, ' Galvo')
+        plot_plane(ax, self.slm_plane, 0.8, ' SLM', plotkwargs={'color': 'red'})
+        plot_plane(ax, self.galvo_plane, scale, ' Galvo', plotkwargs={'color': 'red'})
         plot_lens(ax, self.L5, self.f5, scale, ' L5\n')
         plot_lens(ax, self.L7, self.f7, scale, ' L7\n')
 
@@ -221,20 +246,20 @@ class TPM(torch.nn.Module):
         plot_lens(ax, self.L9, self.f9, scale, ' L9\n')
         plot_lens(ax, self.L10, self.f10, scale, 'L10\n')
 
-        plot_plane(ax, self.cam_ft_plane, 2000, ' Fourier Cam')
-        plot_plane(ax, self.cam_im_plane, 2000, ' Image Cam')
+        plot_plane(ax, self.cam_ft_plane, 1000, ' Fourier Cam', plotkwargs={'color': 'red'})
+        plot_plane(ax, self.cam_im_plane, 1000, ' Image Cam', plotkwargs={'color': 'red'})
 
         # Plot rays
-        ray2_exp_pos = self.rays[2].position_m.expand(self.rays[3].position_m.shape)
-        ray2_exp = self.rays[2].copy(position_m=ray2_exp_pos)
-        raylist = [ray2_exp] + self.rays[3:]
-        plot_rays(ax, raylist, fraction=0.05)
+        # ray2_exp_pos = self.rays[2].position_m.expand(self.rays[3].position_m.shape)
+        # ray2_exp = self.rays[2].copy(position_m=ray2_exp_pos)
+        # raylist = [ray2_exp] + self.rays[3:]
+        plot_rays(ax, self.rays, fraction=0.03)
 
 
 # Import measurement
 # matpath = 'LocalData/raylearn-data/TPM/pencil-beam-positions/17-Nov-2021-400um/raylearn_pencil_beam_738477.786123_400um.mat'
-# matpath = 'LocalData/raylearn-data/TPM/pencil-beam-positions/17-Nov-2021-empty/raylearn_pencil_beam_738477.729080_empty.mat'
-matpath = 'LocalData/raylearn-data/TPM/pencil-beam-positions/10-Feb-2022-empty/raylearn_pencil_beam_738562.645439_empty.mat'
+matpath = 'LocalData/raylearn-data/TPM/pencil-beam-positions/17-Nov-2021-empty/raylearn_pencil_beam_738477.729080_empty.mat'
+# matpath = 'LocalData/raylearn-data/TPM/pencil-beam-positions/10-Feb-2022-empty/raylearn_pencil_beam_738562.645439_empty.mat'
 matfile = h5py.File(matpath, 'r')
 
 cam_ft_coords_gt = tensor((matfile['cam_ft_col'], matfile['cam_ft_row'])).permute(1, 2, 0)
@@ -248,23 +273,37 @@ tpm.raytrace()
 
 # Define Inital Guess
 tpm.slm_zshift = tensor((0.,), requires_grad=True)
-tpm.slm_angle = tensor((0.,), requires_grad=True)
-tpm.galvo_angle = tensor((0.,), requires_grad=True)
-tpm.cam_ft_shift = tensor((0., 0., 0*-3e-3), requires_grad=True)
-tpm.cam_im_shift = tensor((0., 0., 0.), requires_grad=True)
+# tpm.slm_angle = tensor((0.,), requires_grad=True)
+# tpm.galvo_angle = tensor((0.,), requires_grad=True)
+tpm.cam_ft_xshift = tensor((0.,), requires_grad=True)
+tpm.cam_ft_yshift = tensor((0.,), requires_grad=True)
+tpm.cam_im_xshift = tensor((2.74e-3,), requires_grad=True)
+tpm.cam_im_yshift = tensor((-2.68e-3,), requires_grad=True)
+tpm.cam_im_zshift = tensor((0.,), requires_grad=True)
+tpm.sample_zshift = tensor((0.,), requires_grad=True)
 tpm.obj2_zshift = tensor((0.,), requires_grad=True)
 tpm.L9_zshift = tensor((0.,), requires_grad=True)
-tpm.L10_zshift = tensor((0.,), requires_grad=False)
-tpm.coverslip_thickness = tensor((170e-6,), requires_grad=False)
+tpm.L10_zshift = tensor((0.,), requires_grad=True)
+tpm.coverslip_thickness = tensor((170e-6,), requires_grad=True)
 
-params_angle = {
+# Parameter groups
+params = {}
+params['angle'] = {
     'SLM angle': tpm.slm_angle,
     'Galvo angle': tpm.galvo_angle,
 }
-
-params_other = {
-    'SLM zshift': tpm.slm_zshift,
-    'cam ft shift': tpm.cam_ft_shift,
+params['objective'] = {
+    # 'OBJ2 zshift': tpm.obj2_zshift,
+    # 'sample zshift': tpm.sample_zshift,
+}
+params['other'] = {
+    # 'SLM zshift': tpm.slm_zshift,
+    # 'L9 zshift': tpm.L9_zshift,
+    'cam ft xshift': tpm.cam_ft_xshift,
+    'cam ft yshift': tpm.cam_ft_yshift,
+    'cam im xshift': tpm.cam_im_xshift,
+    'cam im yshift': tpm.cam_im_yshift,
+    # 'cam im zshift': tpm.cam_im_zshift,
 }
 
 tpm.update()
@@ -274,28 +313,29 @@ tpm.update()
 
 # Define optimizer
 optimizer = torch.optim.Adam([
-        {'lr': 1.0e-3, 'params': params_angle.values()},
-        {'lr': 1.0e-3, 'params': params_other.values()},
+        {'lr': 1.0e-3, 'params': params['angle'].values()},
+        {'lr': 2.0e-4, 'params': params['objective'].values()},
+        {'lr': 2.0e-3, 'params': params['other'].values()},
     ], lr=1.0e-5)
 
-iterations = 1200
+iterations = 500
 errors = torch.zeros(iterations)
 
 
-params_angle_log = {}
-for name in params_angle:
-    params_angle_log[name] = torch.zeros(iterations)
+# Initialize logs for tracking each parameter
+params_logs = {}
+for groupname in params:
+    params_logs[groupname] = {}
+    for paramname in params[groupname]:
+        params_logs[groupname][paramname] = torch.zeros(iterations)
 
-params_other_log = {}
-for name in params_other:
-    params_other_log[name] = torch.zeros(iterations)
 
 trange = tqdm(range(iterations), desc='error: -')
 
 # Plot
-fig, ax = plt.subplots(nrows=2, figsize=(5, 10), dpi=120)
+fig, ax = plt.subplots(nrows=2, figsize=(5, 10), dpi=110)
 
-fig_tpm = plt.figure(figsize=(15, 4), dpi=120)
+fig_tpm = plt.figure(figsize=(15, 4), dpi=110)
 ax_tpm = plt.gca()
 
 
@@ -307,16 +347,14 @@ for t in trange:
 
     # Compute and print error
     error = MSE(cam_ft_coords_gt, cam_ft_coords) \
-        + MSE(cam_im_coords_gt, cam_im_coords) \
+        + 1e-1 * MSE(cam_im_coords_gt, cam_im_coords) \
 
     error_value = error.detach().item()
     errors[t] = error_value
 
-    for name in params_angle:
-        params_angle_log[name][t] = params_angle[name].detach().item()
-
-    for name in params_other:
-        params_other_log[name][t] = params_other[name][-1].detach().item()
+    for groupname in params:
+        for paramname in params[groupname]:
+            params_logs[groupname][paramname][t] = params[groupname][paramname].detach().item()
 
     trange.desc = f'error: {error_value:<8.3g}' \
         + f'slm zshift: {format_prefix(tpm.slm_zshift, "8.3f")}m'
@@ -327,6 +365,8 @@ for t in trange:
     optimizer.zero_grad()
 
     if t % 50 == 0 and True:
+        plt.figure(fig.number)
+
         # Fourier cam
         cam_ft_coord_pairs_x, cam_ft_coord_pairs_y = \
                 torch.stack((cam_ft_coords_gt, cam_ft_coords)).detach().unbind(-1)
@@ -358,14 +398,22 @@ for t in trange:
         ax[1].set_title(f'Image Cam | iter: {t}')
 
         plt.draw()
+        plt.pause(1e-3)
 
+        plt.figure(fig_tpm.number)
         ax_tpm.clear()
         tpm.plot(ax_tpm)
-
         plt.draw()
         plt.pause(1e-3)
 
-print(f'\nslm zshift: {format_prefix(tpm.slm_zshift)}m\n')
+
+for groupname in params:
+    print('\n' + groupname + ':')
+    for paramname in params[groupname]:
+        if groupname == 'angle':
+            print(f'  {paramname}: {params[groupname][paramname].detach().item():.3f}rad')
+        else:
+            print(f'  {paramname}: {format_prefix(params[groupname][paramname])}m')
 
 
 fig, ax1 = plt.subplots(figsize=(7, 7))
@@ -380,11 +428,10 @@ ax1.set_ylim((0, max(RMSEs)))
 ax1.legend(loc=2)
 
 ax2 = ax1.twinx()
-for name in params_angle_log:
-    ax2.plot(params_angle_log[name], label=name)
-for name in params_other_log:
-    ax2.plot(params_other_log[name]*1e2, label=name)
-ax2.set_ylabel('Parameter (cm | rad)')
+for groupname in params:
+    for paramname in params_logs[groupname]:
+        ax2.plot(params_logs[groupname][paramname], label=paramname)
+ax2.set_ylabel('Parameter (m | rad)')
 ax2.legend(loc=1)
 
 fig.tight_layout()  # otherwise the right y-label is slightly clipped
