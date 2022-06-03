@@ -189,7 +189,7 @@ def test_snells1():
     ray_out = snells(ray_in, normal, n_out)
 
     # Since directional and normal vectors are unitary, ||DxN|| = sin(angle)
-    # where x denotes cross product and |.| norm.
+    # where x denotes cross product and ||.|| norm.
     sin_in = np.sin(np.pi/4)
     sin_out = n_in / n_out * sin_in
     assert ray_out.refractive_index == n_out
@@ -219,6 +219,7 @@ def test_snells2():
     ray_out = snells(src, normal, n_out)
 
     # Since directional and normal vectors are unitary: ||DxN|| = sin(angle)
+    # where x denotes cross product and ||.|| norm.
     sin_in = norm(cross(src.direction, normal))
     sin_out = norm(cross(ray_out.direction, normal))
     assert comparetensors(sin_out, n_in/n_out * sin_in)
