@@ -1,5 +1,9 @@
 === Installing the required packages ===
-Install Anaconda and run these commands to install the right packages:
+1. Install Anaconda either from the website www.anaconda.com or using your package manager.
+On Windows, you can use winget to install it:
+winget install Anaconda.Anaconda3
+
+2. Then run these commands to install the right packages:
 
 conda create -n raylearn -c pytorch pytorch
 conda activate raylearn
