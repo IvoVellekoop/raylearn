@@ -1,9 +1,20 @@
 === Installing the required packages ===
-1. Install Anaconda either from the website www.anaconda.com or using your package manager.
-On Windows, you can use winget to install it:
+1a. Install Anaconda either from the website www.anaconda.com,
+
+1b. or install using your package manager. On Windows, you can use winget to install it:
 winget install Anaconda.Anaconda3
 
-2. Then run these commands to install the right packages:
+Note: you may need to reopen your terminal before the conda command is available. On Windows, you can use either the Anaconda Cmd or Powershell, or regular Cmd or Powershell.
+
+2a. Install the exact package versions using the environment snapshot yml file:
+conda env create -f environment-windows.yml
+or
+conda env create -f environment-linux.yml
+
+and then activate it:
+conda activate raylearn
+
+2b. Or perform a fresh install by running these commands
 
 conda create -n raylearn -c pytorch pytorch
 conda activate raylearn
