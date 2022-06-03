@@ -10,7 +10,7 @@ import torch
 import numpy as np
 
 from testing import checkunitvector
-from vector_functions import unit, dot, norm, norm_square, rejection, reflection, rotate, components
+from vector_functions import unit, dot, norm_square, rejection, reflection, rotate, components
 from ray_plane import Ray, Plane
 
 
