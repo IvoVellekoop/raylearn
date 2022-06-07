@@ -38,9 +38,9 @@ class TPM(): #torch.nn.Module):
         """
         Define all properties of all optical elements as initial guess.
 
-        All properties that remain untouched or will be directly overwritten
-        should be defined here. Properties that depend on other properties
-        should be computed in the update method. All lengths in meters.
+        All statically defined properties should be defined here.
+        Properties that depend on other properties should be computed in
+        the update method. All lengths in meters.
 
         The measurements define the SLM segment and Galvo Mirror settings,
         and are hence included.
@@ -104,11 +104,6 @@ class TPM(): #torch.nn.Module):
         # self.fobj2 = self.obj2_tubelength / self.obj2_magnification
         self.fobj2 = 1.621e-3
 
-        # Lens planes to sample plane
-        self.L5 = Plane(origin + self.f5*z, -z)
-        self.L7 = Plane(self.L5.position_m + (self.f5 + self.f7)*z, -z)
-        self.OBJ1 = Plane(self.L7.position_m + (self.f7 + self.fobj1)*z, -z)
-
         # Lens planes transmission arm
         self.sample_zshift = tensor((0.,))
         self.obj2_zshift = tensor((0.,))
@@ -135,7 +130,8 @@ class TPM(): #torch.nn.Module):
 
     def update(self):
         """
-        Update dependent properties. These depend on parameters to be learned.
+        Update dependent properties. These properties are defined as a function
+        of statically defined properties and/or other dependent properties.
 
         Properties that depend on dynamic properties should be computed here,
         so they get recomputed whenever update is called. All lengths in meters.
@@ -151,6 +147,11 @@ class TPM(): #torch.nn.Module):
         self.galvo_x = rotate(x, z, self.galvo_angle)
         self.galvo_y = rotate(y, z, self.galvo_angle)
         self.galvo_plane = CoordPlane(origin, self.galvo_x, self.galvo_y)
+
+        # Lens planes to sample plane
+        self.L5 = Plane(origin + self.f5*z, -z)
+        self.L7 = Plane(self.L5.position_m + (self.f5 + self.f7)*z, -z)
+        self.OBJ1 = Plane(self.L7.position_m + (self.f7 + self.fobj1)*z, -z)
 
         # Sample plane and coverslip
         coverslip_front_to_sample_plane = (170e-6 - self.coverslip_thickness) * z
