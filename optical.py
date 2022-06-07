@@ -227,7 +227,6 @@ def galvo_mirror(ray_in, galvo_plane, rotations):
                     galvo mirror.
         galvo_plane CoordPlane. The x and y vectors of the galvo plane represent
                     the rotation axes of the galvo mirrors.
-                    galvo response in radians/volt. ##################
         rotations   MxNx2 Tensor. The rotations [x, y] applied to the galvo mirror.
 
     Output
@@ -275,6 +274,3 @@ def slm_segment(ray_in, slm_plane, slm_coords):
     position_m = slm_plane.position_m + slm_plane.x * x_slm + slm_plane.y * y_slm
     ray_out = ray_in.copy(position_m=position_m)
     return ray_out
-
-
-#### Create camera function that includes ray-plane intersection and coordinate transformation
