@@ -104,6 +104,7 @@ def components(v):
 
 
 def cartesian3d():
+    """Return default tuple of an origin vector and 3 orthonormal 3D vectors."""
     origin = torch.tensor((0., 0., 0.))
     x = torch.tensor((1., 0., 0.))
     y = torch.tensor((0., 1., 0.))
