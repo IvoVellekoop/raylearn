@@ -5,7 +5,7 @@ Functions for plotting Rays, Planes, stuff to draw your defined optical elements
 """
 
 import torch
-from torch import stack, tensor, Tensor
+from torch import stack, Tensor
 import numpy as np
 from vector_functions import norm, unit, rejection, cartesian3d
 from ray_plane import Plane, CoordPlane
@@ -52,7 +52,7 @@ def format_prefix(number, formatspec='.2f'):
 
 def ray_positions(raylist):
     """
-    Take list or tuple of rays and return tuple of ray positions. The positions are expanded 
+    Take list or tuple of rays and return tuple of ray positions. The positions are expanded
     according to broadcasting semantics, so the shapes are compatible (also for plotting).
     See also:
     https://pytorch.org/docs/stable/notes/broadcasting.html#broadcasting-semantics
@@ -106,8 +106,6 @@ def plot_coords(ax, coords, plotkwargs={'color': 'tab:blue'}):
     x, y = coords.unbind(-1)
     ln = ax.plot(x.detach().cpu().view(-1),
                  y.detach().cpu().view(-1), '.', **plotkwargs)
-    ax.set_xlabel('x (pix)')
-    ax.set_ylabel('y (pix)')
     return ln
 
 
