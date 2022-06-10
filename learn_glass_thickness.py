@@ -43,7 +43,7 @@ tpm.raytrace()
 # Define Inital Guess
 tpm.slm_zshift = tensor((0.,), requires_grad=True)
 tpm.slm_angle = tensor((0.,), requires_grad=True)
-tpm.galvo_angle = tensor((0.,), requires_grad=True)
+tpm.galvo_roll = tensor((0.,), requires_grad=True)
 tpm.cam_ft_xshift = tensor((0.,), requires_grad=True)
 tpm.cam_ft_yshift = tensor((0.,), requires_grad=True)
 tpm.cam_im_xshift = tensor((0.,), requires_grad=True)
@@ -59,7 +59,7 @@ tpm.coverslip_thickness = tensor((170e-6,), requires_grad=True)
 params = {}
 params['angle'] = {
     'SLM angle': tpm.slm_angle,
-    'Galvo angle': tpm.galvo_angle,
+    'Galvo angle': tpm.galvo_roll,
 }
 params['objective'] = {
     # 'OBJ2 zshift': tpm.obj2_zshift,

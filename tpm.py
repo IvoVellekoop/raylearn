@@ -66,10 +66,11 @@ class TPM(): #torch.nn.Module):
         # Optical scan angle = 2x mechanical angle
         # https://docs.scanimage.org/Configuration/Scanners/Resonant%2BScanner.html
         # https://bmpi.wiki.utwente.nl/lib/exe/fetch.php?media=instrumentation:galvo:gvs111_m-manual.pdf
-        galvo_volts_per_optical_degree = 0.5 / 1.81     # Factor of 1.81 measured on 11-05-2022
-        ########### galvo_volts_per_mechanical_degree = #############
-        self.galvo_rad_per_V = (np.pi/180) / galvo_volts_per_optical_degree
-        self.galvo_angle = tensor((0.0,))               # Rotation angle around optical axis
+        self.galvo_volts_per_optical_degree = 0.5 / 1.81    # Factor of 1.81 measured on 11-05-2022
+        # Galvo mirror rotation in mechanical radians per volt
+        # conversion from optical scan angle -> factor of 2
+        self.galvo_mech_rad_per_V = (np.pi/180) / 2 / self.galvo_volts_per_optical_degree
+        self.galvo_roll = tensor((0.0,))                   # Rotation angle around optical axis
 
         # SLM
         # Meadowlark 1920x1152 XY Phase Series
@@ -121,7 +122,7 @@ class TPM(): #torch.nn.Module):
         self.galvo_volts = tensor((matfile['p/galvoXs'], matfile['p/galvoYs'])).T \
                           - tensor((matfile['p/GalvoXcenter'], matfile['p/GalvoYcenter'])).view(1, 1, 2)
         ######### Correct with SLM ppp instead
-        self.galvo_rots = self.galvo_volts * self.galvo_rad_per_V
+        self.galvo_rots = self.galvo_volts * self.galvo_mech_rad_per_V
 
     def update(self):
         """
@@ -139,8 +140,8 @@ class TPM(): #torch.nn.Module):
         self.slm_plane = CoordPlane(origin + self.slm_zshift * z, self.slm_x, self.slm_y)
 
         # Galvo
-        self.galvo_x = rotate(x, z, self.galvo_angle)
-        self.galvo_y = rotate(y, z, self.galvo_angle)
+        self.galvo_x = rotate(x, z, self.galvo_roll)
+        self.galvo_y = rotate(y, z, self.galvo_roll)
         self.galvo_plane = CoordPlane(origin, self.galvo_x, self.galvo_y)
 
         # Lens planes to sample plane
@@ -227,7 +228,7 @@ class TPM(): #torch.nn.Module):
 
         return self.cam_ft_coords, self.cam_im_coords
 
-    def plot(self, ax=plt.gca()):
+    def plot(self, ax=plt.gca(), fraction=0.03):
         """Plot the TPM setup and the current rays."""
 
         # Plot lenses and planes
@@ -252,4 +253,4 @@ class TPM(): #torch.nn.Module):
         # ray2_exp_pos = self.rays[2].position_m.expand(self.rays[3].position_m.shape)
         # ray2_exp = self.rays[2].copy(position_m=ray2_exp_pos)
         # raylist = [ray2_exp] + self.rays[3:]
-        plot_rays(ax, self.rays, fraction=0.03)
+        plot_rays(ax, self.rays, fraction=fraction)

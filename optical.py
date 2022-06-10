@@ -227,7 +227,8 @@ def galvo_mirror(ray_in, galvo_plane, rotations):
                     galvo mirror.
         galvo_plane CoordPlane. The x and y vectors of the galvo plane represent
                     the rotation axes of the galvo mirrors.
-        rotations   MxNx2 Tensor. The rotations [x, y] applied to the galvo mirror.
+        rotations   MxNx2 Tensor. The mechanical rotations [x, y] applied to the
+                    galvo mirror.
 
     Output
     ------
