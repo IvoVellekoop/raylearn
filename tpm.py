@@ -77,7 +77,6 @@ class TPM(): #torch.nn.Module):
         # https://bmpi.wiki.utwente.nl/doku.php?id=instrumentation:slm:meadowlark_slm
         # https://www.meadowlark.com/store/data_sheet/SLM%20-%201920%20x%201152%20Data%20Sheet%20021021.pdf
         # https://www.meadowlark.com/images/files/Specification%20Backgrounder%20for%20XY%20Series%20Phase%20SLMS%20-%20SB0520.pdf
-        self.slm_width  = 10.7e-3
         self.slm_height = 10.7e-3
         self.slm_angle  = tensor((0.,))         # Rotation angle around optical axis
         self.slm_zshift = tensor((0.,))
@@ -146,15 +145,17 @@ class TPM(): #torch.nn.Module):
 
         # Lens 3 and 4
         self.L3 = Plane(self.galvo_plane.position_m + self.f3 * z, -z)
+        self.plane34 = CoordPlane(self.L3.position_m + self.f3 * z, x, y)
         self.L4 = Plane(self.L3.position_m + (self.f3 + self.f4) * z, -z)
 
         # SLM
-        self.slm_x = rotate(x * self.slm_width, z, self.slm_angle)
+        self.slm_x = rotate(x * self.slm_height, z, self.slm_angle)
         self.slm_y = rotate(y * self.slm_height, z, self.slm_angle)
         self.slm_plane = CoordPlane(self.L4.position_m + (self.f4 + self.slm_zshift) * z, self.slm_x, self.slm_y)
 
         # Lens planes to sample plane
         self.L5 = Plane(self.slm_plane.position_m + self.f5*z, -z)
+        self.plane57 = CoordPlane(self.L5.position_m + self.f5 * z, x, y)
         self.L7 = Plane(self.L5.position_m + (self.f5 + self.f7)*z, -z)
         self.OBJ1 = Plane(self.L7.position_m + (self.f7 + self.fobj1)*z, -z)
 
@@ -205,10 +206,15 @@ class TPM(): #torch.nn.Module):
         # Propagation to objective 1
         self.rays.append(galvo_mirror(self.rays[-1], self.galvo_plane, self.galvo_rots))
         self.rays.append(ideal_lens(self.rays[-1], self.L3, self.f3))
+        self.plane34_ray = self.rays[-1].intersect_plane(self.plane34)
+        self.rays.append(self.plane34_ray)
         self.rays.append(ideal_lens(self.rays[-1], self.L4, self.f4))
         self.rays.append(self.rays[-1].intersect_plane(self.slm_plane))
-        self.rays.append(slm_segment(self.rays[-1], self.slm_plane, self.slm_coords))
+        self.slm_ray = slm_segment(self.rays[-1], self.slm_plane, self.slm_coords)
+        self.rays.append(self.slm_ray)
         self.rays.append(ideal_lens(self.rays[-1], self.L5, self.f5))
+        self.plane57_ray = self.rays[-1].intersect_plane(self.plane57)
+        self.rays.append(self.plane57_ray)
         self.rays.append(ideal_lens(self.rays[-1], self.L7, self.f7))
         self.rays.append(ideal_lens(self.rays[-1], self.OBJ1, self.fobj1))
         self.rays.append(self.rays[-1].copy(refractive_index=self.n_water))

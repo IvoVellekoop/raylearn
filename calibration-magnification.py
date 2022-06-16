@@ -23,12 +23,8 @@ plt.rc('font', size=12)
 # Define 'measurement' Galvo and SLM settings
 matfile = {
     'p/rects': torch.zeros((4, 1)),
-    # 'p/galvoXs': (1., 0.),
-    # 'p/galvoYs': (0., 1.),
     'p/galvoXs': (0.037986079230209,),
     'p/galvoYs': (0.,),
-    # 'p/galvoXs': (0., 0.1,),
-    # 'p/galvoYs': (0., 0.,),
     'p/GalvoXcenter': (0.,),
     'p/GalvoYcenter': (0.,)}
 
@@ -42,24 +38,45 @@ tpm.raytrace()
 # plt.show()
 
 # Compute matrices
-stage_displacement_m = norm(tpm.cam_sample_coords)
+x_at_plane34_m = norm(tpm.plane34.transform_rays(tpm.plane34_ray))
+x_at_plane57_m = norm(tpm.plane57.transform_rays(tpm.plane57_ray))
+x_at_imgcam_m = norm(tpm.cam_im_coords * tpm.cam_pixel_size)
 
-zoom = 20
-framesize_TPMpix = 512
-galvo_angular_range_optdeg = 6 * 1.81
-wavelength_m = 804e-9
+magnification_plane34_imgcam = x_at_imgcam_m / x_at_plane34_m
+magnification_plane57_imgcam = x_at_imgcam_m / x_at_plane57_m
+error_magnification_plane34_imgcam = 100 * torch.abs(magnification_plane34_imgcam - 2.841) / 2.841
+error_magnification_plane57_imgcam = 100 * torch.abs(magnification_plane57_imgcam - 3.788) / 3.788
 
-slm_coords = tensor(matfile['p/rects'])[0:2, :].T.view(-1, 2)
-galvo_volts = tensor((matfile['p/galvoXs'], matfile['p/galvoYs'])).T - \
-    tensor((matfile['p/GalvoXcenter'], matfile['p/GalvoYcenter'])).view(1, 1, 2)
-
-galvo_tilt_optdeg = components(galvo_volts)[0] / tpm.galvo_volts_per_optical_degree
-displacement_TPMpix = galvo_tilt_optdeg * zoom * framesize_TPMpix / galvo_angular_range_optdeg
+print('\nMagnifications:')
+print(f'Plane34 - Image cam: {magnification_plane34_imgcam.item():.3f}  Error: {error_magnification_plane34_imgcam.item():.2f}%')
+print(f'Plane57 - Image cam: {magnification_plane57_imgcam.item():.3f}  Error: {error_magnification_plane57_imgcam.item():.2f}%')
 
 
-print()
-print('Compare these values with tpm/calibration/tests/theoretical_galvo_slm_calibration.mlx')
-print('x_stage_sample_m:', f'{stage_displacement_m.item():.4e}')
-print('D_stage_TPM_pix:', displacement_TPMpix.item())
+# Define 'measurement' Galvo and SLM settings
+matfile2 = {
+    'p/rects': torch.tensor(((0.1, 0., 0., 0.),)).T,
+    'p/galvoXs': (0.,),
+    'p/galvoYs': (0.,),
+    'p/GalvoXcenter': (0.,),
+    'p/GalvoYcenter': (0.,)}
+
+# Create TPM object and perform initial raytrace
+tpm2 = TPM()
+tpm2.set_measurement(matfile2)
+tpm2.update()
+tpm2.raytrace()
+
+# tpm2.plot(fraction=1.)
+# plt.show()
+
+# Compute matrices
+
+x_at_slm_m = norm(tpm2.slm_plane.transform_rays(tpm2.slm_ray) * tpm2.slm_height)
+x_at_ftcam_m = norm(tpm2.cam_ft_coords * tpm2.cam_pixel_size)
+
+magnification_slm_ftcam = x_at_ftcam_m / x_at_slm_m
+error_magnification_slm_ftcam = 100 * torch.abs(magnification_slm_ftcam - 0.3520) / 0.3520
+
+print(f'SLM - Fourier cam: {magnification_slm_ftcam.item():.3f}  Error: {error_magnification_slm_ftcam.item():.2f}%')
 
 pass
