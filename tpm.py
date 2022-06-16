@@ -97,11 +97,11 @@ class TPM(): #torch.nn.Module):
         self.f10 = 200e-3
         self.obj1_tubelength = 200e-3           # Objective standard tubelength
         self.obj1_magnification = 16            # Objective magnification
-        self.fobj1 = self.obj1_tubelength / self.obj1_magnification
+        self.fobj1 = self.obj1_tubelength / self.obj1_magnification #* self.n_water         #hoe
         # self.fobj1 = 13.8e-3  #### Measured
         self.obj2_tubelength = 165e-3           # Objective standard tubelength
         self.obj2_magnification = 100           # Objective magnification
-        self.fobj2 = self.obj2_tubelength / self.obj2_magnification
+        self.fobj2 = self.obj2_tubelength / self.obj2_magnification #* self.n_coverslip     #hoe
         # self.fobj2 = 1.621e-3
 
         # Lens planes transmission arm
@@ -221,7 +221,7 @@ class TPM(): #torch.nn.Module):
 
         # Propagation through coverslip
         self.rays.append(self.rays[-1].intersect_plane(self.coverslip_front_plane))
-        self.rays.append(snells(self.rays[-1], self.coverslip_front_plane.normal, self.n_coverslip))
+        # self.rays.append(snells(self.rays[-1], self.coverslip_front_plane.normal, self.n_coverslip))    #hoe
         self.sample_ray = self.rays[-1].intersect_plane(self.sample_plane)
         self.rays.append(self.sample_ray)
         self.cam_sample_coords = self.sample_plane.transform_rays(self.sample_ray)
