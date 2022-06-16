@@ -90,7 +90,6 @@ class TPM(): #torch.nn.Module):
         self.f7 = 300e-3
         self.f9 = 150e-3
         self.f10 = 200e-3
-        self.f11 = 100e-3
         self.obj1_tubelength = 200e-3           # Objective standard tubelength
         self.obj1_magnification = 16            # Objective magnification
         self.fobj1 = self.obj1_tubelength / self.obj1_magnification
