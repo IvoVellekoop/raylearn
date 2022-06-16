@@ -86,7 +86,13 @@ class TPM(): #torch.nn.Module):
         self.coverslip_thickness = tensor((170e-6,))
 
         # Focal distances (m)
+        self.f1 = 100e-3
+        self.f2 = 100e-3
+        self.f3 = 200e-3
+        self.f4 = 200e-3
         self.f5 = 150e-3
+        self.f6a = 200e-3
+        self.f6b = 200e-3
         self.f7 = 300e-3
         self.f9 = 150e-3
         self.f10 = 200e-3
