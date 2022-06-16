@@ -139,18 +139,22 @@ class TPM(): #torch.nn.Module):
         """
         origin, x, y, z = self.coordsystem
 
+        # Galvo
+        self.galvo_x = rotate(-x, z, self.galvo_roll)
+        self.galvo_y = rotate(-y, z, self.galvo_roll)
+        self.galvo_plane = CoordPlane(origin, self.galvo_x, self.galvo_y)
+
+        # Lens 3 and 4
+        self.L3 = Plane(self.galvo_plane.position_m + self.f3 * z, -z)
+        self.L4 = Plane(self.L3.position_m + (self.f3 + self.f4) * z, -z)
+
         # SLM
         self.slm_x = rotate(x * self.slm_width, z, self.slm_angle)
         self.slm_y = rotate(y * self.slm_height, z, self.slm_angle)
-        self.slm_plane = CoordPlane(origin + self.slm_zshift * z, self.slm_x, self.slm_y)
-
-        # Galvo
-        self.galvo_x = rotate(x, z, self.galvo_roll)
-        self.galvo_y = rotate(y, z, self.galvo_roll)
-        self.galvo_plane = CoordPlane(origin, self.galvo_x, self.galvo_y)
+        self.slm_plane = CoordPlane(self.L4.position_m + (self.f4 + self.slm_zshift) * z, self.slm_x, self.slm_y)
 
         # Lens planes to sample plane
-        self.L5 = Plane(origin + self.f5*z, -z)
+        self.L5 = Plane(self.slm_plane.position_m + self.f5*z, -z)
         self.L7 = Plane(self.L5.position_m + (self.f5 + self.f7)*z, -z)
         self.OBJ1 = Plane(self.L7.position_m + (self.f7 + self.fobj1)*z, -z)
 
@@ -200,6 +204,8 @@ class TPM(): #torch.nn.Module):
 
         # Propagation to objective 1
         self.rays.append(galvo_mirror(self.rays[-1], self.galvo_plane, self.galvo_rots))
+        self.rays.append(ideal_lens(self.rays[-1], self.L3, self.f3))
+        self.rays.append(ideal_lens(self.rays[-1], self.L4, self.f4))
         self.rays.append(self.rays[-1].intersect_plane(self.slm_plane))
         self.rays.append(slm_segment(self.rays[-1], self.slm_plane, self.slm_coords))
         self.rays.append(ideal_lens(self.rays[-1], self.L5, self.f5))
@@ -238,8 +244,10 @@ class TPM(): #torch.nn.Module):
 
         # Plot lenses and planes
         scale = 0.008
-        plot_plane(ax, self.slm_plane, 0.8, ' SLM', plotkwargs={'color': 'red'})
         plot_plane(ax, self.galvo_plane, scale, ' Galvo', plotkwargs={'color': 'red'})
+        plot_lens(ax, self.L3, self.f3, scale, ' L3\n')
+        plot_lens(ax, self.L4, self.f4, scale, ' L4\n')
+        plot_plane(ax, self.slm_plane, 0.8, ' SLM', plotkwargs={'color': 'red'})
         plot_lens(ax, self.L5, self.f5, scale, ' L5\n')
         plot_lens(ax, self.L7, self.f7, scale, ' L7\n')
 
