@@ -66,7 +66,7 @@ params['objective'] = {
     # 'sample zshift': tpm.sample_zshift,
 }
 params['other'] = {
-    'SLM zshift': tpm.slm_zshift,
+    # 'SLM zshift': tpm.slm_zshift,
     # 'L9 zshift': tpm.L9_zshift,
     'cam ft xshift': tpm.cam_ft_xshift,
     'cam ft yshift': tpm.cam_ft_yshift,
@@ -219,7 +219,7 @@ tpm.raytrace()
 # matpath = 'LocalData/raylearn-data/TPM/pencil-beam-positions/17-Nov-2021-400um/raylearn_pencil_beam_738477.768870_400um.mat'
 # matpath = 'LocalData/raylearn-data/TPM/pencil-beam-positions/17-Nov-2021-empty/raylearn_pencil_beam_738477.729080_empty.mat'
 # matpath = "F:/ScientificData/pencil-beam-positions/01-Jun-2022-170um+400um_aligned_to_galvos/raylearn_pencil_beam_738673.636565_170um+400um_aligned_to_galvos.mat"
-matpath = "F:/ScientificData/pencil-beam-positions/01-Jun-2022-400um_aligned_to_slm/raylearn_pencil_beam_738673.696695_400um_aligned_to_slm.mat"
+matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/01-Jun-2022-400um_aligned_to_slm/raylearn_pencil_beam_738673.696695_400um_aligned_to_slm.mat"
 matfile = h5py.File(matpath, 'r')
 
 cam_ft_coords_gt = tensor((matfile['cam_ft_col'], matfile['cam_ft_row'])).permute(1, 2, 0)
