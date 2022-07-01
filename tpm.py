@@ -97,11 +97,11 @@ class TPM(): #torch.nn.Module):
         self.f10 = 200e-3
         self.obj1_tubelength = 200e-3           # Objective standard tubelength
         self.obj1_magnification = 16            # Objective magnification
-        self.fobj1 = self.obj1_tubelength / self.obj1_magnification #* self.n_water         #hoe
+        self.fobj1 = self.obj1_tubelength / self.obj1_magnification  * self.n_water     #hoe
         # self.fobj1 = 13.8e-3  #### Measured
         self.obj2_tubelength = 165e-3           # Objective standard tubelength
         self.obj2_magnification = 100           # Objective magnification
-        self.fobj2 = self.obj2_tubelength / self.obj2_magnification #* self.n_coverslip     #hoe
+        self.fobj2 = self.obj2_tubelength / self.obj2_magnification  # * self.n_water     #hoe
         # self.fobj2 = 1.621e-3
 
         # Lens planes transmission arm
@@ -151,13 +151,15 @@ class TPM(): #torch.nn.Module):
         # SLM
         self.slm_x = rotate(x * self.slm_height, z, self.slm_angle)
         self.slm_y = rotate(y * self.slm_height, z, self.slm_angle)
-        self.slm_plane = CoordPlane(self.L4.position_m + (self.f4 + self.slm_zshift) * z, self.slm_x, self.slm_y)
+        self.slm_plane = CoordPlane(self.L4.position_m + (self.f4 + self.slm_zshift) * z, \
+            self.slm_x, self.slm_y)
 
         # Lens planes to sample plane
         self.L5 = Plane(self.slm_plane.position_m + self.f5*z, -z)
         self.plane57 = CoordPlane(self.L5.position_m + self.f5 * z, x, y)
         self.L7 = Plane(self.L5.position_m + (self.f5 + self.f7)*z, -z)
         self.OBJ1 = Plane(self.L7.position_m + (self.f7 + self.fobj1)*z, -z)
+        self.OBJ1_BFP = Plane(self.OBJ1.position_m - self.fobj1*z, self.OBJ1.normal)
 
         # Sample plane and coverslip
         coverslip_front_to_sample_plane = (170e-6 - self.coverslip_thickness) * z
@@ -216,16 +218,19 @@ class TPM(): #torch.nn.Module):
         self.plane57_ray = self.rays[-1].intersect_plane(self.plane57)
         self.rays.append(self.plane57_ray)
         self.rays.append(ideal_lens(self.rays[-1], self.L7, self.f7))
+
+        self.rays.append(snells(self.rays[-1], self.OBJ1_BFP.normal, self.n_water))
         self.rays.append(ideal_lens(self.rays[-1], self.OBJ1, self.fobj1))
-        self.rays.append(self.rays[-1].copy(refractive_index=self.n_water))
+        # self.rays.append(self.rays[-1].copy(refractive_index=self.n_water))
+        # self.rays.append(self.rays[-1].copy(refractive_index=1.))
 
         # Propagation through coverslip
         self.rays.append(self.rays[-1].intersect_plane(self.coverslip_front_plane))
-        # self.rays.append(snells(self.rays[-1], self.coverslip_front_plane.normal, self.n_coverslip))    #hoe
+        self.rays.append(snells(self.rays[-1], self.coverslip_front_plane.normal, self.n_coverslip))    #hoe
         self.sample_ray = self.rays[-1].intersect_plane(self.sample_plane)
         self.rays.append(self.sample_ray)
         self.cam_sample_coords = self.sample_plane.transform_rays(self.sample_ray)
-        # self.rays.append(snells(self.rays[-1], self.sample_plane.normal, 1.))
+        self.rays.append(snells(self.rays[-1], self.sample_plane.normal, 1.))
 
         # # Propagation from objective 2
         self.rays.append(self.rays[-1].copy(refractive_index=1.0))
