@@ -131,3 +131,11 @@ class CoordPlane():
         ##### Away with ya!
         return self.transform_points(rays.position_m)
 
+    def transform_direction(self, direction):
+        """
+        Transform vector array to coordinates of the CoordPlane x & y
+        (no offset, suitable for direction to extract sine of angle).
+        """
+        x = dot(direction, self.x) / norm_square(self.x)
+        y = dot(direction, self.y) / norm_square(self.y)
+        return torch.cat((x, y), -1)

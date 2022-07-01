@@ -170,6 +170,7 @@ class TPM(): #torch.nn.Module):
 
         # Objective
         self.OBJ2 = Plane(self.sample_plane.position_m + self.fobj2*z + self.obj2_zshift*z, -z)
+        self.OBJ2_pupil_plane = CoordPlane(self.OBJ2.position_m + self.fobj2*z, x, y)
         self.L9 = Plane(self.OBJ2.position_m + (self.fobj2 + self.f9 + self.L9_zshift)*z, -z)
         self.L10 = Plane(self.L9.position_m + (self.f9 + self.f10)*z + self.L10_zshift*z, -z)
 
@@ -183,8 +184,6 @@ class TPM(): #torch.nn.Module):
                                        self.cam_ft_xshift*x + self.cam_ft_yshift*y,
                                        self.cam_pixel_size * -x,
                                        self.cam_pixel_size * -y)
-                                       # self.cam_pixel_size * -x /5.5*4.8,
-                                       # self.cam_pixel_size * -y /5.5*4.8)
 
     def raytrace(self):
         """
@@ -219,6 +218,9 @@ class TPM(): #torch.nn.Module):
         self.rays.append(self.plane57_ray)
         self.rays.append(ideal_lens(self.rays[-1], self.L7, self.f7))
 
+        self.obj1_pupil_ray = self.rays[-1]
+
+        self.rays.append(self.rays[-1].intersect_plane(self.OBJ1_BFP))
         self.rays.append(snells(self.rays[-1], self.OBJ1_BFP.normal, self.n_water))
         self.rays.append(ideal_lens(self.rays[-1], self.OBJ1, self.fobj1))
         # self.rays.append(self.rays[-1].copy(refractive_index=self.n_water))
@@ -227,14 +229,18 @@ class TPM(): #torch.nn.Module):
         # Propagation through coverslip
         self.rays.append(self.rays[-1].intersect_plane(self.coverslip_front_plane))
         self.rays.append(snells(self.rays[-1], self.coverslip_front_plane.normal, self.n_coverslip))    #hoe
+
         self.sample_ray = self.rays[-1].intersect_plane(self.sample_plane)
         self.rays.append(self.sample_ray)
         self.cam_sample_coords = self.sample_plane.transform_rays(self.sample_ray)
         self.rays.append(snells(self.rays[-1], self.sample_plane.normal, 1.))
 
         # # Propagation from objective 2
-        self.rays.append(self.rays[-1].copy(refractive_index=1.0))
+        # self.rays.append(self.rays[-1].copy(refractive_index=1.0))
         self.rays.append(ideal_lens(self.rays[-1], self.OBJ2, self.fobj2))
+        self.OBJ2_pupil_plane_ray = self.rays[-1].intersect_plane(self.OBJ2_pupil_plane)
+        self.rays.append(self.OBJ2_pupil_plane_ray)
+        self.cam_obj2_pupil_plane_coords = self.OBJ2_pupil_plane.transform_rays(self.OBJ2_pupil_plane_ray)
         self.rays.append(ideal_lens(self.rays[-1], self.L9, self.f9))
 
         # Propagation onto cameras
@@ -250,7 +256,7 @@ class TPM(): #torch.nn.Module):
 
         return self.cam_ft_coords, self.cam_im_coords
 
-    def plot(self, ax=plt.gca(), fraction=0.03):
+    def plot(self, ax=plt.gca(), fraction=1+0*  0.03):
         """Plot the TPM setup and the current rays."""
 
         # Plot lenses and planes
@@ -262,6 +268,7 @@ class TPM(): #torch.nn.Module):
         plot_lens(ax, self.L5, self.f5, scale, ' L5\n')
         plot_lens(ax, self.L7, self.f7, scale, ' L7\n')
 
+        plot_plane(ax, self.OBJ1_BFP, scale, 'OBJ1 Pupil plane', plotkwargs={'color': 'blue'})
         plot_lens(ax, self.OBJ1, self.fobj1, scale, ' OBJ1\n')
         plot_plane(ax, self.coverslip_front_plane, scale*0.8, '', ' coverslip\n front')
         plot_plane(ax, self.sample_plane, scale*0.7, '', ' sample plane')

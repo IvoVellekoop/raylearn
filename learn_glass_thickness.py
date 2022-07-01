@@ -83,7 +83,7 @@ tpm.update()
 
 # Define optimizer
 optimizer = torch.optim.Adam([
-        {'lr': 1.0e-3, 'params': params['angle'].values()},
+        {'lr': 2.0e-3, 'params': params['angle'].values()},
         {'lr': 2.0e-4, 'params': params['objective'].values()},
         {'lr': 1.0e-3, 'params': params['other'].values()},
     ], lr=1.0e-5)
@@ -187,10 +187,10 @@ for groupname in params:
             print(f'  {paramname}: {format_prefix(params[groupname][paramname])}m')
 
 
-fig, ax1 = plt.subplots(figsize=(7, 7))
-fig.dpi = 144
 
 # Plot error
+fig, ax1 = plt.subplots(figsize=(7, 7))
+fig.dpi = 144
 errorcolor = 'darkred'
 RMSEs = np.sqrt(errors.detach().cpu())
 ax1.plot(RMSEs, label='error', color=errorcolor)
@@ -208,6 +208,7 @@ ax2.legend(loc=1)
 fig.tight_layout()  # otherwise the right y-label is slightly clipped
 plt.title('Learning parameters')
 plt.show()
+
 
 # === Glass plate === #
 
