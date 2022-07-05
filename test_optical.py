@@ -180,23 +180,93 @@ def test_snells1():
     n_in = 1.5
     n_out = 1.2
 
+    origin, x, y, z = cartesian3d()
+
     # Define input Ray
-    ray_in_pos = Tensor((0,0,0))
-    ray_in_dir = unit(Tensor((1,0,1)))
+    ray_in_pos = origin
+    ray_in_dir = unit(x + z)
     ray_in = Ray(ray_in_pos, ray_in_dir, refractive_index=n_in)
 
-    normal = Tensor((0,0,-1))
+    # Output Ray
+    normal = -z
     ray_out = snells(ray_in, normal, n_out)
 
-    # Since directional and normal vectors are unitary, ||DxN|| = sin(angle)
-    # where x denotes cross product and ||.|| norm.
+    # Snell's law check
     sin_in = np.sin(np.pi/4)
     sin_out = n_in / n_out * sin_in
+    angle_out_rad = np.arcsin(sin_out)
+
     assert ray_out.refractive_index == n_out
+
+    # Plane is aligned with coordinate system, so we can simply take the vector components
     assert comparetensors(sin_out, ray_out.direction[0])
+    assert comparetensors(np.cos(angle_out_rad), ray_out.direction[2])
+    assert torch.sign(ray_out.direction[2]) == torch.sign(ray_in.direction[2])
 
 
 def test_snells2():
+    """
+    Test Snell's law on a simple manually constructed case with flipped normal. For easyness,
+    xz-plane is used, with normal = z. (Opposite normal as test_snells1).
+    The x- and z-components are used for comparison.
+    """
+    n_in = 1.6
+    n_out = 1.3
+    angle_deg = 35
+
+    origin, x, y, z = cartesian3d()
+
+    # Define input Ray
+    angle_rad = angle_deg * np.pi/180
+    ray_in_pos = origin
+    ray_in_dir = rotate(z, y, angle_rad)
+    ray_in = Ray(ray_in_pos, ray_in_dir, refractive_index=n_in)
+
+    # Output Ray
+    normal = z
+    ray_out = snells(ray_in, normal, n_out)
+
+    # Snell's law check
+    sin_in = np.sin(angle_rad)
+    sin_out = n_in / n_out * sin_in
+    angle_out_rad = np.arcsin(sin_out)
+
+    assert ray_out.refractive_index == n_out
+
+    # Plane is aligned with coordinate system, so we can simply take the vector components
+    assert comparetensors(sin_out, ray_out.direction[0])
+    assert comparetensors(np.cos(angle_out_rad), ray_out.direction[2])
+    assert torch.sign(ray_out.direction[2]) == torch.sign(ray_in.direction[2])
+
+
+def test_snells3():
+    """
+    Test returning of nan when total internal reflection occurs.
+    """
+    n_in = 2
+    n_out = 1
+    angle_deg = 50
+
+    origin, x, y, z = cartesian3d()
+
+    # Define input Ray
+    angle_rad = angle_deg * np.pi/180
+    ray_in_pos = origin
+    ray_in_dir = rotate(z, y, angle_rad)
+    ray_in = Ray(ray_in_pos, ray_in_dir, refractive_index=n_in)
+
+    # output Ray
+    normal = z
+    ray_out = snells(ray_in, normal, n_out)
+
+    sin_in = np.sin(angle_rad)
+    sin_out = n_in / n_out * sin_in
+
+    assert sin_out > 1
+    assert torch.all(torch.isnan(ray_out.direction[0]))
+
+
+def test_snells4():
     """
     Test Snell's law on a point source and surface normal in arbitrary
     direction. Sines are computed using cross products.
@@ -342,7 +412,7 @@ def test_galvo_mirror2():
     # Reflect rays off rotated galvo mirrors
     N = 7
     rot_lin = np.pi/2 * torch.linspace(-1, 1, N)
-    rotations = stack(meshgrid(rot_lin, rot_lin*0), dim=-1)
+    rotations = stack(meshgrid(rot_lin, rot_lin*0, indexing='xy'), dim=-1)
     reflected_rays = galvo_mirror(ray_in, galvo_plane, rotations)
     shape = torch.tensor(reflected_rays.direction.shape)
 

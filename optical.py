@@ -156,7 +156,7 @@ def intensity_mask_smooth_grid(in_ray, coordplane, power):
     return rays_at_plane.mask(factors)
 
 
-def snells(ray_in, N, n_out):
+def snells(ray_in, normal, n_out):
     """
     Compute refracted Ray.
 
@@ -165,7 +165,7 @@ def snells(ray_in, N, n_out):
     Input
     -----
         ray_in      Ray. Incoming Ray.
-        N           Unit vector. Surface normal of interface.
+        normal      Unit vector. Surface normal of interface.
         n_out       Refractive index outgoing ray
 
     Output
@@ -177,15 +177,20 @@ def snells(ray_in, N, n_out):
     the surface_normal. Hence, it's the perpendicular component of dir_out. Once
     this is known, the parallel component can also be computed, since |dir_out| = 1.
 
-    By the same equations, backwards propagating rays can also be computed by
-    reversing the surface normal. Make sure the refractive indices of both the Rays
-    and the interface are correct though.
+    This function works regardless of incoming ray direction. If the ray is coming
+    from the opposite direction, the normal vector will be flipped to make the computation work.
+    If the angle is so large such that total internal reflection would occur, the argument to
+    to torch.sqrt will be < 0, resulting in a nan for the output.
     """
+
+    # Flip normal if ray_in is coming from opposite direction (required for backpropagation)
+    N = -normal * torch.sign(dot(normal, ray_in.direction))
+
     dir_in = ray_in.direction
     n_in = ray_in.refractive_index
 
-    dir_inrej = rejection(dir_in, N)       # Perpendicular component dir_in
-    dir_outrej = n_in/n_out * dir_inrej    # Perpendicular component dir_out
+    dir_inrej = rejection(dir_in, N)       # Perpendicular component (along plane) dir_in
+    dir_outrej = n_in/n_out * dir_inrej    # Perpendicular component (along plane) dir_out
     dir_out = dir_outrej - N * torch.sqrt(1 - norm_square(dir_outrej))
 
     ray_out = ray_in.copy(direction=dir_out, refractive_index=n_out)
