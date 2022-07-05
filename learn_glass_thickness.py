@@ -13,6 +13,7 @@ from tqdm import tqdm
 from plot_functions import plot_coords, format_prefix
 from testing import MSE
 from tpm import TPM
+from vector_functions import components
 
 
 # Set default tensor type to double (64 bit)
@@ -22,6 +23,7 @@ from tpm import TPM
 # https://en.wikipedia.org/wiki/Machine_epsilon
 torch.set_default_tensor_type('torch.DoubleTensor')
 
+do_plot = True
 plt.rc('font', size=12)
 
 # Import measurement
@@ -103,10 +105,11 @@ for groupname in params:
 trange = tqdm(range(iterations), desc='error: -')
 
 # Plot
-fig, ax = plt.subplots(nrows=2, figsize=(5, 10), dpi=110)
+if do_plot:
+    fig, ax = plt.subplots(nrows=2, figsize=(5, 10), dpi=110)
 
-fig_tpm = plt.figure(figsize=(15, 4), dpi=110)
-ax_tpm = plt.gca()
+    fig_tpm = plt.figure(figsize=(15, 4), dpi=110)
+    ax_tpm = plt.gca()
 
 
 for t in trange:
@@ -135,7 +138,7 @@ for t in trange:
     optimizer.step()
     optimizer.zero_grad()
 
-    if t % 50 == 0 and True:
+    if t % 50 == 0 and do_plot:
         plt.figure(fig.number)
 
         # Fourier cam
@@ -187,28 +190,60 @@ for groupname in params:
             print(f'  {paramname}: {format_prefix(params[groupname][paramname])}m')
 
 
+if do_plot:
+    # Plot error
+    fig, ax1 = plt.subplots(figsize=(7, 7))
+    fig.dpi = 144
+    errorcolor = 'darkred'
+    RMSEs = np.sqrt(errors.detach().cpu())
+    ax1.plot(RMSEs, label='error', color=errorcolor)
+    ax1.set_ylabel('Error (pix)')
+    ax1.set_ylim((0, max(RMSEs)))
+    ax1.legend(loc=2)
 
-# Plot error
-fig, ax1 = plt.subplots(figsize=(7, 7))
-fig.dpi = 144
-errorcolor = 'darkred'
-RMSEs = np.sqrt(errors.detach().cpu())
-ax1.plot(RMSEs, label='error', color=errorcolor)
-ax1.set_ylabel('Error (pix)')
-ax1.set_ylim((0, max(RMSEs)))
-ax1.legend(loc=2)
+    ax2 = ax1.twinx()
+    for groupname in params:
+        for paramname in params_logs[groupname]:
+            ax2.plot(params_logs[groupname][paramname], label=paramname)
+    ax2.set_ylabel('Parameter (m | rad)')
+    ax2.legend(loc=1)
 
-ax2 = ax1.twinx()
-for groupname in params:
-    for paramname in params_logs[groupname]:
-        ax2.plot(params_logs[groupname][paramname], label=paramname)
-ax2.set_ylabel('Parameter (m | rad)')
-ax2.legend(loc=1)
+    fig.tight_layout()  # otherwise the right y-label is slightly clipped
+    plt.title('Learning parameters')
+    plt.show()
 
-fig.tight_layout()  # otherwise the right y-label is slightly clipped
-plt.title('Learning parameters')
+
+# Plot pincushion
+plt.figure()
+plt.title('Fourier Cam Pincushionness\ncoordinate separation (diff)')
+pincushdiff_ft    = components(cam_ft_coords[   :, 15:22, :].diff(dim=1).mean(dim=0).squeeze().detach())
+pincushdiff_ft_gt = components(cam_ft_coords_gt[:, 15:22, :].diff(dim=1).mean(dim=0).squeeze().detach())
+
+plt.plot(pincushdiff_ft[0],    '.-', label='x sim')
+plt.plot(pincushdiff_ft[1],    '.-', label='y sim')
+plt.plot(pincushdiff_ft_gt[0], '.-', label='x measured')
+plt.plot(pincushdiff_ft_gt[1], '.-', label='y measured')
+plt.xlabel('relative index')
+plt.ylabel('x|y (pixels)')
+plt.legend()
+
+
+plt.figure()
+plt.title('Image Cam Pincushionness\ncoordinate separation (diff)')
+pincushdiff_im    = components(-cam_im_coords[4:9, :, :].diff(dim=0).mean(dim=1).squeeze().detach())
+pincushdiff_im_gt = components(-cam_im_coords_gt[4:9, :, :].diff(dim=0).mean(dim=1).squeeze().detach())
+
+plt.plot(pincushdiff_im[0],    '.-', label='x sim')
+plt.plot(pincushdiff_im[1],    '.-', label='y sim')
+plt.plot(pincushdiff_im_gt[0], '.-', label='x measured')
+plt.plot(pincushdiff_im_gt[1], '.-', label='y measured')
+plt.xlabel('relative index')
+plt.ylabel('x|y (pixels)')
+plt.legend()
 plt.show()
 
+
+exit()
 
 # === Glass plate === #
 
