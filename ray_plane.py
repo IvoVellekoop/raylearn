@@ -45,14 +45,13 @@ class Ray:
         """Return new Ray at intersection with Plane or CoordPlane."""
         distance_m = self.ray_distance_to_plane(plane)
         intersection = self.position_m + self.direction * distance_m
-        new_pathlength_m = self.pathlength_m + self.refractive_index * distance_m
+        new_pathlength_m = self.pathlength_m + self.refractive_index * distance_m   #### Check/Fix pathlength for backpropagation (direction vector is in opposite direction)
         return self.copy(position_m=intersection, pathlength_m=new_pathlength_m)
 
     def ray_distance_to_plane(self, plane):
         """Return distance to Plane along Ray."""
         return dot(plane.normal, plane.position_m - self.position_m) \
             / dot(plane.normal, self.direction)
-
 
     def mask(self, mask_factors):
         """Mask Ray with given mask_factors array."""

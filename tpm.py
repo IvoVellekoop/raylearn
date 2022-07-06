@@ -23,7 +23,7 @@ torch.set_default_tensor_type('torch.DoubleTensor')
 plt.rc('font', size=12)
 
 
-class TPM(): #torch.nn.Module):
+class TPM():
     """
     The Two Photon Microscope.
 
@@ -82,7 +82,9 @@ class TPM(): #torch.nn.Module):
         self.slm_zshift = tensor((0.,))
 
         # Coverslip
-        self.coverslip_thickness = tensor((170e-6,))
+        self.total_coverslip_thickness = tensor((170e-6,))
+        self.coverslip_tilt_around_x = tensor((0.0,))
+        self.coverslip_tilt_around_y = tensor((0.0,))
 
         # Focal distances (m)
         self.f1 = 100e-3
@@ -97,12 +99,10 @@ class TPM(): #torch.nn.Module):
         self.f10 = 200e-3
         self.obj1_tubelength = 200e-3           # Objective standard tubelength
         self.obj1_magnification = 16            # Objective magnification
-        self.fobj1 = self.obj1_tubelength / self.obj1_magnification  * self.n_water     #hoe
-        # self.fobj1 = 13.8e-3  #### Measured
+        self.fobj1 = self.obj1_tubelength / self.obj1_magnification
         self.obj2_tubelength = 165e-3           # Objective standard tubelength
         self.obj2_magnification = 100           # Objective magnification
-        self.fobj2 = self.obj2_tubelength / self.obj2_magnification  # * self.n_water     #hoe
-        # self.fobj2 = 1.621e-3
+        self.fobj2 = self.obj2_tubelength / self.obj2_magnification
 
         # Lens planes transmission arm
         self.sample_zshift = tensor((0.,))
@@ -159,18 +159,25 @@ class TPM(): #torch.nn.Module):
         self.plane57 = CoordPlane(self.L5.position_m + self.f5 * z, x, y)
         self.L7 = Plane(self.L5.position_m + (self.f5 + self.f7)*z, -z)
         self.OBJ1 = Plane(self.L7.position_m + (self.f7 + self.fobj1)*z, -z)
-        self.OBJ1_BFP = Plane(self.OBJ1.position_m - self.fobj1*z, self.OBJ1.normal)
 
-        # Sample plane and coverslip
-        coverslip_front_to_sample_plane = (170e-6 - self.coverslip_thickness) * z
-        self.coverslip_front_plane = CoordPlane(
-            self.OBJ1.position_m + self.fobj1*z + coverslip_front_to_sample_plane, -x, y)
+        # Sample plane
         self.sample_plane = CoordPlane(self.OBJ1.position_m + self.fobj1*z +
                                        self.sample_zshift * z, -x, y)
 
+        # Coverslip
+        # Note, the 170um coverslip is ignored as it is modeled as part of the ideal lens
+        # Only the 'extra thickness' is simulated
+        coverslip_normal = rotate(-z, x, self.coverslip_tilt_around_x)
+        coverslip_normal = rotate(coverslip_normal, y, self.coverslip_tilt_around_y)
+
+        coverslip_extra_thickness = self.total_coverslip_thickness - 170e-6
+        self.coverslip_back_plane = Plane(self.sample_plane.position_m, coverslip_normal)
+        self.coverslip_front_plane = Plane(
+            self.coverslip_back_plane.position_m + coverslip_extra_thickness * coverslip_normal,
+            coverslip_normal)
+
         # Objective
         self.OBJ2 = Plane(self.sample_plane.position_m + self.fobj2*z + self.obj2_zshift*z, -z)
-        self.OBJ2_pupil_plane = CoordPlane(self.OBJ2.position_m + self.fobj2*z, x, y)
         self.L9 = Plane(self.OBJ2.position_m + (self.fobj2 + self.f9 + self.L9_zshift)*z, -z)
         self.L10 = Plane(self.L9.position_m + (self.f9 + self.f10)*z + self.L10_zshift*z, -z)
 
@@ -217,30 +224,22 @@ class TPM(): #torch.nn.Module):
         self.plane57_ray = self.rays[-1].intersect_plane(self.plane57)
         self.rays.append(self.plane57_ray)
         self.rays.append(ideal_lens(self.rays[-1], self.L7, self.f7))
-
-        self.obj1_pupil_ray = self.rays[-1]
-
-        self.rays.append(self.rays[-1].intersect_plane(self.OBJ1_BFP))
-        self.rays.append(snells(self.rays[-1], self.OBJ1_BFP.normal, self.n_water))
         self.rays.append(ideal_lens(self.rays[-1], self.OBJ1, self.fobj1))
-        # self.rays.append(self.rays[-1].copy(refractive_index=self.n_water))
-        # self.rays.append(self.rays[-1].copy(refractive_index=1.))
 
-        # Propagation through coverslip
+        # Propagation to sample plane as ideal air lens
+        self.rays.append(self.rays[-1].intersect_plane(self.sample_plane))
+        self.rays.append(snells(self.rays[-1], self.sample_plane.normal, self.n_water))
+
+        # Backpropagate through water
         self.rays.append(self.rays[-1].intersect_plane(self.coverslip_front_plane))
-        self.rays.append(snells(self.rays[-1], self.coverslip_front_plane.normal, self.n_coverslip))    #hoe
+        self.rays.append(snells(self.rays[-1], self.coverslip_front_plane.normal, self.n_coverslip))
 
-        self.sample_ray = self.rays[-1].intersect_plane(self.sample_plane)
-        self.rays.append(self.sample_ray)
-        self.cam_sample_coords = self.sample_plane.transform_rays(self.sample_ray)
-        self.rays.append(snells(self.rays[-1], self.sample_plane.normal, 1.))
+        # Propagate through coverslip
+        self.rays.append(self.rays[-1].intersect_plane(self.coverslip_back_plane))
+        self.rays.append(snells(self.rays[-1], self.coverslip_back_plane.normal, 1.))
 
         # # Propagation from objective 2
-        # self.rays.append(self.rays[-1].copy(refractive_index=1.0))
         self.rays.append(ideal_lens(self.rays[-1], self.OBJ2, self.fobj2))
-        self.OBJ2_pupil_plane_ray = self.rays[-1].intersect_plane(self.OBJ2_pupil_plane)
-        self.rays.append(self.OBJ2_pupil_plane_ray)
-        self.cam_obj2_pupil_plane_coords = self.OBJ2_pupil_plane.transform_rays(self.OBJ2_pupil_plane_ray)
         self.rays.append(ideal_lens(self.rays[-1], self.L9, self.f9))
 
         # Propagation onto cameras
@@ -268,10 +267,10 @@ class TPM(): #torch.nn.Module):
         plot_lens(ax, self.L5, self.f5, scale, ' L5\n')
         plot_lens(ax, self.L7, self.f7, scale, ' L7\n')
 
-        plot_plane(ax, self.OBJ1_BFP, scale, 'OBJ1 Pupil plane', plotkwargs={'color': 'blue'})
         plot_lens(ax, self.OBJ1, self.fobj1, scale, ' OBJ1\n')
-        plot_plane(ax, self.coverslip_front_plane, scale*0.8, '', ' coverslip\n front')
-        plot_plane(ax, self.sample_plane, scale*0.7, '', ' sample plane')
+        plot_plane(ax, self.sample_plane, scale*0.8, '', ' sample plane')
+        plot_plane(ax, self.coverslip_front_plane, scale*0.7, '', ' coverslip\n front', plotkwargs={'color': 'blue'})
+        plot_plane(ax, self.coverslip_back_plane, scale*0.6, '', ' coverslip\n back', plotkwargs={'color': 'blue'})
         plot_lens(ax, self.OBJ2, self.fobj2, 0.75*scale, 'OBJ2\n')
 
         plot_lens(ax, self.L9, self.f9, scale, ' L9\n')
@@ -281,7 +280,4 @@ class TPM(): #torch.nn.Module):
         plot_plane(ax, self.cam_im_plane, 1000, ' Image Cam', plotkwargs={'color': 'red'})
 
         # Plot rays
-        # ray2_exp_pos = self.rays[2].position_m.expand(self.rays[3].position_m.shape)
-        # ray2_exp = self.rays[2].copy(position_m=ray2_exp_pos)
-        # raylist = [ray2_exp] + self.rays[3:]
         plot_rays(ax, self.rays, fraction=fraction)
