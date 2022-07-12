@@ -11,15 +11,15 @@ if doreset || ~exist('slm', 'var') || ~exist('daqs', 'var')  || ~exist('cam_ft',
 end
 
 %% Settings
-p.samplename = '400um_aligned_to_slm';
-doshowcams = 0;                     % Toggle show what the cameras see
-dosave = 1;                         % Toggle savings
+p.samplename = '3x170um';
+doshowcams        = 1;              % Toggle show what the cameras see
+dosave            = 0;              % Toggle savings
 dochecksamplename = 0;              % Toggle console sample name check
 
 % SLM Settings
 p.segment_patch_id = 2;             % Pencil Beam segment SLM patch ID
 p.ppp = 2;                          % Pixels per period for the grating. Should match Galvo setting!
-p.segmentsize_pix = 50 * p.ppp;     % Segment width in pixels
+p.segmentsize_pix = 80 * p.ppp;     % Segment width in pixels
 p.beamdiameter = 0.50;              % Diameter of circular SLM segment set (relative coords)
 p.slm_offset_x = 0.00;              % Horizontal offset of rectangle SLM geometry (relative coords)
 p.slm_offset_y = 0.00;              % Vertical offset of rectangle SLM geometry (relative coords)
