@@ -32,8 +32,11 @@ plt.rc('font', size=12)
 # matpath = 'LocalData/raylearn-data/TPM/pencil-beam-positions/17-Nov-2021-400um/raylearn_pencil_beam_738477.786123_400um.mat'
 # matpath = 'LocalData/raylearn-data/TPM/pencil-beam-positions/17-Nov-2021-empty/raylearn_pencil_beam_738477.729080_empty.mat'
 # matpath = 'LocalData/raylearn-data/TPM/pencil-beam-positions/10-Feb-2022-empty/raylearn_pencil_beam_738562.645439_empty.mat'
-matpath = 'LocalData/raylearn-data/TPM/pencil-beam-positions/01-Jun-2022-170um_aligned_to_galvos/raylearn_pencil_beam_738673.606682_170um_aligned_to_galvos.mat' ###### fix path
+# matpath = 'LocalData/raylearn-data/TPM/pencil-beam-positions/01-Jun-2022-170um_aligned_to_galvos/raylearn_pencil_beam_738673.606682_170um_aligned_to_galvos.mat'
 # matpath = "F:/ScientificData/pencil-beam-positions/01-Jun-2022-170um_aligned_to_galvos/raylearn_pencil_beam_738673.606682_170um_aligned_to_galvos.mat"
+
+matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-1x170um/raylearn_pencil_beam_738714.642102_1x170um.mat"
+
 matfile = h5py.File(matpath, 'r')
 
 cam_ft_coords_gt = tensor((matfile['cam_ft_col'], matfile['cam_ft_row'])).permute(1, 2, 0)
@@ -219,8 +222,8 @@ if do_plot_pincushion:
     # Plot pincushion
     plt.figure()
     plt.title('Fourier Cam Pincushionness\ncoordinate separation (diff)')
-    pincushdiff_ft    = components(cam_ft_coords[   :, 15:22, :].diff(dim=1).mean(dim=0).squeeze().detach())
-    pincushdiff_ft_gt = components(cam_ft_coords_gt[:, 15:22, :].diff(dim=1).mean(dim=0).squeeze().detach())
+    pincushdiff_ft    = components(cam_ft_coords[   :, 12:19, :].diff(dim=1).mean(dim=0).squeeze().detach())
+    pincushdiff_ft_gt = components(cam_ft_coords_gt[:, 12:19, :].diff(dim=1).mean(dim=0).squeeze().detach())
 
     plt.plot(pincushdiff_ft[0],    '.-', label='x sim')
     plt.plot(pincushdiff_ft[1],    '.-', label='y sim')
@@ -247,6 +250,7 @@ if do_plot_pincushion:
 
 
 
+
 # === Glass plate === #
 
 tpm.set_measurement(matfile)
@@ -259,7 +263,20 @@ tpm.raytrace()
 # matpath = 'LocalData/raylearn-data/TPM/pencil-beam-positions/17-Nov-2021-empty/raylearn_pencil_beam_738477.729080_empty.mat'
 # matpath = "F:/ScientificData/pencil-beam-positions/01-Jun-2022-170um+400um_aligned_to_galvos/raylearn_pencil_beam_738673.636565_170um+400um_aligned_to_galvos.mat"
 # matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/01-Jun-2022-400um_aligned_to_slm/raylearn_pencil_beam_738673.696695_400um_aligned_to_slm.mat"
-matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/01-Jun-2022-170um+400um_aligned_to_galvos/raylearn_pencil_beam_738673.636565_170um+400um_aligned_to_galvos.mat"
+# matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/01-Jun-2022-170um+400um_aligned_to_galvos/raylearn_pencil_beam_738673.636565_170um+400um_aligned_to_galvos.mat"
+
+# matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-1x170um/raylearn_pencil_beam_738714.642102_1x170um.mat"
+# matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-1x170um_2nd/raylearn_pencil_beam_738714.744282_1x170um_2nd.mat"
+# matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-2x170um/raylearn_pencil_beam_738714.652131_2x170um.mat"
+# matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-2x170um_2nd/raylearn_pencil_beam_738714.757416_2x170um_2nd.mat"
+# matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-3x170um/raylearn_pencil_beam_738714.670969_3x170um.mat"
+# matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-3x170um_2nd/raylearn_pencil_beam_738714.768351_3x170um_2nd.mat"
+# matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-4x170um/raylearn_pencil_beam_738714.683205_4x170um.mat"
+# matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-4x170um_2nd/raylearn_pencil_beam_738714.784681_4x170um_2nd.mat"
+# matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-5x170um/raylearn_pencil_beam_738714.692862_5x170um.mat"
+# matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-5x170um_2nd/raylearn_pencil_beam_738714.793049_5x170um_2nd.mat"
+matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-1x400um/raylearn_pencil_beam_738714.801627_1x400um.mat"
+
 matfile = h5py.File(matpath, 'r')
 
 cam_ft_coords_gt = tensor((matfile['cam_ft_col'], matfile['cam_ft_row'])).permute(1, 2, 0)
@@ -273,8 +290,8 @@ tpm.coverslip_tilt_around_y = tensor((0.0,), requires_grad=True)
 # Parameter groups
 params_coverslip = {}
 params_coverslip['angle'] = {
-    'Coverslip tilt around x': tpm.coverslip_tilt_around_x,
-    'Coverslip tilt around y': tpm.coverslip_tilt_around_y,
+    # 'Coverslip tilt around x': tpm.coverslip_tilt_around_x,
+    # 'Coverslip tilt around y': tpm.coverslip_tilt_around_y,
 }
 params_coverslip['other'] = {
     'Total Coverslip Thickness': tpm.total_coverslip_thickness,
@@ -294,7 +311,7 @@ optimizer = torch.optim.Adam([
         {'lr': 1.0e-4, 'params': params_coverslip['other'].values()},
     ], lr=1.0e-5)
 
-iterations = 300
+iterations = 200
 errors = torch.zeros(iterations)
 
 
