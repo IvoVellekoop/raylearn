@@ -20,7 +20,7 @@ matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-1x170um
 # matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-4x170um/raylearn_pencil_beam_738714.683205_4x170um.mat"
 # matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-4x170um_2nd/raylearn_pencil_beam_738714.784681_4x170um_2nd.mat"
 # matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-5x170um/raylearn_pencil_beam_738714.692862_5x170um.mat"
-matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-5x170um_2nd/raylearn_pencil_beam_738714.793049_5x170um_2nd.mat"
+# matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-5x170um_2nd/raylearn_pencil_beam_738714.793049_5x170um_2nd.mat"
 # matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-1x400um/raylearn_pencil_beam_738714.801627_1x400um.mat"
 
 matfile = h5py.File(matpath, 'r')
@@ -34,10 +34,8 @@ tpm.update()
 
 # Compute the magnification of coordinate 'spread'
 slm_coord_spread_m = tpm.slm_coords.std(-2) * tpm.slm_height
-tan_angle_at_sample_plane_spread = slm_coord_spread_m * tpm.f7/(tpm.fobj1*tpm.f5)
-
+tan_angle_at_sample_plane_spread = slm_coord_spread_m
 cam_im_spread_from_slm_m = cam_im_coords_gt.std(dim=-2) * tpm.cam_pixel_size
-cam_im_spread_per_tan_angle_spread_m = cam_im_spread_from_slm_m  / tan_angle_at_sample_plane_spread
+cam_im_spread_per_slm_spread = cam_im_spread_from_slm_m  / slm_coord_spread_m
 
-print(f'\ntan angle at sample plane spread:', tan_angle_at_sample_plane_spread)
-print(f'\nImage camera displacement per tan(incoming angle): {format_prefix(cam_im_spread_per_tan_angle_spread_m.mean())}m')
+print(f'\nSLM to image cam magnification: {cam_im_spread_per_slm_spread.mean().detach().item():.3f}')
