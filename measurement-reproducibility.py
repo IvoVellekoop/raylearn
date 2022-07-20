@@ -11,7 +11,7 @@ from tpm import TPM
 from vector_functions import components
 
 
-matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-1x170um/raylearn_pencil_beam_738714.642102_1x170um.mat"
+# matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-1x170um/raylearn_pencil_beam_738714.642102_1x170um.mat"
 # matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-1x170um_2nd/raylearn_pencil_beam_738714.744282_1x170um_2nd.mat"
 # matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-2x170um/raylearn_pencil_beam_738714.652131_2x170um.mat"
 # matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-2x170um_2nd/raylearn_pencil_beam_738714.757416_2x170um_2nd.mat"
@@ -20,7 +20,7 @@ matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-1x170um
 # matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-4x170um/raylearn_pencil_beam_738714.683205_4x170um.mat"
 # matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-4x170um_2nd/raylearn_pencil_beam_738714.784681_4x170um_2nd.mat"
 # matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-5x170um/raylearn_pencil_beam_738714.692862_5x170um.mat"
-# matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-5x170um_2nd/raylearn_pencil_beam_738714.793049_5x170um_2nd.mat"
+matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-5x170um_2nd/raylearn_pencil_beam_738714.793049_5x170um_2nd.mat"
 # matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-1x400um/raylearn_pencil_beam_738714.801627_1x400um.mat"
 
 matfile = h5py.File(matpath, 'r')
