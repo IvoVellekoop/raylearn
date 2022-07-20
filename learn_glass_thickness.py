@@ -283,7 +283,7 @@ cam_ft_coords_gt = tensor((matfile['cam_ft_col'], matfile['cam_ft_row'])).permut
 cam_im_coords_gt = tensor((matfile['cam_img_col'], matfile['cam_img_row'])).permute(1, 2, 0)
 
 # Parameters
-tpm.total_coverslip_thickness = tensor((600e-6,), requires_grad=True)
+tpm.total_coverslip_thickness = tensor((570e-6,), requires_grad=True)
 tpm.coverslip_tilt_around_x = tensor((0.0,), requires_grad=True)
 tpm.coverslip_tilt_around_y = tensor((0.0,), requires_grad=True)
 
@@ -294,7 +294,7 @@ params_coverslip['angle'] = {
     # 'Coverslip tilt around y': tpm.coverslip_tilt_around_y,
 }
 params_coverslip['other'] = {
-    'Total Coverslip Thickness': tpm.total_coverslip_thickness,
+    # 'Total Coverslip Thickness': tpm.total_coverslip_thickness,
     'cam im xshift': tpm.cam_im_xshift,
     'cam im yshift': tpm.cam_im_yshift,
 }
@@ -340,7 +340,7 @@ for t in trange:
     cam_ft_coords, cam_im_coords = tpm.raytrace()
 
     # Compute and print error
-    error = MSE(cam_ft_coords_gt, cam_ft_coords) \
+    error = 0*MSE(cam_ft_coords_gt, cam_ft_coords) \
         + MSE(cam_im_coords_gt, cam_im_coords) \
 
     error_value = error.detach().item()
@@ -359,7 +359,7 @@ for t in trange:
     optimizer.zero_grad()
 
     # Plot
-    if t % 60 == 0 and do_plot_coverslip:
+    if t % 100 == 0 and do_plot_coverslip:
         plt.figure(fig.number)
 
         # Fourier cam
@@ -397,7 +397,7 @@ for t in trange:
 
         plt.figure(fig_tpm.number)
         ax_tpm.clear()
-        tpm.plot(ax_tpm, fraction=0.02)
+        tpm.plot(ax_tpm, fraction=0.01)
         plt.draw()
         plt.pause(1e-3)
 
