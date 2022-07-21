@@ -283,7 +283,7 @@ cam_ft_coords_gt = tensor((matfile['cam_ft_col'], matfile['cam_ft_row'])).permut
 cam_im_coords_gt = tensor((matfile['cam_img_col'], matfile['cam_img_row'])).permute(1, 2, 0)
 
 # Parameters
-tpm.total_coverslip_thickness = tensor((570e-6,), requires_grad=True)
+tpm.total_coverslip_thickness = tensor((400e-6,), requires_grad=True)
 tpm.coverslip_tilt_around_x = tensor((0.0,), requires_grad=True)
 tpm.coverslip_tilt_around_y = tensor((0.0,), requires_grad=True)
 
@@ -295,6 +295,7 @@ params_coverslip['angle'] = {
 }
 params_coverslip['other'] = {
     # 'Total Coverslip Thickness': tpm.total_coverslip_thickness,
+    'OBJ2 zshift': tpm.obj2_zshift,
     'cam im xshift': tpm.cam_im_xshift,
     'cam im yshift': tpm.cam_im_yshift,
 }
