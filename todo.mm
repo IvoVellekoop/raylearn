@@ -1,9 +1,9 @@
-<map version="freeplane 1.9.8">
+<map version="freeplane 1.9.13">
 <!--To view this file, download free mind mapping software Freeplane from https://www.freeplane.org -->
-<node TEXT="Correct system&#xa;aberrations in&#xa;experiment and&#xa;measure improvement - 20" FOLDED="false" ID="ID_1454915667" CREATED="1620382095375" MODIFIED="1620389150497" STYLE="oval">
+<node TEXT="Correct spherical&#xa;aberrations in&#xa;experiment and&#xa;measure improvement - 20" FOLDED="false" ID="ID_1454915667" CREATED="1620382095375" MODIFIED="1658499172837" STYLE="oval">
 <font SIZE="10"/>
-<hook NAME="MapStyle" background="#3c3f41" zoom="1.5">
-    <properties edgeColorConfiguration="#808080ff,#00ddddff,#dddd00ff,#dd0000ff,#00dd00ff,#dd0000ff,#7cddddff,#dddd7cff,#dd7cddff,#7cdd7cff,#dd7c7cff,#7c7cddff" fit_to_viewport="false"/>
+<hook NAME="MapStyle" background="#3c3f41" zoom="1.154">
+    <properties edgeColorConfiguration="#808080ff,#00ddddff,#dddd00ff,#dd0000ff,#00dd00ff,#dd0000ff,#7cddddff,#dddd7cff,#dd7cddff,#7cdd7cff,#dd7c7cff,#7c7cddff" fit_to_viewport="false" show_icon_for_attributes="true" show_note_icons="true"/>
 
 <map_styles>
 <stylenode LOCALIZED_TEXT="styles.root_node" STYLE="oval" UNIFORM_SHAPE="true" VGAP_QUANTITY="24 pt">
@@ -65,10 +65,11 @@
 </stylenode>
 </map_styles>
 </hook>
-<hook NAME="AutomaticEdgeColor" COUNTER="1" RULE="ON_BRANCH_CREATION"/>
-<node TEXT="Compute raylearn&#xa;correction pattern - 8" POSITION="right" ID="ID_1857496707" CREATED="1620385771052" MODIFIED="1622105434406" HGAP_QUANTITY="15.5 pt" VSHIFT_QUANTITY="-15 pt">
+<hook NAME="AutomaticEdgeColor" COUNTER="14" RULE="ON_BRANCH_CREATION"/>
+<node TEXT="Compute raylearn&#xa;correction pattern - 8" POSITION="right" ID="ID_1857496707" CREATED="1620385771052" MODIFIED="1658492274750" HGAP_QUANTITY="39.5 pt" VSHIFT_QUANTITY="14.25 pt">
 <edge COLOR="#00dddd"/>
-<node TEXT="Fit system model&#xa;to measurements - 13" ID="ID_1506468163" CREATED="1620385816196" MODIFIED="1643981993765" HGAP_QUANTITY="11.75 pt" VSHIFT_QUANTITY="-34.5 pt">
+<node TEXT="Fit system model&#xa;to measurements - 13" ID="ID_1506468163" CREATED="1620385816196" MODIFIED="1658482013243" HGAP_QUANTITY="11.75 pt" VSHIFT_QUANTITY="-34.5 pt">
+<icon BUILTIN="button_ok"/>
 <font SIZE="10"/>
 <node TEXT="Measurements of&#xa;pencil beams&#xa;through grid target - 20" ID="ID_1505952362" CREATED="1620389032328" MODIFIED="1620389249706">
 <icon BUILTIN="button_ok"/>
@@ -83,6 +84,15 @@
 <icon BUILTIN="button_ok"/>
 </node>
 <node TEXT="(when necessary)&#xa;Repeat with higher res&#xa;and better focus - 13" ID="ID_1731513296" CREATED="1620385827094" MODIFIED="1640082151429">
+<icon BUILTIN="button_ok"/>
+</node>
+<node TEXT="New measurements with different thicknesses" ID="ID_1349973981" CREATED="1658492060456" MODIFIED="1658492097509">
+<icon BUILTIN="button_ok"/>
+</node>
+<node TEXT="Fix objective sample plane model" ID="ID_1651836350" CREATED="1658492074267" MODIFIED="1658492097505">
+<icon BUILTIN="button_ok"/>
+</node>
+<node TEXT="Check alignment in several places in TPM" ID="ID_1725885966" CREATED="1658492188793" MODIFIED="1658492205682">
 <icon BUILTIN="button_ok"/>
 </node>
 <node TEXT="Create system model - 13" ID="ID_337365993" CREATED="1620385896214" MODIFIED="1640082155411" HGAP_QUANTITY="12.5 pt" VSHIFT_QUANTITY="-15 pt">
@@ -114,15 +124,12 @@
 <node TEXT="Create SLM position source - 10" ID="ID_522349803" CREATED="1620386328468" MODIFIED="1640082129613">
 <icon BUILTIN="button_ok"/>
 </node>
-<node TEXT="(optional improvement)&#xa;Grid mask function with convolution - 13" ID="ID_1206566708" CREATED="1620386137921" MODIFIED="1621509753900"/>
-<node TEXT="(if necessary)&#xa;Plot error-parameter landscape" ID="ID_1131823186" CREATED="1622105480309" MODIFIED="1640082169382" HGAP_QUANTITY="-127 pt" VSHIFT_QUANTITY="-33.75 pt">
+<node TEXT="(if necessary)&#xa;Plot error-parameter landscape" ID="ID_1131823186" CREATED="1622105480309" MODIFIED="1658489912308" HGAP_QUANTITY="-127 pt" VSHIFT_QUANTITY="-33.75 pt">
 <icon BUILTIN="button_ok"/>
-<cloud COLOR="#f0f0f0" ALPHA="20" SHAPE="ARC"/>
 </node>
 </node>
 </node>
-<node TEXT="Ray pattern with&#xa;pathlengths to&#xa;correction pattern - 10" ID="ID_1149218589" CREATED="1620386359853" MODIFIED="1643981986841" HGAP_QUANTITY="15.5 pt" VSHIFT_QUANTITY="-21.75 pt">
-<icon BUILTIN="button_ok"/>
+<node TEXT="Ray pattern with&#xa;pathlengths to&#xa;correction pattern - 10" ID="ID_1149218589" CREATED="1620386359853" MODIFIED="1658489596255" HGAP_QUANTITY="15.5 pt" VSHIFT_QUANTITY="-21.75 pt">
 <node TEXT="pathlength lens function - 10" ID="ID_1603831690" CREATED="1620386389365" MODIFIED="1640082164626" VSHIFT_QUANTITY="34.5 pt">
 <icon BUILTIN="button_ok"/>
 </node>
@@ -135,7 +142,28 @@
 <node TEXT="linear interpolation integrator&#xa;/ monte carlo integrator - 20" ID="ID_992576579" CREATED="1620386424687" MODIFIED="1640082180562" HGAP_QUANTITY="12.5 pt" VSHIFT_QUANTITY="-18 pt">
 <icon BUILTIN="button_ok"/>
 </node>
+<node TEXT="Backpropagation correct pathlength" ID="ID_1757653141" CREATED="1658484405387" MODIFIED="1658488748497"/>
+<node TEXT="Implement ray backpropagation in TPM" ID="ID_1009152277" CREATED="1658488690909" MODIFIED="1658488737956">
+<node TEXT="Pick focus point" ID="ID_1578527924" CREATED="1658492679779" MODIFIED="1658492940669"/>
+<node TEXT="Find optimal stage z-shift to minimize defocus" ID="ID_912089889" CREATED="1658492941810" MODIFIED="1658492998825"/>
+<node TEXT="Place point source" ID="ID_655756428" CREATED="1658493020411" MODIFIED="1658493047458"/>
+<node TEXT="Backpropagate to SLM plane" ID="ID_1844571363" CREATED="1658493047839" MODIFIED="1658493058219"/>
+<node TEXT="Compute pathlength" ID="ID_25820421" CREATED="1658493058687" MODIFIED="1658493079582"/>
+<node TEXT="Compute phase pattern" ID="ID_1647293432" CREATED="1658493079980" MODIFIED="1658493274517"/>
 </node>
+<node TEXT="Export correction pattern as .mat" ID="ID_858915951" CREATED="1658489633896" MODIFIED="1658489651049"/>
+<node TEXT="Reference analytical solution pattern (Salter,Booth)" ID="ID_1169509549" CREATED="1658493709262" MODIFIED="1658498862607"/>
+<node TEXT="Pattern on SLM using calibration matrices" ID="ID_1454851082" CREATED="1658493289675" MODIFIED="1658493316219"/>
+</node>
+</node>
+<node TEXT="Create samples of&#xa;varying thickness" POSITION="right" ID="ID_1798865009" CREATED="1658483067104" MODIFIED="1658492384390" HGAP_QUANTITY="27.5 pt" VSHIFT_QUANTITY="-6 pt">
+<edge COLOR="#7c7cdd"/>
+<node TEXT="Fluorescent beads get/order" ID="ID_539887179" CREATED="1658483139080" MODIFIED="1658484326730"/>
+<node TEXT="Order coverslips of varying thickness" ID="ID_131963869" CREATED="1658483478616" MODIFIED="1658483558867"/>
+<node TEXT="Write protocol for making sample" ID="ID_225860769" CREATED="1658492338219" MODIFIED="1658492354849"/>
+</node>
+<node TEXT="Fix Piezo z-stage OBJ1" POSITION="right" ID="ID_1546782871" CREATED="1658491125203" MODIFIED="1658492312624" HGAP_QUANTITY="25.25 pt" VSHIFT_QUANTITY="-123 pt">
+<edge COLOR="#dddd00"/>
 </node>
 </node>
 </map>
