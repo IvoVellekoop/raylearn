@@ -79,7 +79,7 @@ def ideal_lens(in_ray, lens, f):
     """
 
     # Flip lens normal if in_ray is coming from opposite direction (required for backpropagation)
-    normal = -lens.normal * torch.sign(dot(lens.normal, in_ray.direction))
+    normal = -lens.normal * torch.sign(dot(lens.normal, lens.position_m - in_ray.position_m))
 
     # Define useful points for lens
     L = lens.position_m                                     # Lens position
