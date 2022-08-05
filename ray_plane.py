@@ -9,6 +9,7 @@ see vector_functions.py.
 
 import torch
 from vector_functions import dot, cross, unit, norm_square
+from testing import comparetensors, checkunitvector
 import copy
 
 
@@ -86,7 +87,7 @@ class Plane:
     def __init__(self, position_m, normal):
         self.position_m = position_m                # Vector array. Position in m
         self.normal = normal                        # Vector array. Plane normal as unit vector
-        ### Check unit vector?
+        assert checkunitvector(normal)
 
 
 class CoordPlane():
@@ -111,7 +112,7 @@ class CoordPlane():
         self.position_m = position_m
         self.x = x
         self.y = y
-        ### Check orthogonality?
+        assert comparetensors(dot(x, y), 0)
 
     @property
     def normal(self):
