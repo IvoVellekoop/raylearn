@@ -125,7 +125,7 @@ class ShaderInterpolator:
 
         fragmentsource = """
         #version 440 core
-        #define PI 3.141593
+        #define PI 3.14159265359
 
         in float fragmentColor;
         uniform float lambda;
@@ -153,6 +153,7 @@ class ShaderInterpolator:
         self.vao = GL.glGenVertexArrays(1)
         GL.glBindVertexArray(self.vao)
 
+        # Subtract mean path to make number range significantly smaller, effectively making the floats more precise, as larger value floats are less precise.
         meanpath = np.mean(data[:,:,2])
         data[:,:,2] -= meanpath
         self.vbo = GL.arrays.vbo.VBO(data)
