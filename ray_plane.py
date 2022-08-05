@@ -45,11 +45,11 @@ class Ray:
         """Return new Ray at intersection with Plane or CoordPlane."""
         distance_m = self.ray_distance_to_plane(plane)
         intersection = self.position_m + self.direction * distance_m
-        new_pathlength_m = self.pathlength_m + self.refractive_index * distance_m   #### Check/Fix pathlength for backpropagation (direction vector is in opposite direction)
+        new_pathlength_m = self.pathlength_m + self.refractive_index * distance_m
         return self.copy(position_m=intersection, pathlength_m=new_pathlength_m)
 
     def ray_distance_to_plane(self, plane):
-        """Return distance to Plane along Ray."""
+        """Return signed distance to Plane along Ray."""
         return dot(plane.normal, plane.position_m - self.position_m) \
             / dot(plane.normal, self.direction)
 
@@ -93,7 +93,7 @@ class CoordPlane():
     """CoordPlane class.
 
     A coordinate plane is defined by a position vector and two component vectors x & y that define
-    its coordinate system. It is suitable to represents for instance a camera plane. The normal
+    its coordinate system. It is suitable to represent for instance a camera plane. The normal
     attribute represents the unit vector perpendicular to the two component vectors, and is
     calculated on the fly when read. This makes the CoordPlane class mostly compatible with the
     Plane class. The unit of the x & y component vectors depends on the application.
