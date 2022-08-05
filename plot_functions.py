@@ -172,7 +172,7 @@ def plot_plane(ax, plane_to_plot, scale=1, text1='', text2='', viewplane=default
     return ln
 
 
-def plot_lens(ax, lensplane, f, scale, pretext1='', text2='', viewplane=default_viewplane(), plotkwargs={'color': 'black'}):
+def plot_lens(ax, lensplane, f, scale=1, pretext1='', text2='', viewplane=default_viewplane(), plotkwargs={'color': 'black'}):
     """
     Plot a lens plane
 
