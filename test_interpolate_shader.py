@@ -7,7 +7,6 @@ from vector_functions import cartesian3d
 from ray_plane import CoordPlane
 from optical import point_source
 from interpolate_shader import interpolate_shader
-from testing import comparetensors
 
 
 torch.set_default_tensor_type('torch.DoubleTensor')
@@ -17,6 +16,8 @@ def test_phase_point_source():
     """
     Test the phase pattern of a set of rays coming from a point source.
     """
+
+    # Settings
     Nx = 50
     Ny = 50
     num_pixels = 64
@@ -28,10 +29,12 @@ def test_phase_point_source():
 
     screen_plane = CoordPlane(origin + source_to_screen_distance_m*z, x, y)
 
-    # Point source
-    tan_angle = 1.1 * screen_halfsize_m / source_to_screen_distance_m   # Make source slightly 
+    # Point source slightly wider than screen
+    tan_angle = 1.1 * screen_halfsize_m / source_to_screen_distance_m
     point_source_plane = CoordPlane(origin, tan_angle*x, tan_angle*y)
     point = point_source(point_source_plane, Nx, Ny, intensity=1.0)
+
+    # Propagate to screen and compute screen coordinates
     point_source_at_screen = point.intersect_plane(screen_plane)
     coords = screen_plane.transform_rays(point_source_at_screen)
 
