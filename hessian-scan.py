@@ -73,10 +73,10 @@ class System4F(torch.nn.Module):
 
         # Cameras
         self.rays.append(self.rays[-1].intersect_plane(self.cam_im_plane))
-        self.cam_im_coords = self.cam_im_plane.transform(self.rays[-1])
+        self.cam_im_coords = self.cam_im_plane.transform_rays(self.rays[-1])
         self.rays.append(ideal_lens(self.rays[-1], self.L3, self.f3))
         self.rays.append(self.rays[-1].intersect_plane(self.cam_ft_plane))
-        self.cam_ft_coords = self.cam_ft_plane.transform(self.rays[-1])
+        self.cam_ft_coords = self.cam_ft_plane.transform_rays(self.rays[-1])
 
         return self.cam_im_coords, self.cam_ft_coords
 
@@ -96,7 +96,7 @@ class System4F(torch.nn.Module):
         self.update()
         cam_im_coords, cam_ft_coords = self.raytrace()
         MSE = ((cam_im_coords_gt - cam_im_coords)**2).mean() \
-            + ((cam_ft_coords_gt - cam_ft_coords)**2).mean()
+            + self.ft_cam_weight * ((cam_ft_coords_gt - cam_ft_coords)**2).mean()
         return MSE
 
     def plot(self):
@@ -119,10 +119,11 @@ class System4F(torch.nn.Module):
         plt.show()
 
 
-doplot = False
+doplot = True
 
 # Initialize system with ground truth
 system4f = System4F()
+system4f.ft_cam_weight = 1
 system4f.L1_shift_gt = 0
 system4f.L2_shift_gt = 0
 system4f.L1_shift = system4f.L1_shift_gt
@@ -145,7 +146,7 @@ system4f.L2_shift = torch.linspace(shift_min, shift_max, N_shifts).view(-1, 1, 1
 system4f.update()
 cam_im_coords, cam_ft_coords = system4f.raytrace()
 RMSE = (((cam_im_coords_gt - cam_im_coords)**2).mean(dim=(2, 3, 4))
-      + ((cam_ft_coords_gt - cam_ft_coords)**2).mean(dim=(2, 3, 4))).sqrt()
+      + system4f.ft_cam_weight * ((cam_ft_coords_gt - cam_ft_coords)**2).mean(dim=(2, 3, 4))).sqrt()
 
 # Plot scan of L1 and L2 shifts
 if doplot:
@@ -179,4 +180,3 @@ if doplot:
              f'  {eigenvalues[1]:.3f}', color='tab:blue', verticalalignment='center')
 
     plt.show()
-
