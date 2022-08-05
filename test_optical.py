@@ -79,7 +79,7 @@ def test_ideal_lens_point_source():
     assert comparetensors(outray.direction, unit(lens_pos - src_pos))
 
 
-def test_ideal_lens_collimated_source():######
+def test_ideal_lens_collimated_source():
     """Test collimated source through lens."""
     Nx = 3
     Ny = 5
@@ -111,7 +111,7 @@ def test_ideal_lens_collimated_source():######
     assert comparetensors(focussed_ray.position_m, chief_ray_at_BFP.position_m)
 
 
-def NEWtest_ideal_lens_lens_law_positive():
+def test_ideal_lens_lens_law_positive():
     """Test lens law with point source through ideal positive lens."""
     Nx = 5
     Ny = 4
@@ -141,35 +141,41 @@ def NEWtest_ideal_lens_lens_law_positive():
     # Check whether focus is formed at distance s2
     focussed_ray = ideal_lens(src, lens, f).intersect_plane(image_plane)
     assert comparetensors(focussed_ray.position_m.std(dim=(0, 1)), 0)
-    assert comparetensors(focussed_ray.pathlength_m, focussed_ray.pathlength_m[0, 0])
 
 
-def NEWtest_ideal_lens_lens_law_negative():#####
+def test_ideal_lens_lens_law_negative():
     """Test lens law with point source through ideal negative lens."""
-    Nx = 4
-    Ny = 3
+    Nx = 3
+    Ny = 4
+
+    origin, x, y, z = cartesian3d()
 
     # Define point source
-    src_pos = Tensor((2.4,-1,-2))
-    src_x = Tensor((-3,1,2))
-    src_y_prime = Tensor((0,-4,-1))
-    src_y = unit(rejection(src_y_prime, src_x))
-    src = point_source(CoordPlane(src_pos, src_x, src_y), Nx, Ny)
+    src_plane = CoordPlane(origin, 0.1*x, 0.1*rotate(y, x, 0.3))
+    src = point_source(src_plane, Nx, Ny)
 
     # Define lens at distance s1
-    f = -42
-    s1 = 0.7 * f
-    s2 = 1 / (1/f - 1/s1)
-    lens_dir = unit(Tensor((3,0,-7)))
-    lens_pos = src_pos - s1 * lens_dir + rejection(Tensor((1.2,-1.8,0)), lens_dir)
-    lens = Plane(lens_pos, lens_dir)
+    f = -4.2
+    s1 = -2.7 * f
+    s2 = 1 / (1/s1 - 1/f)
+    lens_dir = unit(Tensor((-0.1, 0.5, -7)))
+    lens_pos = origin - s1 * lens_dir + rejection(Tensor((2.2, -2.8, 0)), lens_dir)
+    lens_plane = Plane(lens_pos, lens_dir)
 
-    image_plane_pos = lens_pos - s2 * lens_dir + rejection(Tensor((1,0.3,0.5)), lens_dir)
+    # Back focal plane
+    BFP_pos = lens_pos + f * lens_dir
+    BFP = Plane(BFP_pos, lens_dir)
+
+    # Image plane
+    image_plane_pos = lens_pos + s2 * lens_dir + rejection(Tensor((2, 0.5, 0.5)), lens_dir)
     image_plane = Plane(image_plane_pos, lens_dir)
 
     # Check whether focus is formed at distance s2
-    focussed_ray = ideal_lens(src, lens, f).intersect_plane(image_plane)
-    assert comparetensors(focussed_ray.position_m.std(dim=(0,1)), 0, 500)
+    ray_at_lens = ideal_lens(src, lens_plane, f)
+    ray_bfp = ray_at_lens.intersect_plane(BFP)
+    focussed_ray = ray_bfp.intersect_plane(image_plane)
+
+    assert comparetensors(focussed_ray.position_m.std(dim=(0, 1)), 0)
 
 
 def test_snells1():
@@ -484,47 +490,63 @@ def test_slm_segment():
     assert comparetensors(ray_out.position_m, position_man)
 
 
-def NEWtest_pathlength():#####
+def test_pathlength():
     """
     Test path length for a collimated beam in free space and glass
     """
     origin, x, y, z = cartesian3d()
-    
+
     # medium consists of two slices with thickness 0.1m
     n1 = 1.0
     n2 = 1.5
 
     d = 0.1
-    
+
     sourceplane = CoordPlane(origin, x, y)
     interfaceplane = CoordPlane(origin + d*z, x, y)
     outputplane = CoordPlane(origin + 2*d*z, x, y)
-    
-    ray_in = collimated_source(sourceplane,1,1, refractive_index=n1)
-    
+
+    ray_in = collimated_source(sourceplane, 1, 1, refractive_index=n1)
+
     # calculate new position and direction/IOR
-    ray_out = ray_in.intersect_plane(interfaceplane)
-    ray_out = snells(ray_out, interfaceplane.normal, n2)
-    
-    ray_out = ray_out.intersect_plane(outputplane)
+    ray1 = ray_in.intersect_plane(interfaceplane)
+    ray2 = snells(ray1, interfaceplane.normal, n2)
+
+    ray3 = ray2.intersect_plane(outputplane)
 
     gt_pathlength = d*n1 + d*n2
-    assert comparetensors(ray_out.pathlength_m, gt_pathlength) 
+    assert comparetensors(ray3.pathlength_m, gt_pathlength)
 
-def NEWtest_pathlength2():#######
+
+def test_pathlength2():
     """
     Test path length for a lens system
     """
     origin, x, y, z = cartesian3d()
 
     beamwidth = 10e-3
-    src_plane = CoordPlane(origin + y*beamwidth, x*beamwidth, y*beamwidth*np.cos(-0.1) - z*beamwidth*np.sin(-0.1))
-    f = 100e-3
-    lens_plane = Plane(origin + f*z, -z-0.1*y - 0.1*x)
+    src_plane = CoordPlane(origin + y*beamwidth,
+                           x*beamwidth,
+                           y*beamwidth*np.cos(-0.1) - z*beamwidth*np.sin(-0.1))
+    f = 30e-3
+    lens_plane = Plane(origin + f*z, unit(-z-0.1*y - 0.1*x))
     cam_plane = Plane(lens_plane.position_m - f*lens_plane.normal, lens_plane.normal)
 
     rays = [collimated_source(src_plane, 3, 3)]
     rays.append(ideal_lens(rays[-1], lens_plane, f))
     rays.append(rays[-1].intersect_plane(cam_plane))
 
-    assert comparetensors(rays[-1].pathlength_m, rays[-1].pathlength_m[0][0])
+    ### Plot ###
+    from matplotlib import pyplot as plt
+    from plot_functions import plot_plane, plot_lens, plot_rays
+    plt.figure()
+    ax = plt.gca()
+    ax.set_aspect(1)
+    plot_plane(ax, src_plane, text1='src')
+    plot_lens(ax, lens_plane, f, scale=2*beamwidth)
+    plot_plane(ax, cam_plane, scale=beamwidth, text1='cam')
+    plot_rays(ax, rays)
+    plt.show()
+    ############
+
+    assert comparetensors(rays[-1].pathlength_m.std(), 0)
