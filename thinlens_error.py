@@ -92,10 +92,10 @@ class System(torch.nn.Module):
         scale = 1.2
 
         # Plot lenses and planes
-        plot_lens(ax1, viewplane, self.OBJ1, self.fobj1, scale, ' OBJ1')
+        plot_lens(ax1, self.OBJ1, self.fobj1, scale, ' OBJ1')
 
         # Plot rays
-        plot_rays(ax1, viewplane, self.rays)
+        plot_rays(ax1, self.rays)
 
         plt.xlabel('z (m)')
         plt.ylabel('y (m)')
