@@ -78,8 +78,8 @@ G = numel(p.galvoXs);
 % G = 1;
 % %%%%%%%%%%%%%%%%%%
 
-frame_ft_sum  = zeros(copt_ft.Width,  copt_ft.Height);
-frame_img_sum = zeros(copt_img.Width, copt_img.Height);
+frame_ft_max  = zeros(copt_ft.Width,  copt_ft.Height);
+frame_img_max = zeros(copt_img.Width, copt_img.Height);
 
 %% Capture dark frames
 outputSingleScan(daqs, [p.GalvoXcenter, p.GalvoYcenter]);   % Set Galvo
@@ -144,12 +144,12 @@ for s = 1:S                        % Loop over SLM segments
         % Capture camera frames
         cam_ft.trigger;
         frame_ft = single(cam_ft.getData);
-        frame_ft_sum = frame_ft_sum + frame_ft;
+        frame_ft_max = max(frame_ft_max, frame_ft);
         frames_ft(:,:,g) = frame_ft;
 
         cam_img.trigger;
         frame_img = single(cam_img.getData);
-        frame_img_sum = frame_img_sum + frame_img;
+        frame_img_max = max(frame_img_max, frame_img);
         frames_img(:,:,g) = frame_img;
 
         % Show what's on the cameras and check for overexposure
@@ -175,7 +175,7 @@ for s = 1:S                        % Loop over SLM segments
         % Save that stuff! Save for each segment position separately to prevent massive files
         savepath = fullfile(p.savedir, sprintf('%s_%03i.mat', p.savename, s));
         disp('Saving...')
-        save(savepath, '-v7.3', 'frames_ft', 'frames_img', 'darkframe_img', 'darkframe_ft', 'frame_ft_sum', 'frame_img_sum', ...
+        save(savepath, '-v7.3', 'frames_ft', 'frames_img', 'darkframe_img', 'darkframe_ft', 'frame_ft_max', 'frame_img_max', ...
             's', 'p', 'sopt', 'copt_ft', 'copt_img')
     end
     
