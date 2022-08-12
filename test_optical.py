@@ -490,7 +490,7 @@ def test_slm_segment():
     assert comparetensors(ray_out.position_m, position_man)
 
 
-def test_pathlength():
+def test_pathlength1():
     """
     Test path length for a collimated beam in free space and glass
     """
@@ -528,8 +528,8 @@ def test_pathlength2():
     src_plane = CoordPlane(origin + y*beamwidth,
                            x*beamwidth,
                            y*beamwidth*np.cos(-0.1) - z*beamwidth*np.sin(-0.1))
-    f = 30e-3
-    lens_plane = Plane(origin + f*z, unit(-z-0.1*y - 0.1*x))
+    f = 25e-3
+    lens_plane = Plane(origin + 0.5*f*z, unit(-z-0.1*y - 0.1*x))
     cam_plane = Plane(lens_plane.position_m - f*lens_plane.normal, lens_plane.normal)
 
     rays = [collimated_source(src_plane, 3, 3)]
@@ -550,3 +550,78 @@ def test_pathlength2():
     ############
 
     assert comparetensors(rays[-1].pathlength_m.std(), 0)
+
+
+def test_pathlength3():
+
+    origin, x, y, z = cartesian3d()
+
+    # Source
+    Nx = 3
+    Ny = 3
+    tan_angle = 0.2
+    source_pos = origin + 0.05*x
+    source_plane = CoordPlane(source_pos, tan_angle*x, tan_angle*y)
+    source = point_source(source_plane, Nx, Ny)
+
+    # Lens
+    f = 0.3
+    lens_pos = origin + f*z
+    lens_plane = Plane(lens_pos, z)
+    ray_at_lens = ideal_lens(source, lens_plane, f)
+
+    # End plane
+    end_normal = unit(lens_pos - source_pos)
+    end_pos = lens_pos + f*z
+    end_plane = Plane(end_pos, end_normal)
+    end_ray = ray_at_lens.intersect_plane(end_plane)
+
+    # Backpropagate
+    ray_back_at_lens = ideal_lens(end_ray, lens_plane, f)
+    back_to_the_start = ray_back_at_lens.intersect_plane(source_plane)
+
+    assert comparetensors(end_ray.pathlength_m.std(), 0)
+    assert comparetensors(back_to_the_start.pathlength_m, 0)
+
+
+def test_pathlength4():
+
+    origin, x, y, z = cartesian3d()
+
+    # Source
+    Nx = 3
+    Ny = 8
+    beam_width = 0.2
+    source_pos = origin + 0.05*x
+    y_rot = rotate(y, x, 0.1)
+    source_plane = CoordPlane(source_pos, beam_width*x, beam_width*y_rot)
+    source = collimated_source(source_plane, Nx, Ny)
+
+    # Lens
+    f = 0.3
+    lens_pos = origin + f*z
+    lens_plane = Plane(lens_pos, z)
+    ray_at_lens = ideal_lens(source, lens_plane, f)
+
+    # Back focal plane
+    end_pos = lens_pos + f*z
+    BFP = Plane(end_pos, z)
+    end_ray = ray_at_lens.intersect_plane(BFP)
+
+    # Backpropagate
+    ray_back_at_lens = ideal_lens(end_ray, lens_plane, f)
+    back_to_the_start = ray_back_at_lens.intersect_plane(source_plane)
+
+    from matplotlib import pyplot as plt
+    from plot_functions import plot_plane, plot_lens, plot_rays
+    fig = plt.figure()
+    ax = plt.gca()
+    plot_plane(ax, source_plane, text1='src')
+    plot_lens(ax, lens_plane, f, scale=0.3)
+    plot_plane(ax, BFP, scale=0.3, text1='BFP')
+    plot_rays(ax, [source, ray_at_lens, end_ray])
+    ax.set_aspect(1)
+    plt.show()
+
+    assert comparetensors(end_ray.pathlength_m.std(), 0)
+    assert comparetensors(back_to_the_start.pathlength_m, 0)
