@@ -39,8 +39,10 @@ matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-1x170um
 
 matfile = h5py.File(matpath, 'r')
 
-cam_ft_coords_gt = tensor((matfile['cam_ft_col'], matfile['cam_ft_row'])).permute(1, 2, 0)
-cam_im_coords_gt = tensor((matfile['cam_img_col'], matfile['cam_img_row'])).permute(1, 2, 0)
+cam_ft_coords_gt = (tensor((matfile['cam_ft_col'], matfile['cam_ft_row']))
+    - tensor((matfile['copt_ft/Width'], matfile['copt_ft/Height'])) / 2).permute(1, 2, 0)
+cam_im_coords_gt = (tensor((matfile['cam_img_col'], matfile['cam_img_row']))
+    - tensor((matfile['copt_img/Width'], matfile['copt_img/Height'])) / 2).permute(1, 2, 0)
 
 # Create TPM object and perform initial raytrace
 tpm = TPM()
@@ -279,8 +281,10 @@ matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-1x400um
 
 matfile = h5py.File(matpath, 'r')
 
-cam_ft_coords_gt = tensor((matfile['cam_ft_col'], matfile['cam_ft_row'])).permute(1, 2, 0)
-cam_im_coords_gt = tensor((matfile['cam_img_col'], matfile['cam_img_row'])).permute(1, 2, 0)
+cam_ft_coords_gt = (tensor((matfile['cam_ft_col'], matfile['cam_ft_row']))
+    - tensor((matfile['copt_ft/Width'], matfile['copt_ft/Height'])) / 2).permute(1, 2, 0)
+cam_im_coords_gt = (tensor((matfile['cam_img_col'], matfile['cam_img_row']))
+    - tensor((matfile['copt_img/Width'], matfile['copt_img/Height'])) / 2).permute(1, 2, 0)
 
 # Parameters
 tpm.total_coverslip_thickness = tensor((400e-6,), requires_grad=True)
