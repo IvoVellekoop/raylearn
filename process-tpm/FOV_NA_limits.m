@@ -45,10 +45,10 @@ D_NA_limit_width_by_ftcam = cam_width * f9 / f10;     % Entrance pupil limit cau
 NA_limit_height_by_ftcam = n * sin(atan(D_NA_limit_height_by_ftcam / (2*fobj2)));
 NA_limit_width_by_ftcam = n * sin(atan(D_NA_limit_width_by_ftcam / (2*fobj2)));
 
-fprintf('\nNA height limit image cam = %.3f', NA_limit_height_by_ftcam)
-fprintf('\nNA width  limit image cam = %.3f\n', NA_limit_width_by_ftcam)
+fprintf('\nNA height limit fourier cam = %.3f', NA_limit_height_by_ftcam)
+fprintf('\nNA width  limit fourier cam = %.3f\n', NA_limit_width_by_ftcam)
 
 
-x = 0:0.02:4; y = sin(atan(x)); plot(x, n*y); ylabel('NA'); xlabel('D / 2f'); grid on
+% x = 0:0.02:4; y = sin(atan(x)); plot(x, n*y); ylabel('NA'); xlabel('D / 2f'); grid on
 
 
