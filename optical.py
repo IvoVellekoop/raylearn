@@ -91,7 +91,7 @@ def ideal_lens(in_ray, lens, f):
     P = S_Ray.intersect_plane(lens).position_m              # Intersection with lens plane
     out_dir = unit(L - S_Ray.position_m)                    # Out Ray direction
 
-    # Compute pathlength
+    # Compute pathlength #### Only works for point sources at the Front focal plane!!!
     PW_distance_m = dot(out_dir, F2 - P)                    # Distance P to W
     new_pathlength_m = S_Ray.pathlength_m \
         + (2*f - PW_distance_m)                             # Compute pathlength
