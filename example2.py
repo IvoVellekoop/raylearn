@@ -4,7 +4,7 @@ import torch
 from torch import optim, Tensor
 from vector_functions import vector, unit, cartesian3d
 from ray_plane import Plane, CoordPlane
-from optical import collimated_source, ideal_lens
+from optical import collimated_source, thin_lens
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
@@ -40,7 +40,7 @@ def optical_system(f, lens_normal_x_shift):
 
     # Ray tracing
     rays1 = collimated_source(vsize)
-    rays2 = ideal_lens(rays1, lens_plane, f)
+    rays2 = thin_lens(rays1, lens_plane, f)
     rays3 = rays2.intersect_plane(cam_plane)
     camcoords = cam_plane.transform(rays3)
 

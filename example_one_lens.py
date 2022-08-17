@@ -8,7 +8,7 @@ import numpy as np
 
 from ray_plane import Plane, CoordPlane
 from plot_functions import plot_plane, plot_lens, plot_rays, plot_coords
-from optical import collimated_source, ideal_lens
+from optical import collimated_source, thin_lens
 from vector_functions import cartesian3d, rotate
 from testing import MSE
 
@@ -37,7 +37,7 @@ class SystemOneLens():
     def raytrace(self):
         """Perform raytracing through system"""
         self.rays = [collimated_source(self.source_plane, 7, 7)]
-        self.rays.append(ideal_lens(self.rays[-1], self.lens_plane, self.f1))
+        self.rays.append(thin_lens(self.rays[-1], self.lens_plane, self.f1))
         self.rays.append(self.rays[-1].intersect_plane(self.cam_plane))
         self.cam_coords = self.cam_plane.transform_rays(self.rays[-1])
         return self.cam_coords

@@ -62,7 +62,7 @@ def point_source(sourceplane, Nx, Ny, **raykwargs):
     return Ray(sourceplane.position_m, direction, **raykwargs)
 
 
-def ideal_lens(in_ray, lens, f):
+def thin_lens(in_ray, lens, f):
     """Ideal infinitely thin lens.
     todo: Explain the steps of computation in a drawing in some documentation.
 

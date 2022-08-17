@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from vector_functions import rotate, cartesian3d
 from ray_plane import Ray, Plane, CoordPlane
 from plot_functions import plot_plane, plot_lens, plot_rays
-from optical import ideal_lens, snells, galvo_mirror, slm_segment
+from optical import thin_lens, snells, galvo_mirror, slm_segment
 
 
 # Set default tensor type to double (64 bit)
@@ -214,18 +214,18 @@ class TPM():
 
         # Propagation to objective 1
         self.rays.append(galvo_mirror(self.rays[-1], self.galvo_plane, self.galvo_rots))
-        self.rays.append(ideal_lens(self.rays[-1], self.L3, self.f3))
+        self.rays.append(thin_lens(self.rays[-1], self.L3, self.f3))
         self.plane34_ray = self.rays[-1].intersect_plane(self.plane34)
         self.rays.append(self.plane34_ray)
-        self.rays.append(ideal_lens(self.rays[-1], self.L4, self.f4))
+        self.rays.append(thin_lens(self.rays[-1], self.L4, self.f4))
         self.rays.append(self.rays[-1].intersect_plane(self.slm_plane))
         self.slm_ray = slm_segment(self.rays[-1], self.slm_plane, self.slm_coords)
         self.rays.append(self.slm_ray)
-        self.rays.append(ideal_lens(self.rays[-1], self.L5, self.f5))
+        self.rays.append(thin_lens(self.rays[-1], self.L5, self.f5))
         self.plane57_ray = self.rays[-1].intersect_plane(self.plane57)
         self.rays.append(self.plane57_ray)
-        self.rays.append(ideal_lens(self.rays[-1], self.L7, self.f7))
-        self.rays.append(ideal_lens(self.rays[-1], self.OBJ1, self.fobj1))
+        self.rays.append(thin_lens(self.rays[-1], self.L7, self.f7))
+        self.rays.append(thin_lens(self.rays[-1], self.OBJ1, self.fobj1))
 
         # Propagation to sample plane as ideal air lens
         self.rays.append(self.rays[-1].intersect_plane(self.sample_plane))
@@ -240,13 +240,13 @@ class TPM():
         self.rays.append(snells(self.rays[-1], self.coverslip_back_plane.normal, 1.))
 
         # # Propagation from objective 2
-        self.rays.append(ideal_lens(self.rays[-1], self.OBJ2, self.fobj2))
-        self.rays.append(ideal_lens(self.rays[-1], self.L9, self.f9))
+        self.rays.append(thin_lens(self.rays[-1], self.OBJ2, self.fobj2))
+        self.rays.append(thin_lens(self.rays[-1], self.L9, self.f9))
 
         # Propagation onto cameras
         cam_im_ray = self.rays[-1].intersect_plane(self.cam_im_plane)
         self.rays.append(cam_im_ray)
-        self.rays.append(ideal_lens(self.rays[-1], self.L10, self.f10))
+        self.rays.append(thin_lens(self.rays[-1], self.L10, self.f10))
         cam_ft_ray = self.rays[-1].intersect_plane(self.cam_ft_plane)
         self.rays.append(cam_ft_ray)
 

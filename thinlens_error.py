@@ -10,7 +10,7 @@ import numpy as np
 from vector_functions import cartesian3d, unit, rotate
 from ray_plane import Ray, Plane, CoordPlane
 from plot_functions import plot_plane, plot_lens, plot_rays
-from optical import point_source, ideal_lens
+from optical import point_source, thin_lens
 
 
 # Set defaults
@@ -69,7 +69,7 @@ class System(torch.nn.Module):
         self.rays = [Ray(self.src_positions, self.directions, refractive_index=self.n_water)]
 
         # Objective
-        self.rays.append(ideal_lens(self.rays[-1], self.OBJ1, self.fobj1))
+        self.rays.append(thin_lens(self.rays[-1], self.OBJ1, self.fobj1))
         self.rays.append(self.rays[-1].copy(refractive_index=1))
 
         # End plane

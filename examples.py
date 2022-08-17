@@ -6,7 +6,7 @@ import torch
 
 from ray_plane import Ray, Plane, CoordPlane
 from plot_functions import plot_plane, plot_lens, plot_rays, plot_coords
-from optical import point_source, collimated_source, ideal_lens, snells
+from optical import point_source, collimated_source, thin_lens, snells
 from interpolate import interpolate2d
 from field import field_from_rays, coord_grid
 from vector_functions import cartesian3d
@@ -49,7 +49,7 @@ class FocusingSystem():
 
     def raytrace(self):
         self.rays = [collimated_source(self.sourceplane, self.source_Nx, self.source_Ny)]
-        self.rays.append(ideal_lens(self.rays[-1], self.L1, self.f1))
+        self.rays.append(thin_lens(self.rays[-1], self.L1, self.f1))
 
         # self.rays.append(self.rays[-1].intersect_plane(self.slab1))
         # self.rays.append(snells(self.rays[-1], self.slab1.normal, self.n2))

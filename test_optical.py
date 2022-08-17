@@ -8,7 +8,7 @@ from testing import comparetensors
 from vector_functions import dot, unit, norm, cross, rejection, rotate,\
                              reflection, components, cartesian3d
 from ray_plane import Ray, Plane, CoordPlane
-from optical import point_source, collimated_source, ideal_lens, snells,\
+from optical import point_source, collimated_source, thin_lens, snells,\
                     mirror, galvo_mirror, slm_segment
 
 
@@ -54,7 +54,7 @@ def test_sources():
     assert torch.all(tensor(coll.position_m.shape) == Tensor((Nx, Ny, 3)))
 
 
-def test_ideal_lens_point_source():
+def test_thin_lens_point_source():
     """Test point source at focal plane through ideal lens."""
     Nx = 4
     Ny = 4
@@ -73,13 +73,13 @@ def test_ideal_lens_point_source():
     lens = Plane(lens_pos, lens_dir)
 
     # Check output rays point source through lens
-    outray = ideal_lens(src, lens, f)
+    outray = thin_lens(src, lens, f)
 
     assert comparetensors(outray.position_m, src.intersect_plane(lens).position_m)
     assert comparetensors(outray.direction, unit(lens_pos - src_pos))
 
 
-def test_ideal_lens_collimated_source():
+def test_thin_lens_collimated_source():
     """Test collimated source through lens."""
     Nx = 3
     Ny = 5
@@ -103,7 +103,7 @@ def test_ideal_lens_collimated_source():
     BFP = Plane(focal_pos, lens_dir)
 
     # Check output rays collimated source through lens
-    on_lens_ray = ideal_lens(src, lens, f)
+    on_lens_ray = thin_lens(src, lens, f)
     focussed_ray = on_lens_ray.intersect_plane(BFP)
     chief_ray_at_BFP = Ray(lens_pos, src_plane.normal).intersect_plane(BFP)
 
@@ -111,7 +111,7 @@ def test_ideal_lens_collimated_source():
     assert comparetensors(focussed_ray.position_m, chief_ray_at_BFP.position_m)
 
 
-def test_ideal_lens_lens_law_positive():
+def test_thin_lens_lens_law_positive():
     """Test lens law with point source through ideal positive lens."""
     Nx = 5
     Ny = 4
@@ -139,11 +139,11 @@ def test_ideal_lens_lens_law_positive():
     image_plane = Plane(image_plane_pos, lens_dir)
 
     # Check whether focus is formed at distance s2
-    focussed_ray = ideal_lens(src, lens, f).intersect_plane(image_plane)
+    focussed_ray = thin_lens(src, lens, f).intersect_plane(image_plane)
     assert comparetensors(focussed_ray.position_m.std(dim=(0, 1)), 0)
 
 
-def test_ideal_lens_lens_law_negative():
+def test_thin_lens_lens_law_negative():
     """Test lens law with point source through ideal negative lens."""
     Nx = 3
     Ny = 4
@@ -171,7 +171,7 @@ def test_ideal_lens_lens_law_negative():
     image_plane = Plane(image_plane_pos, lens_dir)
 
     # Check whether focus is formed at distance s2
-    ray_at_lens = ideal_lens(src, lens_plane, f)
+    ray_at_lens = thin_lens(src, lens_plane, f)
     ray_bfp = ray_at_lens.intersect_plane(BFP)
     focussed_ray = ray_bfp.intersect_plane(image_plane)
 
@@ -533,7 +533,7 @@ def test_pathlength2():
     cam_plane = Plane(lens_plane.position_m - f*lens_plane.normal, lens_plane.normal)
 
     rays = [collimated_source(src_plane, 3, 3)]
-    rays.append(ideal_lens(rays[-1], lens_plane, f))
+    rays.append(thin_lens(rays[-1], lens_plane, f))
     rays.append(rays[-1].intersect_plane(cam_plane))
 
     ### Plot ###
@@ -568,7 +568,7 @@ def test_pathlength3():
     f = 0.3
     lens_pos = origin + f*z
     lens_plane = Plane(lens_pos, z)
-    ray_at_lens = ideal_lens(source, lens_plane, f)
+    ray_at_lens = thin_lens(source, lens_plane, f)
 
     # End plane
     end_normal = unit(lens_pos - source_pos)
@@ -577,7 +577,7 @@ def test_pathlength3():
     end_ray = ray_at_lens.intersect_plane(end_plane)
 
     # Backpropagate
-    ray_back_at_lens = ideal_lens(end_ray, lens_plane, f)
+    ray_back_at_lens = thin_lens(end_ray, lens_plane, f)
     back_to_the_start = ray_back_at_lens.intersect_plane(source_plane)
 
     assert comparetensors(end_ray.pathlength_m.std(), 0)
@@ -601,7 +601,7 @@ def test_pathlength4():
     f = 0.3
     lens_pos = origin + f*z
     lens_plane = Plane(lens_pos, z)
-    ray_at_lens = ideal_lens(source, lens_plane, f)
+    ray_at_lens = thin_lens(source, lens_plane, f)
 
     # Back focal plane
     end_pos = lens_pos + f*z
@@ -609,7 +609,7 @@ def test_pathlength4():
     end_ray = ray_at_lens.intersect_plane(BFP)
 
     # Backpropagate
-    ray_back_at_lens = ideal_lens(end_ray, lens_plane, f)
+    ray_back_at_lens = thin_lens(end_ray, lens_plane, f)
     back_to_the_start = ray_back_at_lens.intersect_plane(source_plane)
 
     from matplotlib import pyplot as plt

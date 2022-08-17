@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 from ray_plane import Plane, CoordPlane
 from plot_functions import plot_plane, plot_lens, plot_rays
-from optical import collimated_source, ideal_lens
+from optical import collimated_source, thin_lens
 
 
 # Set defaults
@@ -68,13 +68,13 @@ class System4F(torch.nn.Module):
         self.rays = [collimated_source(self.source_plane, self.source_Nx, self.source_Ny)]
 
         # Lenses of 4f system
-        self.rays.append(ideal_lens(self.rays[-1], self.L1, self.f1))
-        self.rays.append(ideal_lens(self.rays[-1], self.L2, self.f2))
+        self.rays.append(thin_lens(self.rays[-1], self.L1, self.f1))
+        self.rays.append(thin_lens(self.rays[-1], self.L2, self.f2))
 
         # Cameras
         self.rays.append(self.rays[-1].intersect_plane(self.cam_im_plane))
         self.cam_im_coords = self.cam_im_plane.transform_rays(self.rays[-1])
-        self.rays.append(ideal_lens(self.rays[-1], self.L3, self.f3))
+        self.rays.append(thin_lens(self.rays[-1], self.L3, self.f3))
         self.rays.append(self.rays[-1].intersect_plane(self.cam_ft_plane))
         self.cam_ft_coords = self.cam_ft_plane.transform_rays(self.rays[-1])
 
