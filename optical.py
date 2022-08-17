@@ -63,7 +63,12 @@ def point_source(sourceplane, Nx, Ny, **raykwargs):
 
 
 def thin_lens(in_ray, lens, f):
-    """Ideal infinitely thin lens.
+    """
+    Thin lens
+    Follows height = tan(angle). Pathlength is corrected for point sources at the front focal plane.
+    In other cases, only works for paraxial rays. Rays are 'refracted' such that the thin lens law
+    1/f = 1/s1 + 1/s2 works (where f=focal distance, s1 and s2 = object and image distance to lens).
+
     todo: Explain the steps of computation in a drawing in some documentation.
 
     Input
