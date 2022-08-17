@@ -79,7 +79,8 @@ def ideal_lens(in_ray, lens, f):
     """
 
     # Flip lens normal if in_ray is coming from opposite direction (required for backpropagation)
-    normal = -lens.normal * torch.sign(dot(lens.normal, lens.position_m - in_ray.position_m))
+    propagation_sign = torch.sign(dot(lens.normal, lens.position_m - in_ray.position_m))
+    normal = -lens.normal * propagation_sign
 
     # Define useful points for lens
     L = lens.position_m                                     # Lens position
@@ -94,41 +95,10 @@ def ideal_lens(in_ray, lens, f):
     # Compute pathlength #### Only works for point sources at the Front focal plane!!!
     PW_distance_m = dot(out_dir, F2 - P)                    # Distance P to W
     new_pathlength_m = S_Ray.pathlength_m \
-        + (2*f - PW_distance_m)                             # Compute pathlength
-
-    ##################
-    # # Pathlength paraxial approximation (parabolic wavefront correction)
-    # new_pathlength_m = in_ray.intersect_plane(lens).pathlength_m \
-    #                  - in_ray.refractive_index * norm_square(P - L) / (2*f)
-
-    # # Pathlength correction spherical wavefront
-    # new_pathlength_m = in_ray.intersect_plane(lens).pathlength_m \
-    #                  - in_ray.refractive_index * (torch.sqrt(f*f + norm_square(P-L)) - f)
-    ##################
+        + propagation_sign * (2*f - PW_distance_m)          # Compute pathlength
 
     # Return outgoing Ray
     return S_Ray.copy(position_m=P, direction=out_dir, pathlength_m=new_pathlength_m)
-
-#    OC          = lens.position_m                           # Optical Center position
-#    BFP         = Plane(OC - f * lens.normal, lens.normal)  # Back Focal Plane
-#    chiefray    = Ray(OC, in_ray.direction)                 # Chief or Principal Ray (through OC)
-#    focus       = chiefray.intersect_plane(BFP).position_m  # Ray intersection with Back Focal Plane
-#
-#    intersect   = in_ray.intersect_plane(lens)              # Ray intersection with lens plane
-#    newpos      = intersect.position_m                      # Position of the new ray
-#    newpath     = intersect.pathlength_m                    # Pathlength of new ray at lens plane
-#
-#    ### Compute pathlength
-#    # Rays further from the axis are delayed less
-#
-#    chiefraylength = norm(focus - OC) - dot(newpos - OC, chiefray.direction)
-#    thisraylength = norm(focus - newpos)
-#
-#    newpath += chiefraylength - thisraylength
-#
-#    out_ray = in_ray.copy(position_m=newpos, pathlength_m=newpath,
-#        direction=unit(focus - newpos) )    # Output Ray
-#    return out_ray
 
 
 def smooth_grid(xy, power):
