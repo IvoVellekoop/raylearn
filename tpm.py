@@ -100,6 +100,7 @@ class TPM():
         self.obj1_tubelength = 200e-3           # Objective standard tubelength
         self.obj1_magnification = 16            # Objective magnification
         self.fobj1 = self.obj1_tubelength / self.obj1_magnification
+        # Objective 2: Zeiss A-Plan 100x/0.8 421090-9800
         self.obj2_tubelength = 165e-3           # Objective standard tubelength
         self.obj2_magnification = 100           # Objective magnification
         self.fobj2 = self.obj2_tubelength / self.obj2_magnification
