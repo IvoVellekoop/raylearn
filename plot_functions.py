@@ -158,18 +158,21 @@ def plot_plane(ax, plane_to_plot, scale=1, text1='', text2='', viewplane=default
     B = position_m + x - y
     C = position_m - x - y
     D = position_m - x + y
-
+    
     # Project points onto viewplane
     Ax, Ay = viewplane.transform_points(A).unbind(-1)
     Bx, By = viewplane.transform_points(B).unbind(-1)
     Cx, Cy = viewplane.transform_points(C).unbind(-1)
     Dx, Dy = viewplane.transform_points(D).unbind(-1)
+    Px, Py = viewplane.transform_points(position_m).unbind(-1)
+    nx, ny = viewplane.transform_points(0.1 * scale * plane_to_plot.normal).unbind(-1)
 
-    ln = ax.plot((Ax, Bx, Cx, Dx, Ax),
-                 (Ay, By, Cy, Dy, Ay), **plotkwargs)
+    parallelogram = ax.plot((Ax, Bx, Cx, Dx, Ax),
+                            (Ay, By, Cy, Dy, Ay), **plotkwargs)
+    arrow = ax.arrow(Px, Py, nx, ny, **plotkwargs)
     ax.text(Bx, By, text1)
     ax.text(Dx, Dy, text2)
-    return ln
+    return (parallelogram, arrow)
 
 
 def plot_lens(ax, lensplane, f, scale=1, pretext1='', text2='', viewplane=default_viewplane(), plotkwargs={'color': 'black'}):
