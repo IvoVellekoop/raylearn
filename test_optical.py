@@ -8,7 +8,7 @@ from testing import comparetensors
 from vector_functions import dot, unit, norm, cross, rejection, rotate,\
                              reflection, components, cartesian3d
 from ray_plane import Ray, Plane, CoordPlane
-from optical import point_source, collimated_source, thin_lens, snells,\
+from optical import point_source, collimated_source, thin_lens, abbe_lens, snells,\
                     mirror, galvo_mirror, slm_segment
 
 
@@ -520,80 +520,106 @@ def test_pathlength1():
 
 def test_pathlength2():
     """
-    Test path length for a lens system
+    Test path length for a collimated source and abbe sine lens
     """
     origin, x, y, z = cartesian3d()
 
-    beamwidth = 10e-3
-    src_plane = CoordPlane(origin + y*beamwidth,
-                           x*beamwidth,
-                           y*beamwidth*np.cos(-0.1) - z*beamwidth*np.sin(-0.1))
-    f = 25e-3
+    beamwidth = 1
+    f = 2.5
+    src_plane = CoordPlane(origin, x*beamwidth, beamwidth * rotate(y, x, 0.2))
     lens_plane = Plane(origin + 0.5*f*z, unit(-z-0.1*y - 0.1*x))
     cam_plane = Plane(lens_plane.position_m - f*lens_plane.normal, lens_plane.normal)
 
     rays = [collimated_source(src_plane, 3, 3)]
-    rays.append(thin_lens(rays[-1], lens_plane, f))
-    rays.append(rays[-1].intersect_plane(cam_plane))
-
-    ### Plot ###
-    from matplotlib import pyplot as plt
-    from plot_functions import plot_plane, plot_lens, plot_rays
-    plt.figure()
-    ax = plt.gca()
-    ax.set_aspect(1)
-    plot_plane(ax, src_plane, text1='src')
-    plot_lens(ax, lens_plane, f, scale=2*beamwidth)
-    plot_plane(ax, cam_plane, scale=beamwidth, text1='cam')
-    plot_rays(ax, rays)
-    plt.show()
-    ############
+    rays += abbe_lens(rays[-1], lens_plane, f)
+    rays += [rays[-1].intersect_plane(cam_plane)]
 
     assert comparetensors(rays[-1].pathlength_m.std(), 0)
+    assert comparetensors(rays[-1].position_m.std(dim=(-2, -3)), 0)
+
+    rays += abbe_lens(rays[-1], lens_plane, f)
+    rays += [rays[-1].intersect_plane(src_plane)]
+
+    # # Uncomment for debugging
+    # ### Plot ###
+    # from matplotlib import pyplot as plt
+    # from plot_functions import plot_plane, plot_lens, plot_rays
+    # plt.figure()
+    # ax = plt.gca()
+    # ax.set_aspect(1)
+    # plt.title('test_pathlength2')
+    # plot_plane(ax, src_plane, text1='src')
+    # plot_lens(ax, lens_plane, f, scale=2*beamwidth)
+    # plot_plane(ax, cam_plane, scale=beamwidth, text1='cam')
+    # plot_rays(ax, rays)
+    # plt.show()
+    # ############
+
+    assert comparetensors(rays[-1].pathlength_m, 0)
 
 
 def test_pathlength3():
-
+    """
+    Test pathlength for point source and abbe sine lens
+    """
     origin, x, y, z = cartesian3d()
 
     # Source
-    Nx = 3
-    Ny = 3
-    tan_angle = 0.2
-    source_pos = origin + 0.05*x
+    Nx = 9
+    Ny = 9
+    tan_angle = 0.4
+    source_pos = origin + 0.1*y
     source_plane = CoordPlane(source_pos, tan_angle*x, tan_angle*y)
     source = point_source(source_plane, Nx, Ny)
+    rays = [source]
 
     # Lens
-    f = 0.3
-    lens_pos = origin + f*z
-    lens_plane = Plane(lens_pos, z)
-    ray_at_lens = thin_lens(source, lens_plane, f)
+    f = 0.23
+    end_plane_to_lens = 0.4
+    lens_pos = origin + f*source_plane.normal
+    lens_plane = Plane(lens_pos, source_plane.normal)
+    rays += abbe_lens(source, lens_plane, f)
 
     # End plane
-    end_normal = unit(lens_pos - source_pos)
-    end_pos = lens_pos + f*z
+    end_normal = rays[-1].direction[0, 0, :]
+    end_pos = lens_pos + end_plane_to_lens*z
     end_plane = Plane(end_pos, end_normal)
-    end_ray = ray_at_lens.intersect_plane(end_plane)
+    rays += [rays[-1].intersect_plane(end_plane)]
+
+    assert comparetensors(rays[-1].pathlength_m.std(), 0)
 
     # Backpropagate
-    ray_back_at_lens = thin_lens(end_ray, lens_plane, f)
-    back_to_the_start = ray_back_at_lens.intersect_plane(source_plane)
+    rays_back = abbe_lens(rays[-1], lens_plane, f)
+    rays += rays_back
+    rays += [rays[-1].intersect_plane(source_plane)]
 
-    assert comparetensors(end_ray.pathlength_m.std(), 0)
-    assert comparetensors(back_to_the_start.pathlength_m, 0)
+    # from matplotlib import pyplot as plt
+    # from plot_functions import plot_plane, plot_lens, plot_rays
+    # plt.figure()
+    # ax = plt.gca()
+    # plot_rays(ax, rays)
+    # plot_plane(ax, source_plane, text1='src')
+    # plot_lens(ax, lens_plane, f, scale=0.3)
+    # plot_plane(ax, end_plane, scale=0.2, text1='end plane')
+    # ax.set_aspect(1)
+    # plt.show()
+
+    assert comparetensors(rays[-1].position_m.std(dim=(-2, -3)), 0)
+    assert comparetensors(rays[-1].pathlength_m, 0)
 
 
 def test_pathlength4():
-
+    """
+    Test pathlength for collimated source and abbe sine lens
+    """
     origin, x, y, z = cartesian3d()
 
     # Source
-    Nx = 3
-    Ny = 8
-    beam_width = 0.2
+    Nx = 1
+    Ny = 7
+    beam_width = 0.15
     source_pos = origin + 0.05*x
-    y_rot = rotate(y, x, 0.1)
+    y_rot = rotate(y, x, -0.15)
     source_plane = CoordPlane(source_pos, beam_width*x, beam_width*y_rot)
     source = collimated_source(source_plane, Nx, Ny)
 
@@ -601,27 +627,29 @@ def test_pathlength4():
     f = 0.3
     lens_pos = origin + f*z
     lens_plane = Plane(lens_pos, z)
-    ray_at_lens = thin_lens(source, lens_plane, f)
+    rays_at_lens = abbe_lens(source, lens_plane, f)
 
     # Back focal plane
     end_pos = lens_pos + f*z
     BFP = Plane(end_pos, z)
-    end_ray = ray_at_lens.intersect_plane(BFP)
+    end_ray = rays_at_lens[1].intersect_plane(BFP)
 
     # Backpropagate
-    ray_back_at_lens = thin_lens(end_ray, lens_plane, f)
-    back_to_the_start = ray_back_at_lens.intersect_plane(source_plane)
+    rays_back_at_lens = abbe_lens(end_ray, lens_plane, f)
+    back_to_the_start = rays_back_at_lens[1].intersect_plane(source_plane)
 
-    from matplotlib import pyplot as plt
-    from plot_functions import plot_plane, plot_lens, plot_rays
-    fig = plt.figure()
-    ax = plt.gca()
-    plot_plane(ax, source_plane, text1='src')
-    plot_lens(ax, lens_plane, f, scale=0.3)
-    plot_plane(ax, BFP, scale=0.3, text1='BFP')
-    plot_rays(ax, [source, ray_at_lens, end_ray])
-    ax.set_aspect(1)
-    plt.show()
+    # # Uncomment plot code for debugging
+    # from matplotlib import pyplot as plt
+    # from plot_functions import plot_plane, plot_lens, plot_rays
+    # fig = plt.figure()
+    # ax = plt.gca()
+    # plt.title('test_pathlength4')
+    # plot_plane(ax, source_plane, text1='src')
+    # plot_lens(ax, lens_plane, f, scale=0.3)
+    # plot_plane(ax, BFP, scale=0.3, text1='BFP')
+    # plot_rays(ax, [source, *rays_at_lens, end_ray, *rays_back_at_lens, back_to_the_start])
+    # ax.set_aspect(1)
+    # plt.show()
 
     assert comparetensors(end_ray.pathlength_m.std(), 0)
     assert comparetensors(back_to_the_start.pathlength_m, 0)
