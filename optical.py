@@ -97,13 +97,68 @@ def thin_lens(in_ray, lens, f):
     P = S_Ray.intersect_plane(lens).position_m              # Intersection with lens plane
     out_dir = unit(L - S_Ray.position_m)                    # Out Ray direction
 
-    # Compute pathlength #### Only works for point sources at the Front focal plane!!!
+    # Compute pathlength correction for point sources at front focal plane
     PW_distance_m = dot(out_dir, F2 - P)                    # Distance P to W
     new_pathlength_m = S_Ray.pathlength_m \
         + propagation_sign * (2*f - PW_distance_m)          # Compute pathlength
 
     # Return outgoing Ray
     return S_Ray.copy(position_m=P, direction=out_dir, pathlength_m=new_pathlength_m)
+
+
+def abbe_lens(in_ray, lens, f):
+    """
+    Thin lens
+    Follows height = tan(angle). Pathlength is corrected for point sources at the front focal plane.
+    In other cases, only works for paraxial rays. Rays are 'refracted' such that the thin lens law
+    1/f = 1/s1 + 1/s2 works (where f=focal distance, s1 and s2 = object and image distance to lens).
+
+    todo: Explain the steps of computation in a drawing in some documentation.
+
+    Input
+    -----
+        in_ray:  Ray object. Input Ray.
+        lens:    Plane object. Lens plane.
+        f:       Scalar array. Focal distance.
+
+    Output
+    ------
+        Tuple of Ray objects representing Rays on principal spheres. The first Ray is an
+        intermediate Ray. The second Ray is the outgoing Ray.
+    """
+
+    # Determine propagation direction (forward or backward)
+    propagation_sign = torch.sign(dot(lens.normal, lens.position_m - in_ray.position_m)
+                                * dot(lens.normal, in_ray.direction))
+
+    # Flip lens normal if in_ray is coming from opposite direction
+    normal = -lens.normal * torch.sign(dot(lens.normal, lens.position_m - in_ray.position_m))
+
+    # Define useful points for lens
+    L = lens.position_m                                     # Lens position
+    F1 = L + f*normal                                       # Front focal point
+    F2 = L - f*normal                                       # Back focal point
+
+    # Compute points on principal spheres
+    S_Ray = in_ray.intersect_plane(Plane(F1, normal))       # Propagate Ray to Front focal plane
+    S = S_Ray.position_m                                    # Intersection Front focal plane
+    in_dir = in_ray.direction * propagation_sign            # Incoming direction
+    SF1 = S - F1                                            # Vector from S to F1
+    P1 = S + f*in_dir                                       # Point on sphere around S
+    P2 = P1 - normal * (f*(2 + dot(in_dir, normal)) - torch.sqrt(f*f - norm_square(SF1)))
+
+    # Compute direction of output Ray
+    Q = F2 + rejection(P1-S, normal)
+    out_dir = propagation_sign * (Q-P2) / f
+
+    # Compute pathlength
+    pathlength_P1 = S_Ray.pathlength_m + f * propagation_sign
+    P1_Ray = S_Ray.copy(position_m=P1, direction=-normal*propagation_sign,
+                        pathlength_m=pathlength_P1)
+    pathlength_P2 = P1_Ray.pathlength_m - dot(SF1, in_ray.direction)
+    P2_Ray = P1_Ray.copy(position_m=P2, direction=out_dir, pathlength_m=pathlength_P2)
+
+    return (P1_Ray, P2_Ray)
 
 
 def smooth_grid(xy, power):
