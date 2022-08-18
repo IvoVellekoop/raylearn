@@ -26,7 +26,9 @@ class Ray:
         position_m          Vector. Ray position in meters
         direction           Vector. Ray direction unit vector
         refractive_index    Scalar. Refractive index of medium
-        pathlength_m        Scalar. Total optical pathlength in meters
+        pathlength_m        Scalar. Total optical pathlength in meters. When performing operations,
+                            the propagation sign (i.e. increasing or decreasing pathlength) is
+                            automatically determined from direction and position.
         intensity           Scalar. Intensity of the light ray.
         weight              Scalar. Total weight. Adjusts contribution to objective function.
 
@@ -34,9 +36,8 @@ class Ray:
 
     def __init__(self, position_m, direction, refractive_index=1, pathlength_m=0, intensity=1, weight=1):
         self.position_m = position_m                # Vector. Position in m
-        ################ Build in check for Tensor class
+        assert checkunitvector(direction)
         self.direction = direction                  # Vector. Direction unit vector
-        ### Check unit vector?
         self.refractive_index = refractive_index    # Scalar. Refractive index of medium
         self.pathlength_m = pathlength_m            # Scalar. Total optical pathlength in m
         self.intensity = intensity                  # Scalar. Intensity of ray.
@@ -67,7 +68,6 @@ class Ray:
         copiedray = copy.copy(self)
         copiedray.__dict__.update(**kwargs)
         return copiedray
-
 
 
 class Plane:
