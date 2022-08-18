@@ -4,6 +4,7 @@ import pytest
 from torch import tensor, ones
 from testing import comparetensors
 from ray_plane import Ray
+from vector_functions import unit
 from plot_functions import format_prefix, ray_positions
 
 
@@ -37,7 +38,7 @@ def test_ray_positions():
     pos0 = 1 * ones((N3,))
     pos1 = 2 * ones((N1, 1, N3))
     pos2 = 3 * ones((1, N2, N3))
-    dir0 = ones((3,))
+    dir0 = unit(ones((3,)))
 
     # Create Rays
     raylist = []
