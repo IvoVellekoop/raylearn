@@ -211,6 +211,9 @@ def snells(ray_in, normal, n_out):
     from the opposite direction, the normal vector will be flipped to make the computation work.
     If the angle is so large such that total internal reflection would occur, the argument to
     to torch.sqrt will be < 0, resulting in a nan for the output.
+
+    See also:
+    https://en.wikipedia.org/wiki/Snell%27s_law#Vector_form
     """
 
     # Flip normal if ray_in is coming from opposite direction (required for backpropagation)

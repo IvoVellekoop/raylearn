@@ -301,6 +301,51 @@ def test_snells4():
     assert comparetensors(sin_out, n_in/n_out * sin_in)
 
 
+def test_snells_pathlength():
+    """
+    Test pathlength with forward and backward propagation through refractive interface. For
+    easyness, xz-plane is used, with normal = -z.
+    """
+    n_in = 1.2
+    n_out = 1.8
+    angle_deg = 33
+
+    origin, x, y, z = cartesian3d()
+
+    # Define input Ray
+    angle_in_rad = angle_deg * np.pi/180
+    zdistance_in = 1.1
+    start_position = origin - zdistance_in*z
+    ray_in_dir = rotate(z, x, angle_in_rad)
+    rays = [Ray(start_position, ray_in_dir, refractive_index=n_in)]
+
+    # Define interface and start & end planes
+    start_plane = Plane(start_position, -z)
+    interface = Plane(origin, -z)
+    zdistance_out = 0.8
+    end_plane = Plane(origin + zdistance_out*z, -z)
+
+    # Forward ray tracing
+    rays += [rays[-1].intersect_plane(interface)]
+    rays += [snells(rays[-1], interface.normal, n_out)]
+    rays += [rays[-1].intersect_plane(end_plane)]
+
+    # Check pathlength at end plane
+    angle_out_rad = np.arcsin(np.sin(angle_in_rad) * n_in / n_out)      # Snell's law
+    pathlength = n_in * zdistance_in / np.cos(angle_in_rad) \
+        + n_out * zdistance_out / np.cos(angle_out_rad)
+    assert comparetensors(pathlength, rays[-1].pathlength_m)
+
+    # Backward ray tracing
+    rays += [rays[-1].intersect_plane(interface)]
+    rays += [snells(rays[-1], interface.normal, n_in)]
+    rays += [rays[-1].intersect_plane(start_plane)]
+
+    assert comparetensors(rays[0].position_m, rays[-1].position_m)
+    assert comparetensors(rays[0].direction, rays[-1].direction)
+    assert comparetensors(rays[0].pathlength_m, rays[-1].pathlength_m)
+
+
 def test_mirror1():
     """
     Test mirror with single manual Ray.
