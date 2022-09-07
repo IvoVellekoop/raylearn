@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from vector_functions import rotate, cartesian3d
 from ray_plane import Ray, Plane, CoordPlane
 from plot_functions import plot_plane, plot_lens, plot_rays
-from optical import thin_lens, snells, galvo_mirror, slm_segment
+from optical import thin_lens, abbe_lens, snells, galvo_mirror, slm_segment
 
 
 # Set default tensor type to double (64 bit)
@@ -225,7 +225,7 @@ class TPM():
         self.plane57_ray = self.rays[-1].intersect_plane(self.plane57)
         self.rays.append(self.plane57_ray)
         self.rays.append(thin_lens(self.rays[-1], self.L7, self.f7))
-        self.rays.append(thin_lens(self.rays[-1], self.OBJ1, self.fobj1))
+        self.rays += abbe_lens(self.rays[-1], self.OBJ1, self.fobj1)
 
         # Propagation to sample plane as ideal air lens
         self.rays.append(self.rays[-1].intersect_plane(self.sample_plane))
@@ -240,7 +240,7 @@ class TPM():
         self.rays.append(snells(self.rays[-1], self.coverslip_back_plane.normal, 1.))
 
         # # Propagation from objective 2
-        self.rays.append(thin_lens(self.rays[-1], self.OBJ2, self.fobj2))
+        self.rays += abbe_lens(self.rays[-1], self.OBJ2, self.fobj2)
         self.rays.append(thin_lens(self.rays[-1], self.L9, self.f9))
 
         # Propagation onto cameras
@@ -256,7 +256,7 @@ class TPM():
 
         return self.cam_ft_coords, self.cam_im_coords
 
-    def plot(self, ax=plt.gca(), fraction=1+0*  0.03):
+    def plot(self, ax=plt.gca(), fraction=1):
         """Plot the TPM setup and the current rays."""
 
         # Plot lenses and planes
