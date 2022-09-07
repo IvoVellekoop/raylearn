@@ -7,7 +7,7 @@ Functions for plotting Rays, Planes, stuff to draw your defined optical elements
 import torch
 from torch import stack, Tensor
 import numpy as np
-from vector_functions import norm, unit, rejection, cartesian3d
+from vector_functions import norm, norm_square, unit, rejection, cartesian3d
 from ray_plane import Plane, CoordPlane
 
 
@@ -145,13 +145,13 @@ def plot_plane(ax, plane_to_plot, scale=1, text1='', text2='', viewplane=default
         x_rej = rejection(viewplane.normal, plane_to_plot.normal.detach())
         y_rej = rejection(viewplane.y, plane_to_plot.normal.detach())
         if norm(x_rej) > 0:
-            x = scale * unit(x_rej)
+            x = scale * unit(x_rej).detach()
         else:
-            x = Tensor((0., 0., 0.))
-        if norm(x_rej) > 0:
-            y = scale * unit(y_rej)
+            x = Tensor((0., 0., 0.)).detach()
+        if norm(y_rej) > 0:
+            y = scale * unit(y_rej).detach()
         else:
-            y = Tensor((0., 0., 0.))
+            y = Tensor((0., 0., 0.)).detach()
 
     # Compute 4 corner points of plane square around plane position
     A = position_m + x + y
@@ -165,11 +165,12 @@ def plot_plane(ax, plane_to_plot, scale=1, text1='', text2='', viewplane=default
     Cx, Cy = viewplane.transform_points(C).unbind(-1)
     Dx, Dy = viewplane.transform_points(D).unbind(-1)
     Px, Py = viewplane.transform_points(position_m).unbind(-1)
-    nx, ny = viewplane.transform_points(0.1 * scale * plane_to_plot.normal).unbind(-1)
+    arrow_scale = 0.1 * np.sqrt(norm_square(x) + norm_square(y))
+    nx, ny = viewplane.transform_points(arrow_scale * plane_to_plot.normal.detach()).unbind(-1)
 
     parallelogram = ax.plot((Ax, Bx, Cx, Dx, Ax),
                             (Ay, By, Cy, Dy, Ay), **plotkwargs)
-    arrow = ax.arrow(Px, Py, nx, ny, **plotkwargs)
+    arrow = ax.arrow(Px, Py, nx, ny, width=0.1*arrow_scale, **plotkwargs)
     ax.text(Bx, By, text1)
     ax.text(Dx, Dy, text2)
     return (parallelogram, arrow)
