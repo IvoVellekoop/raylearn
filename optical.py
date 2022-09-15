@@ -222,10 +222,10 @@ def snells(ray_in, normal, n_out):
     dir_in = ray_in.direction
     n_in = ray_in.refractive_index
 
-    dir_inrej = rejection(dir_in, N)       # Perpendicular component (along plane) dir_in
-    dir_outrej = n_in/n_out * dir_inrej    # Perpendicular component (along plane) dir_out
-    dir_out = dir_outrej - N * torch.sqrt(1 - norm_square(dir_outrej))
-
+    dir_inrej = rejection(dir_in, N)        # Perpendicular component (i.e. along plane) of dir_in
+    dir_outrej = n_in/n_out * dir_inrej     # Perpendicular component (i.e. along plane) of dir_out
+    dir_outproj = - N * torch.sqrt(1 - norm_square(dir_outrej))     # Parallel component of dir_out
+    dir_out = dir_outrej + dir_outproj      # Combine components
     ray_out = ray_in.copy(direction=dir_out, refractive_index=n_out)
     return ray_out
 
