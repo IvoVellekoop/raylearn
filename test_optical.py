@@ -655,9 +655,13 @@ def test_pathlength3():
 
 def test_pathlength4():
     """
-    Test pathlength for collimated source and abbe sine lens
+    Test pathlength for collimated source and abbe sine lens in media with refractive index > 1.
     """
     origin, x, y, z = cartesian3d()
+
+    # Media
+    n1 = 1.6
+    n2 = 1.2
 
     # Source
     Nx = 1
@@ -666,13 +670,13 @@ def test_pathlength4():
     source_pos = origin + 0.05*x
     y_rot = rotate(y, x, -0.15)
     source_plane = CoordPlane(source_pos, beam_width*x, beam_width*y_rot)
-    source = collimated_source(source_plane, Nx, Ny)
+    source = collimated_source(source_plane, Nx, Ny, refractive_index=n1)
 
     # Lens
     f = 0.3
     lens_pos = origin + f*z
     lens_plane = Plane(lens_pos, z)
-    rays_at_lens = abbe_lens(source, lens_plane, f)
+    rays_at_lens = abbe_lens(source, lens_plane, f, n_out=n2)
 
     # Back focal plane
     end_pos = lens_pos + f*z
@@ -680,7 +684,7 @@ def test_pathlength4():
     end_ray = rays_at_lens[1].intersect_plane(BFP)
 
     # Backpropagate
-    rays_back_at_lens = abbe_lens(end_ray, lens_plane, f)
+    rays_back_at_lens = abbe_lens(end_ray, lens_plane, f, n_out=n1)
     back_to_the_start = rays_back_at_lens[1].intersect_plane(source_plane)
 
     # # Uncomment plot code for debugging
@@ -689,12 +693,72 @@ def test_pathlength4():
     # fig = plt.figure()
     # ax = plt.gca()
     # plt.title('test_pathlength4')
-    # plot_plane(ax, source_plane, text1='src')
+    # plot_plane(ax, source_plane, scale=1.2, text1=f' src\n n1={n1}')
     # plot_lens(ax, lens_plane, f, scale=0.3)
-    # plot_plane(ax, BFP, scale=0.3, text1='BFP')
+    # plot_plane(ax, BFP, scale=0.3, text1=f' BFP\n n2={n2}')
     # plot_rays(ax, [source, *rays_at_lens, end_ray, *rays_back_at_lens, back_to_the_start])
+    # plot_rays(ax, rays_at_lens, plotkwargs={'color': 'red', 'marker': 'o', 'linestyle': ''})
     # ax.set_aspect(1)
+    # plt.xlabel('z (m)')
+    # plt.ylabel('y (m)')
     # plt.show()
 
     assert comparetensors(end_ray.pathlength_m.std(), 0)
+    assert comparetensors(end_ray.position_m.std(dim=(-2, -3)), 0)
     assert comparetensors(back_to_the_start.pathlength_m, 0)
+    assert comparetensors(back_to_the_start.direction.std(dim=(-2, -3)), 0)
+
+
+def test_pathlength5():
+    """
+    Test pathlength for point source and abbe sine lens in media with refractive index > 1.
+    """
+    origin, x, y, z = cartesian3d()
+
+    # Media
+    n1 = 1.3
+    n2 = 1.0
+
+    # Source
+    Nx = 1
+    Ny = 7
+    beam_opening = 1.2
+    source_pos = origin
+    source_plane = CoordPlane(source_pos, beam_opening*x, beam_opening*y)
+    source = point_source(source_plane, Nx, Ny, refractive_index=n1)
+
+    # Lens
+    f = 1.7e-3
+    lens_pos = origin + f*z
+    lens_plane = Plane(lens_pos, z)
+    rays_at_lens = abbe_lens(source, lens_plane, f, n_out=n2)
+
+    # Back focal plane
+    end_pos = lens_pos + f*z
+    BFP = Plane(end_pos, z)
+    end_ray = rays_at_lens[1].intersect_plane(BFP)
+
+    # Backpropagate
+    rays_back_at_lens = abbe_lens(end_ray, lens_plane, f, n_out=n1)
+    back_to_the_start = rays_back_at_lens[1].intersect_plane(source_plane)
+
+    # # Uncomment plot code for debugging
+    # from matplotlib import pyplot as plt
+    # from plot_functions import plot_plane, plot_lens, plot_rays
+    # fig = plt.figure()
+    # ax = plt.gca()
+    # plt.title('test_pathlength5')
+    # plot_plane(ax, source_plane, scale=f, text1=f' src\n n1={n1}')
+    # plot_lens(ax, lens_plane, f, scale=f)
+    # plot_plane(ax, BFP, scale=f, text1=f' BFP\n n2={n2}')
+    # plot_rays(ax, [source, *rays_at_lens, end_ray, *rays_back_at_lens, back_to_the_start])
+    # plot_rays(ax, rays_at_lens, plotkwargs={'color': 'red', 'marker': 'o', 'linestyle': ''})
+    # ax.set_aspect(1)
+    # plt.xlabel('z (m)')
+    # plt.ylabel('y (m)')
+    # plt.show()
+
+    assert comparetensors(end_ray.pathlength_m, f*(n1+n2))
+    assert comparetensors(end_ray.direction.std(dim=(-2, -3)), 0)
+    assert comparetensors(back_to_the_start.pathlength_m, 0)
+    assert comparetensors(back_to_the_start.position_m.std(dim=(-2, -3)), 0)
