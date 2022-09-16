@@ -60,15 +60,15 @@ def test_thin_lens_point_source():
     Ny = 4
 
     # Define point source
-    src_pos = Tensor((2,1,4))
-    src_x = Tensor((0.5,0.3,0.2))
-    src_y_prime = Tensor((0,3,1))
+    src_pos = Tensor((2, 1, 4))
+    src_x = Tensor((0.5, 0.3, 0.2))
+    src_y_prime = Tensor((0, 3, 1))
     src_y = unit(rejection(src_y_prime, src_x))
     src = point_source(CoordPlane(src_pos, src_x, src_y), Nx, Ny)
 
     # Define lens at distance f
     f = 3
-    lens_dir = unit(Tensor((2,3,-5)))
+    lens_dir = unit(Tensor((2, 3, -5)))
     lens_pos = src_pos - f * lens_dir + rejection(Tensor((0, -1, 0.1)), lens_dir)
     lens = Plane(lens_pos, lens_dir)
 
@@ -85,9 +85,9 @@ def test_thin_lens_collimated_source():
     Ny = 5
 
     # Define collimated source
-    src_pos = Tensor((-3,2,5))
-    src_x = Tensor((2,3,1))
-    src_y_prime = Tensor((-5,-6,-1))
+    src_pos = Tensor((-3, 2,5))
+    src_x = Tensor((2, 3,1))
+    src_y_prime = Tensor((-5, -6, -1))
     src_y = 3*unit(rejection(src_y_prime, src_x))
     src_plane = CoordPlane(src_pos, src_x, src_y)
     src = collimated_source(src_plane, Nx, Ny)
@@ -95,7 +95,7 @@ def test_thin_lens_collimated_source():
     # Define lens
     f = 6
     lens_dir = rotate(-src_plane.normal, unit(src_x), 0.15)
-    lens_pos = Tensor((-2,-0.1,9))
+    lens_pos = Tensor((-2, -0.1, 9))
     lens = Plane(lens_pos, lens_dir)
 
     # Define back focal plane
@@ -474,7 +474,7 @@ def test_galvo_mirror2():
     rot_galvox, rot_galvoy = components(rotations)
 
     # Manual components for this particular situation
-    x_dir_man = x *  torch.sin(2*rot_galvox) * torch.sin(rot_galvoy)
+    x_dir_man = x * torch.sin(2*rot_galvox) * torch.sin(rot_galvoy)
     y_dir_man = y * -torch.sin(2*rot_galvox) * torch.cos(rot_galvoy)
     z_dir_man = z * -torch.cos(2*rot_galvox)
     direction_man = x_dir_man + y_dir_man + z_dir_man
@@ -514,15 +514,14 @@ def test_slm_segment():
     # Construct randomly oriented coordinate system
     x = unit(torch.randn(3))
     y = unit(rejection(torch.randn(3), x))
-    z = cross(x, y)
 
     # Construct SLM stuff and Ray
     n_ray = 1.42
     pathlength_m = 7
-    ray_in = Ray(torch.randn(3), unit(torch.randn(3)),
-                        refractive_index=n_ray, pathlength_m=pathlength_m)
+    ray_in = Ray(torch.randn(3), unit(torch.randn(3)), refractive_index=n_ray,
+                 pathlength_m=pathlength_m)
     slm_plane = CoordPlane(torch.randn(3), 0.1*x, 0.2*y)
-    slm_coords = torch.randn((4,2))
+    slm_coords = torch.randn((4, 2))
 
     # Compute output Ray and manual positions
     ray_out = slm_segment(ray_in, slm_plane, slm_coords)

@@ -109,7 +109,8 @@ def plot_coords(ax, coords, plotkwargs={'color': 'tab:blue'}):
     return ln
 
 
-def plot_plane(ax, plane_to_plot, scale=1, text1='', text2='', viewplane=default_viewplane(), plotkwargs={'color': 'black'}):
+def plot_plane(ax, plane_to_plot, scale=1, text1='', text2='', viewplane=default_viewplane(),
+               plotkwargs={'color': 'black'}):
     """
     Plot a plane.
 
@@ -158,7 +159,7 @@ def plot_plane(ax, plane_to_plot, scale=1, text1='', text2='', viewplane=default
     B = position_m + x - y
     C = position_m - x - y
     D = position_m - x + y
-    
+
     # Project points onto viewplane
     Ax, Ay = viewplane.transform_points(A).unbind(-1)
     Bx, By = viewplane.transform_points(B).unbind(-1)
@@ -176,7 +177,8 @@ def plot_plane(ax, plane_to_plot, scale=1, text1='', text2='', viewplane=default
     return (parallelogram, arrow)
 
 
-def plot_lens(ax, lensplane, f, scale=1, pretext1='', text2='', viewplane=default_viewplane(), plotkwargs={'color': 'black'}):
+def plot_lens(ax, lensplane, f, scale=1, pretext1='', text2='', viewplane=default_viewplane(),
+              plotkwargs={'color': 'black'}):
     """
     Plot a lens plane
 
