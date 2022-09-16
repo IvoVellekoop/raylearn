@@ -27,13 +27,16 @@ def collimated_source(sourceplane, Nx, Ny, **raykwargs):
         Ny              Number of ray elements along y plane direction.
         raykwargs       Additional properties to pass to the Ray object.
 
+    Note: if Nx==1 or Ny==1, the corresponding ray elements will be centered at the sourceplane
+    position for that dimension.
+
     Output
     ------
     A Ray object of collimated rays with Nx by Ny by 3 position_m. Direction is defined by
     sourceplane normal vector.
     """
-    x_array = sourceplane.x * torch.linspace(-1.0, 1.0, Nx).view(Nx, 1, 1)
-    y_array = sourceplane.y * torch.linspace(-1.0, 1.0, Ny).view(1, Ny, 1)
+    x_array = sourceplane.x * torch.linspace(-1.0, 1.0, Nx).view(Nx, 1, 1) * (Nx != 1)
+    y_array = sourceplane.y * torch.linspace(-1.0, 1.0, Ny).view(1, Ny, 1) * (Ny != 1)
     position = sourceplane.position_m + x_array + y_array
     return Ray(position, sourceplane.normal, **raykwargs)
 
@@ -51,13 +54,16 @@ def point_source(sourceplane, Nx, Ny, **raykwargs):
         Ny              Number of ray elements along y plane direction.
         raykwargs       Additional properties to pass to the Ray object.
 
+    Note: if Nx==1 or Ny==1, the corresponding ray elements will be centered at the sourceplane
+    position for that dimension.
+
     Output
     ------
     A Ray object of rays originating from the same point with Nx by Ny by D direction vector,
     where D is vector dimension (usually 3).
     """
-    x_array = sourceplane.x * torch.linspace(-1.0, 1.0, Nx).view(Nx, 1, 1)
-    y_array = sourceplane.y * torch.linspace(-1.0, 1.0, Ny).view(1, Ny, 1)
+    x_array = sourceplane.x * torch.linspace(-1.0, 1.0, Nx).view(Nx, 1, 1) * (Nx != 1)
+    y_array = sourceplane.y * torch.linspace(-1.0, 1.0, Ny).view(1, Ny, 1) * (Ny != 1)
     direction = unit(sourceplane.normal + x_array + y_array)
     return Ray(sourceplane.position_m, direction, **raykwargs)
 
