@@ -225,22 +225,17 @@ class TPM():
         self.plane57_ray = self.rays[-1].intersect_plane(self.plane57)
         self.rays.append(self.plane57_ray)
         self.rays.append(thin_lens(self.rays[-1], self.L7, self.f7))
-        self.rays += abbe_lens(self.rays[-1], self.OBJ1, self.fobj1)
+        self.rays += abbe_lens(self.rays[-1], self.OBJ1, self.fobj1, n_out=self.n_water)
 
-        # Propagation to sample plane as ideal air lens
-        self.rays.append(self.rays[-1].intersect_plane(self.sample_plane))
-        self.rays.append(snells(self.rays[-1], self.sample_plane.normal, self.n_water))
-
-        # Backpropagate through water
+        # Backpropagate through water and extra coverslip thickness
         self.rays.append(self.rays[-1].intersect_plane(self.coverslip_front_plane))
         self.rays.append(snells(self.rays[-1], self.coverslip_front_plane.normal, self.n_coverslip))
 
         # Propagate through coverslip
         self.rays.append(self.rays[-1].intersect_plane(self.coverslip_back_plane))
-        self.rays.append(snells(self.rays[-1], self.coverslip_back_plane.normal, 1.))
 
-        # # Propagation from objective 2
-        self.rays += abbe_lens(self.rays[-1], self.OBJ2, self.fobj2)
+        # Propagation from objective 2
+        self.rays += abbe_lens(self.rays[-1], self.OBJ2, self.fobj2, n_out=1.0)
         self.rays.append(thin_lens(self.rays[-1], self.L9, self.f9))
 
         # Propagation onto cameras
