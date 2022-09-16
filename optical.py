@@ -112,7 +112,7 @@ def thin_lens(in_ray, lens, f):
     return S_Ray.copy(position_m=P, direction=out_dir, pathlength_m=new_pathlength_m)
 
 
-def abbe_lens(in_ray, lens, f):
+def abbe_lens(in_ray, lens, f, n_out=1.0):
     """
     Thin lens
     Follows height = tan(angle). Pathlength is corrected for point sources at the front focal plane.
@@ -126,6 +126,9 @@ def abbe_lens(in_ray, lens, f):
         in_ray:  Ray object. Input Ray.
         lens:    Plane object. Lens plane.
         f:       Scalar array. Focal distance.
+        n_out:   Refractive index of medium on other side of lens.
+
+    Note: all length quantities must be in the same unit.
 
     Output
     ------
@@ -135,7 +138,7 @@ def abbe_lens(in_ray, lens, f):
 
     # Determine propagation direction (forward or backward)
     propagation_sign = torch.sign(dot(lens.normal, lens.position_m - in_ray.position_m)
-                                * dot(lens.normal, in_ray.direction))
+                                  * dot(lens.normal, in_ray.direction))
 
     # Flip lens normal if in_ray is coming from opposite direction
     normal = -lens.normal * torch.sign(dot(lens.normal, lens.position_m - in_ray.position_m))
@@ -146,25 +149,30 @@ def abbe_lens(in_ray, lens, f):
     F2 = L - f*normal                                       # Back focal point
 
     # Compute points on principal spheres
-    S_Ray = in_ray.intersect_plane(Plane(F1, normal))       # Propagate Ray to Front focal plane
-    S = S_Ray.position_m                                    # Intersection Front focal plane
-    in_dir = in_ray.direction * propagation_sign            # Incoming direction
-    SF1 = S - F1                                            # Vector from S to F1
-    P1 = S + f*in_dir                                       # Point on sphere around S
-    P2 = P1 - normal * (f*(2 + dot(in_dir, normal)) - torch.sqrt(f*f - norm_square(SF1)))
+    S_ray = in_ray.intersect_plane(Plane(F1, normal))       # Propagate Ray to Front focal plane
+    in_dir = in_ray.direction * propagation_sign            # Incoming direction towards lens
+    n_in = in_ray.refractive_index                          # Refractive index for incoming ray
+    SF1 = S_ray.position_m - F1                             # Vector from S to F1
 
-    # Compute direction of output Ray
-    Q = F2 + rejection(P1-S, normal)
-    out_dir = propagation_sign * (Q-P2) / f
+    # Position and pathlength at Back focal plane
+    Q = F2 + rejection(in_dir, normal) * f * n_in
+    pathlength_SQ = f * (n_in + n_out) - dot(in_dir, SF1) * n_in
+    new_pathlength = S_ray.pathlength_m + pathlength_SQ * propagation_sign
 
-    # Compute pathlength
-    pathlength_P1 = S_Ray.pathlength_m + f * propagation_sign
-    P1_Ray = S_Ray.copy(position_m=P1, direction=-normal*propagation_sign,
-                        pathlength_m=pathlength_P1)
-    pathlength_P2 = P1_Ray.pathlength_m - dot(SF1, in_ray.direction)
-    P2_Ray = P1_Ray.copy(position_m=P2, direction=out_dir, pathlength_m=pathlength_P2)
+    # Outgoing direction (forward) at Back focal plane
+    out_dir_rej = -SF1 / (n_out * f)                        # Perpendicular component
+    out_dir_proj = - normal * torch.sqrt(1 - norm_square(out_dir_rej))  # Parallel component
+    out_dir = out_dir_rej + out_dir_proj                    # Outgoing direction (forward)
 
-    return (P1_Ray, P2_Ray)
+    # Outgoing Ray at Back focal plane
+    Q_ray = in_ray.copy(position_m=Q, direction=out_dir*propagation_sign,
+                        pathlength_m=new_pathlength, refractive_index=n_out)
+
+    # Rays at principal spheres
+    P1_ray = S_ray.propagate(f*propagation_sign)
+    P2_ray = Q_ray.propagate(-f*propagation_sign)
+
+    return (P1_ray, P2_ray)
 
 
 def smooth_grid(xy, power):
