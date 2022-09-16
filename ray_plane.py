@@ -43,12 +43,16 @@ class Ray:
         self.intensity = intensity                  # Scalar. Intensity of ray.
         self.weight = weight                        # Scalar. Total weight in loss function.
 
+    def propagate(self, distance_m):
+        """Propagate ray a defined distance and return as new Ray."""
+        destination = self.position_m + self.direction * distance_m
+        new_pathlength_m = self.pathlength_m + self.refractive_index * distance_m
+        return self.copy(position_m=destination, pathlength_m=new_pathlength_m)
+
     def intersect_plane(self, plane):
         """Return new Ray at intersection with Plane or CoordPlane."""
         distance_m = self.ray_distance_to_plane(plane)
-        intersection = self.position_m + self.direction * distance_m
-        new_pathlength_m = self.pathlength_m + self.refractive_index * distance_m
-        return self.copy(position_m=intersection, pathlength_m=new_pathlength_m)
+        return self.propagate(distance_m)
 
     def ray_distance_to_plane(self, plane):
         """Return signed distance to Plane along Ray."""
