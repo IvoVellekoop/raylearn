@@ -150,7 +150,7 @@ for t in trange:
 
         # Fourier cam
         cam_ft_coord_pairs_x, cam_ft_coord_pairs_y = \
-                torch.stack((cam_ft_coords_gt, cam_ft_coords)).detach().unbind(-1)
+            torch.stack((cam_ft_coords_gt, cam_ft_coords)).detach().unbind(-1)
 
         ax[0].clear()
         ax[0].plot(cam_ft_coord_pairs_x.view(2, -1), cam_ft_coord_pairs_y.view(2, -1),
@@ -255,11 +255,6 @@ if do_plot_pincushion:
 
 # === Glass plate === #
 
-tpm.set_measurement(matfile)
-tpm.update()
-tpm.raytrace()
-
-
 # Import measurement
 # matpath = 'LocalData/raylearn-data/TPM/pencil-beam-positions/17-Nov-2021-400um/raylearn_pencil_beam_738477.768870_400um.mat'
 # matpath = 'LocalData/raylearn-data/TPM/pencil-beam-positions/17-Nov-2021-empty/raylearn_pencil_beam_738477.729080_empty.mat'
@@ -291,6 +286,9 @@ tpm.total_coverslip_thickness = tensor((400e-6,), requires_grad=True)
 tpm.coverslip_tilt_around_x = tensor((0.0,), requires_grad=True)
 tpm.coverslip_tilt_around_y = tensor((0.0,), requires_grad=True)
 
+tpm.set_measurement(matfile)
+tpm.update()
+
 # Parameter groups
 params_coverslip = {}
 params_coverslip['angle'] = {
@@ -298,14 +296,11 @@ params_coverslip['angle'] = {
     # 'Coverslip tilt around y': tpm.coverslip_tilt_around_y,
 }
 params_coverslip['other'] = {
-    # 'Total Coverslip Thickness': tpm.total_coverslip_thickness,
-    'OBJ2 zshift': tpm.obj2_zshift,
+    'Total Coverslip Thickness': tpm.total_coverslip_thickness,
+    # 'OBJ2 zshift': tpm.obj2_zshift,
     'cam im xshift': tpm.cam_im_xshift,
     'cam im yshift': tpm.cam_im_yshift,
 }
-
-tpm.set_measurement(matfile)
-tpm.update()
 
 # Trace computational graph
 # tpm.traced_raytrace = torch.jit.trace_module(tpm, {'raytrace': []})
@@ -402,7 +397,7 @@ for t in trange:
 
         plt.figure(fig_tpm.number)
         ax_tpm.clear()
-        tpm.plot(ax_tpm, fraction=0.01)
+        tpm.plot(ax_tpm, fraction=0.1)
         plt.draw()
         plt.pause(1e-3)
 
@@ -438,3 +433,23 @@ if do_plot_coverslip:
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
     plt.title('Learning parameters')
     plt.show()
+
+
+# Specify desired focus position
+# Focus point plane
+
+# === Minimize defocus by moving z-stage === #
+
+# Parameters
+tpm.obj1_zshift = tensor((0.,), requires_grad=True)
+
+tpm.set_measurement(matfile)
+tpm.update()
+
+# Parameter groups
+params_obj1_zshift = {}
+params_coverslip['angle'] = {
+}
+params_coverslip['other'] = {
+    'OBJ1 Z-shift': tpm.obj1_zshift,
+}

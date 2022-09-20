@@ -105,7 +105,8 @@ class TPM():
         self.obj2_magnification = 100           # Objective magnification
         self.fobj2 = self.obj2_tubelength / self.obj2_magnification
 
-        # Lens planes transmission arm
+        # Initial z-shifts of lens planes
+        self.obj1_zshift = tensor((0.,))
         self.sample_zshift = tensor((0.,))
         self.obj2_zshift = tensor((0.,))
         self.L9_zshift = tensor((0.,))
@@ -120,6 +121,9 @@ class TPM():
         self.cam_im_xshift = tensor((0.,))
         self.cam_im_yshift = tensor((0.,))
         self.cam_im_zshift = tensor((0.,))
+
+        # Desired focus position
+        self.desired_focus_position_relative_to_sample_plane = tensor((0., 0., 0.))
 
     def set_measurement(self, matfile):
         # SLM coords and Galvo rotations
@@ -152,18 +156,20 @@ class TPM():
         # SLM
         self.slm_x = rotate(x * self.slm_height, z, self.slm_angle)
         self.slm_y = rotate(y * self.slm_height, z, self.slm_angle)
-        self.slm_plane = CoordPlane(self.L4.position_m + (self.f4 + self.slm_zshift) * z, \
-            self.slm_x, self.slm_y)
+        self.slm_plane = CoordPlane(self.L4.position_m + (self.f4 + self.slm_zshift) * z,
+                                    self.slm_x, self.slm_y)
 
         # Lens planes to sample plane
         self.L5 = Plane(self.slm_plane.position_m + self.f5*z, -z)
         self.plane57 = CoordPlane(self.L5.position_m + self.f5 * z, x, y)
         self.L7 = Plane(self.L5.position_m + (self.f5 + self.f7)*z, -z)
-        self.OBJ1 = Plane(self.L7.position_m + (self.f7 + self.fobj1)*z, -z)
+        self.OBJ1 = Plane(self.L7.position_m + (self.f7 + self.fobj1 + self.obj1_zshift)*z, -z)
 
         # Sample plane
-        self.sample_plane = CoordPlane(self.OBJ1.position_m + self.fobj1*z +
-                                       self.sample_zshift * z, -x, y)
+        self.sample_plane = CoordPlane(self.L7.position_m + (self.f7 + 2*self.fobj1 +
+                                       self.sample_zshift) * z, -x, y)
+        self.desired_focus_plane = Plane(self.sample_plane.position_m +
+            self.desired_focus_position_relative_to_sample_plane, self.sample_plane.normal)
 
         # Coverslip
         # Note, the 170um coverslip is ignored as it is modeled as part of the ideal lens
