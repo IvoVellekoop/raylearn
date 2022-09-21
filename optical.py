@@ -230,6 +230,8 @@ def snells(ray_in, normal, n_out):
     https://en.wikipedia.org/wiki/Snell%27s_law#Vector_form
     """
 
+    assert checkunitvector(normal)
+
     # Flip normal if ray_in is coming from opposite direction (required for backpropagation)
     N = -normal * torch.sign(dot(normal, ray_in.direction))
 
