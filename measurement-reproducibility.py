@@ -33,7 +33,7 @@ tpm.set_measurement(matfile)
 tpm.update()
 
 # Compute the magnification of coordinate 'spread'
-slm_coord_spread_m = tpm.slm_coords.std(-2) * tpm.slm_height
+slm_coord_spread_m = tpm.slm_coords.std(-2) * tpm.slm_height_m
 tan_angle_at_sample_plane_spread = slm_coord_spread_m
 cam_im_spread_from_slm_m = cam_im_coords_gt.std(dim=-2) * tpm.cam_pixel_size
 cam_im_spread_per_slm_spread = cam_im_spread_from_slm_m  / slm_coord_spread_m

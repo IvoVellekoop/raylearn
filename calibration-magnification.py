@@ -71,7 +71,7 @@ tpm2.raytrace()
 
 # Compute matrices
 
-x_at_slm_m = norm(tpm2.slm_plane.transform_rays(tpm2.slm_ray) * tpm2.slm_height)
+x_at_slm_m = norm(tpm2.slm_plane.transform_rays(tpm2.slm_ray) * tpm2.slm_height_m)
 x_at_ftcam_m = norm(tpm2.cam_ft_coords * tpm2.cam_pixel_size)
 
 magnification_slm_ftcam = x_at_ftcam_m / x_at_slm_m

@@ -77,7 +77,8 @@ class TPM():
         # https://bmpi.wiki.utwente.nl/doku.php?id=instrumentation:slm:meadowlark_slm
         # https://www.meadowlark.com/store/data_sheet/SLM%20-%201920%20x%201152%20Data%20Sheet%20021021.pdf
         # https://www.meadowlark.com/images/files/Specification%20Backgrounder%20for%20XY%20Series%20Phase%20SLMS%20-%20SB0520.pdf
-        self.slm_height = 10.7e-3
+        self.slm_height_m = 10.7e-3
+        self.slm_height_pixels = 1152
         self.slm_angle  = tensor((0.,))         # Rotation angle around optical axis
         self.slm_zshift = tensor((0.,))
 
@@ -158,8 +159,8 @@ class TPM():
         self.L4 = Plane(self.L3.position_m + (self.f3 + self.f4) * z, -z)
 
         # SLM
-        self.slm_x = rotate(x * self.slm_height, z, self.slm_angle)
-        self.slm_y = rotate(y * self.slm_height, z, self.slm_angle)
+        self.slm_x = rotate(x * self.slm_height_m, z, self.slm_angle)
+        self.slm_y = rotate(y * self.slm_height_m, z, self.slm_angle)
         self.slm_plane = CoordPlane(self.L4.position_m + (self.f4 + self.slm_zshift) * z,
                                     self.slm_x, self.slm_y)
 
