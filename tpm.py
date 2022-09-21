@@ -104,6 +104,8 @@ class TPM():
         self.obj2_tubelength = 165e-3           # Objective standard tubelength
         self.obj2_magnification = 100           # Objective magnification
         self.fobj2 = self.obj2_tubelength / self.obj2_magnification
+        self.obj1_NA = 0.8
+        self.obj2_NA = 0.8
 
         # Initial z-shifts of lens planes
         self.obj1_zshift = tensor((0.,))
@@ -122,7 +124,9 @@ class TPM():
         self.cam_im_yshift = tensor((0.,))
         self.cam_im_zshift = tensor((0.,))
 
-        # Desired focus position
+        # Desired focus position relative to the sample plane
+        # Note: when moving the desired focus position past an optical element, the raytrace method
+        # must be manually adapted accordingly.
         self.desired_focus_position_relative_to_sample_plane = tensor((0., 0., 0.))
 
     def set_measurement(self, matfile):
@@ -239,6 +243,7 @@ class TPM():
 
         # Propagate through coverslip
         self.rays.append(self.rays[-1].intersect_plane(self.coverslip_back_plane))
+        self.rays_on_desired_focus_plane = self.rays[-1].intersect_plane(self.desired_focus_plane)
 
         # Propagation from objective 2
         self.rays += abbe_lens(self.rays[-1], self.OBJ2, self.fobj2, n_out=1.0)

@@ -25,7 +25,9 @@ torch.set_default_tensor_type('torch.DoubleTensor')
 
 do_plot_empty = False
 do_plot_pincushion = False
-do_plot_coverslip = True
+do_plot_coverslip = False
+do_plot_obj1_zshift = True
+
 plt.rc('font', size=12)
 
 # Import measurement
@@ -97,7 +99,7 @@ optimizer = torch.optim.Adam([
         {'lr': 1.0e-3, 'params': params['other'].values()},
     ], lr=1.0e-5)
 
-iterations = 200
+iterations = 150
 errors = torch.zeros(iterations)
 
 
@@ -290,12 +292,12 @@ tpm.set_measurement(matfile)
 tpm.update()
 
 # Parameter groups
-params_coverslip = {}
-params_coverslip['angle'] = {
+params_obj1_zshift = {}
+params_obj1_zshift['angle'] = {
     # 'Coverslip tilt around x': tpm.coverslip_tilt_around_x,
     # 'Coverslip tilt around y': tpm.coverslip_tilt_around_y,
 }
-params_coverslip['other'] = {
+params_obj1_zshift['other'] = {
     'Total Coverslip Thickness': tpm.total_coverslip_thickness,
     # 'OBJ2 zshift': tpm.obj2_zshift,
     'cam im xshift': tpm.cam_im_xshift,
@@ -307,20 +309,20 @@ params_coverslip['other'] = {
 
 # Define optimizer
 optimizer = torch.optim.Adam([
-        {'lr': 1.0e-2, 'params': params_coverslip['angle'].values()},
-        {'lr': 1.0e-4, 'params': params_coverslip['other'].values()},
+        {'lr': 1.0e-2, 'params': params_obj1_zshift['angle'].values()},
+        {'lr': 1.0e-4, 'params': params_obj1_zshift['other'].values()},
     ], lr=1.0e-5)
 
-iterations = 200
+iterations = 150
 errors = torch.zeros(iterations)
 
 
 # Initialize logs for tracking each parameter
-params_coverslip_logs = {}
-for groupname in params_coverslip:
-    params_coverslip_logs[groupname] = {}
-    for paramname in params_coverslip[groupname]:
-        params_coverslip_logs[groupname][paramname] = torch.zeros(iterations)
+params_obj1_zshift_logs = {}
+for groupname in params_obj1_zshift:
+    params_obj1_zshift_logs[groupname] = {}
+    for paramname in params_obj1_zshift[groupname]:
+        params_obj1_zshift_logs[groupname][paramname] = torch.zeros(iterations)
 
 trange = tqdm(range(iterations), desc='error: -')
 
@@ -346,9 +348,9 @@ for t in trange:
     error_value = error.detach().item()
     errors[t] = error_value
 
-    for groupname in params_coverslip:
-        for paramname in params_coverslip[groupname]:
-            params_coverslip_logs[groupname][paramname][t] = params_coverslip[groupname][paramname].detach().item()
+    for groupname in params_obj1_zshift:
+        for paramname in params_obj1_zshift[groupname]:
+            params_obj1_zshift_logs[groupname][paramname][t] = params_obj1_zshift[groupname][paramname].detach().item()
 
     trange.desc = f'error: {error_value:<8.3g}' \
         + f'coverslip thickness: {format_prefix(tpm.total_coverslip_thickness, "8.3f")}m'
@@ -401,13 +403,13 @@ for t in trange:
         plt.draw()
         plt.pause(1e-3)
 
-for groupname in params_coverslip:
+for groupname in params_obj1_zshift:
     print('\n' + groupname + ':')
-    for paramname in params_coverslip[groupname]:
+    for paramname in params_obj1_zshift[groupname]:
         if groupname == 'angle':
-            print(f'  {paramname}: {params_coverslip[groupname][paramname].detach().item():.3f}rad')
+            print(f'  {paramname}: {params_obj1_zshift[groupname][paramname].detach().item():.3f}rad')
         else:
-            print(f'  {paramname}: {format_prefix(params_coverslip[groupname][paramname])}m')
+            print(f'  {paramname}: {format_prefix(params_obj1_zshift[groupname][paramname])}m')
 
 
 if do_plot_coverslip:
@@ -424,9 +426,9 @@ if do_plot_coverslip:
     ax1.legend()
 
     ax2 = ax1.twinx()
-    for groupname in params_coverslip:
-        for paramname in params_coverslip_logs[groupname]:
-            ax2.plot(params_coverslip_logs[groupname][paramname], label=paramname)
+    for groupname in params_obj1_zshift:
+        for paramname in params_obj1_zshift_logs[groupname]:
+            ax2.plot(params_obj1_zshift_logs[groupname][paramname], label=paramname)
     ax2.set_ylabel('Parameter (m | rad)')
     ax2.legend(loc=1)
 
@@ -435,21 +437,144 @@ if do_plot_coverslip:
     plt.show()
 
 
-# Specify desired focus position
-# Focus point plane
-
+# ========================================== #
 # === Minimize defocus by moving z-stage === #
+# Specify desired focus position
+tpm.desired_focus_position_relative_to_sample_plane = tensor((0., 0., 0.))
 
 # Parameters
 tpm.obj1_zshift = tensor((0.,), requires_grad=True)
 
+# Parameter groups
+params_obj1_zshift = {}
+params_obj1_zshift['angle'] = {
+}
+params_obj1_zshift['other'] = {
+    'OBJ1 Z-shift': tpm.obj1_zshift,
+}
+
+# Create artificial 'measurement' of collimated rays from the SLM
+Nx = 15
+Ny = 15
+x_slm = torch.tensor((1., 0.))
+y_slm = torch.tensor((0., 1.))
+x_array = x_slm * torch.linspace(-0.5, 0.5, Nx).view(Nx, 1, 1) * (Nx != 1)
+y_array = y_slm * torch.linspace(-0.5, 0.5, Ny).view(1, Ny, 1) * (Ny != 1)
+x_grid, y_grid = components(x_array + y_array)
+
+# Mask out rays that would not fit within NA of OBJ1
+radius_grid = (x_grid*x_grid + y_grid*y_grid).sqrt()
+NA_radius_SLM = (tpm.f5 / tpm.f7) * tpm.fobj1 * tpm.obj1_NA / tpm.slm_height
+mask = radius_grid < NA_radius_SLM
+
+x_lin = x_grid[mask]
+y_lin = y_grid[mask]
+zero_lin = torch.zeros(x_lin.shape)
+
+# Define 'measurement' Galvo and SLM settings
+matfile = {
+    'p/rects': torch.stack((x_lin, y_lin, zero_lin, zero_lin)),
+    'p/galvoXs': (0.,),
+    'p/galvoYs': (0.,),
+    'p/GalvoXcenter': (0.,),
+    'p/GalvoYcenter': (0.,)}
+
 tpm.set_measurement(matfile)
 tpm.update()
 
-# Parameter groups
-params_obj1_zshift = {}
-params_coverslip['angle'] = {
-}
-params_coverslip['other'] = {
-    'OBJ1 Z-shift': tpm.obj1_zshift,
-}
+
+# Trace computational graph
+# tpm.traced_raytrace = torch.jit.trace_module(tpm, {'raytrace': []})
+
+# Define optimizer
+optimizer = torch.optim.Adam([
+        {'lr': 1.0e-2, 'params': params_obj1_zshift['angle'].values()},
+        {'lr': 1.0e-4, 'params': params_obj1_zshift['other'].values()},
+    ], lr=1.0e-5)
+
+iterations = 150
+errors = torch.zeros(iterations)
+
+
+# Initialize logs for tracking each parameter
+params_obj1_zshift_logs = {}
+for groupname in params_obj1_zshift:
+    params_obj1_zshift_logs[groupname] = {}
+    for paramname in params_obj1_zshift[groupname]:
+        params_obj1_zshift_logs[groupname][paramname] = torch.zeros(iterations)
+
+trange = tqdm(range(iterations), desc='error: -')
+
+
+# Plot
+if do_plot_obj1_zshift:
+    fig_tpm = plt.figure(figsize=(15, 4), dpi=110)
+    ax_tpm = plt.gca()
+
+
+for t in trange:
+    # === Learn === #
+    # Forward pass
+    tpm.update()
+    cam_ft_coords, cam_im_coords = tpm.raytrace()
+
+    # Compute and print error
+    rays_focus = tpm.rays_on_desired_focus_plane
+    error = MSE(rays_focus.position_m, tpm.desired_focus_plane.position_m)
+
+    error_value = error.detach().item()
+    errors[t] = error_value
+
+    for groupname in params_obj1_zshift:
+        for paramname in params_obj1_zshift[groupname]:
+            params_obj1_zshift_logs[groupname][paramname][t] = params_obj1_zshift[groupname][paramname].detach().item()
+
+    trange.desc = f'error: {error_value:<8.3g}' \
+        + f'coverslip thickness: {format_prefix(tpm.total_coverslip_thickness, "8.3f")}m'
+
+    # error.backward(retain_graph=True)
+    error.backward()
+    optimizer.step()
+    optimizer.zero_grad()
+
+    # Plot
+    if t % 20 == 0 and do_plot_obj1_zshift:
+        plt.figure(fig_tpm.number)
+        ax_tpm.clear()
+        tpm.plot(ax_tpm, fraction=0.2)
+        plt.draw()
+        plt.pause(1e-3)
+
+for groupname in params_obj1_zshift:
+    print('\n' + groupname + ':')
+    for paramname in params_obj1_zshift[groupname]:
+        if groupname == 'angle':
+            print(f'  {paramname}: {params_obj1_zshift[groupname][paramname].detach().item():.3f}rad')
+        else:
+            print(f'  {paramname}: {format_prefix(params_obj1_zshift[groupname][paramname])}m')
+
+
+if do_plot_obj1_zshift:
+    fig, ax1 = plt.subplots(figsize=(7, 7))
+    fig.dpi = 144
+
+    # Plot error
+    errorcolor = 'tab:red'
+    RMSEs = np.sqrt(errors.detach().cpu())
+    ax1.plot(RMSEs, label='error', color=errorcolor)
+    ax1.set_ylabel('Error (pix)')
+    ax1.set_ylim((0, max(RMSEs)))
+    ax1.legend(loc=2)
+    ax1.legend()
+
+    ax2 = ax1.twinx()
+    for groupname in params_obj1_zshift:
+        for paramname in params_obj1_zshift_logs[groupname]:
+            ax2.plot(params_obj1_zshift_logs[groupname][paramname], label=paramname)
+    ax2.set_ylabel('Parameter (m | rad)')
+    ax2.legend(loc=1)
+
+    fig.tight_layout()  # otherwise the right y-label is slightly clipped
+    plt.title('Learning parameters')
+    plt.show()
+
