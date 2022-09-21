@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from vector_functions import rotate, cartesian3d
 from ray_plane import Ray, Plane, CoordPlane
 from plot_functions import plot_plane, plot_lens, plot_rays
-from optical import thin_lens, abbe_lens, snells, galvo_mirror, slm_segment
+from optical import point_source, thin_lens, abbe_lens, snells, galvo_mirror, slm_segment
 
 
 # Set default tensor type to double (64 bit)
@@ -127,8 +127,14 @@ class TPM():
 
         # Desired focus position relative to the sample plane
         # Note: when moving the desired focus position past an optical element, the raytrace method
-        # must be manually adapted accordingly.
+        # and backtrace method must be manually adapted accordingly, so the ray plane intersection
+        # happens at the correct ray trace step.
+        self.backtrace_source_opening_tan_angle = tensor(1.,)   # Is manually adjusted later
+        #### Idea: automatically determine when also compensating for focus?
+
         self.desired_focus_position_relative_to_sample_plane = tensor((0., 0., 0.))
+        self.backtrace_Nx = 200
+        self.backtrace_Ny = 200
 
     def set_measurement(self, matfile):
         # SLM coords and Galvo rotations
@@ -173,8 +179,12 @@ class TPM():
         # Sample plane
         self.sample_plane = CoordPlane(self.L7.position_m + (self.f7 + 2*self.fobj1 +
                                        self.sample_zshift) * z, -x, y)
-        self.desired_focus_plane = Plane(self.sample_plane.position_m +
-            self.desired_focus_position_relative_to_sample_plane, self.sample_plane.normal)
+
+        # Desired focal plane: aim focus here, place point source for backtrace here
+        self.desired_focus_plane = CoordPlane(
+            self.sample_plane.position_m + self.desired_focus_position_relative_to_sample_plane,
+            -x * self.backtrace_source_opening_tan_angle,
+            y * self.backtrace_source_opening_tan_angle)
 
         # Coverslip
         # Note, the 170um coverslip is ignored as it is modeled as part of the ideal lens
@@ -262,6 +272,26 @@ class TPM():
         self.cam_im_coords = self.cam_im_plane.transform_rays(cam_im_ray)
 
         return self.cam_ft_coords, self.cam_im_coords
+
+    def backtrace(self):
+        """
+        Backward ray tracing from desired focal position to SLM.
+        """
+        origin, x, y, z = self.coordsystem
+
+        # Place point source at desired focus location
+        self.backrays = [point_source(self.desired_focus_plane,
+                         self.backtrace_Nx,
+                         self.backtrace_Ny,
+                         refractive_index=self.n_coverslip)]
+        self.backrays += [self.backrays[-1].intersect_plane(self.coverslip_front_plane)]
+        self.backrays += [snells(self.backrays[-1],
+                          self.coverslip_front_plane.normal, self.n_water)]
+        self.backrays += abbe_lens(self.backrays[-1], self.OBJ1, self.fobj1, n_out=1.0)
+        self.backrays += [thin_lens(self.backrays[-1], self.L7, self.f7)]
+        self.backrays += [thin_lens(self.backrays[-1], self.L5, self.f5)]
+        self.backrays += [self.backrays[-1].intersect_plane(self.slm_plane)]
+        return self.backrays[-1]
 
     def plot(self, ax=plt.gca(), fraction=1):
         """Plot the TPM setup and the current rays."""

@@ -14,6 +14,7 @@ from plot_functions import plot_coords, format_prefix
 from testing import MSE
 from tpm import TPM
 from vector_functions import components
+from interpolate_shader import interpolate_shader
 
 
 # Set default tensor type to double (64 bit)
@@ -26,7 +27,7 @@ torch.set_default_tensor_type('torch.DoubleTensor')
 do_plot_empty = False
 do_plot_pincushion = False
 do_plot_coverslip = False
-do_plot_obj1_zshift = True
+do_plot_obj1_zshift = False
 
 plt.rc('font', size=12)
 
@@ -464,7 +465,7 @@ x_grid, y_grid = components(x_array + y_array)
 
 # Mask out rays that would not fit within NA of OBJ1
 radius_grid = (x_grid*x_grid + y_grid*y_grid).sqrt()
-NA_radius_SLM = (tpm.f5 / tpm.f7) * tpm.fobj1 * tpm.obj1_NA / tpm.slm_height
+NA_radius_SLM = (tpm.f5 / tpm.f7) * tpm.fobj1 * tpm.obj1_NA / tpm.slm_height_m
 mask = radius_grid < NA_radius_SLM
 
 x_lin = x_grid[mask]
@@ -530,7 +531,7 @@ for t in trange:
             params_obj1_zshift_logs[groupname][paramname][t] = params_obj1_zshift[groupname][paramname].detach().item()
 
     trange.desc = f'error: {error_value:<8.3g}' \
-        + f'coverslip thickness: {format_prefix(tpm.total_coverslip_thickness, "8.3f")}m'
+        + f'OBJ1 z-shift: {format_prefix(tpm.obj1_zshift, "8.3f")}m'
 
     # error.backward(retain_graph=True)
     error.backward()
@@ -578,3 +579,36 @@ if do_plot_obj1_zshift:
     plt.title('Learning parameters')
     plt.show()
 
+
+# Place point source at focal position
+# Choose the opening angle such that the NA is overfilled
+tpm.backtrace_source_opening_tan_angle = 1.5 * np.tan(np.arcsin(tpm.obj1_NA / tpm.n_coverslip))
+tpm.update()
+backrays_at_slm = tpm.backtrace()
+
+# Propagate to screen and compute screen coordinates
+coords = tpm.slm_plane.transform_rays(backrays_at_slm).detach()
+
+wavelength_m = 804e-9
+
+# Compute field with interpolate_shader
+pathlength_to_slm = backrays_at_slm.pathlength_m.detach()
+data = torch.cat((coords, pathlength_to_slm), 2)
+extent = (-0.5, 0.5, -0.5, 0.5)
+field_out = torch.tensor(interpolate_shader(
+    data.detach().numpy(),
+    npoints=(tpm.slm_height_pixels, tpm.slm_height_pixels),
+    limits=extent,
+    wavelength_m=wavelength_m,
+    ))
+
+
+plt.imshow(np.angle(field_out), extent=extent)
+plt.title('SLM phase correction pattern, '
+          + f'λ={format_prefix(wavelength_m, formatspec=".0f")}m'
+          + f'\ncoverslip={format_prefix(tpm.total_coverslip_thickness, formatspec=".0f")}m,'
+          + f' defocus={format_prefix(tpm.obj1_zshift, formatspec=".0f")}m')
+plt.xlabel('x (SLM heights)')
+plt.ylabel('y (SLM heights)')
+plt.colorbar()
+plt.show()
