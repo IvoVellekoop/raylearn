@@ -22,5 +22,5 @@ conda activate raylearn
 conda create -n raylearn -c pytorch pytorch
 conda activate raylearn
 conda install scipy numpy matplotlib h5py sympy tqdm imageio pytest flake8 pyopengl
-conda install -c conda-forge pyglfw
+conda install -c conda-forge pyglfw hdf5storage
 

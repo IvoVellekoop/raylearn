@@ -10,8 +10,8 @@ dependencies:
   - blas=1.0=mkl
   - brotli=1.0.9=he6710b0_2
   - bzip2=1.0.8=h7b6447c_0
-  - ca-certificates=2022.4.26=h06a4308_0
-  - certifi=2022.5.18.1=py310h06a4308_0
+  - ca-certificates=2022.9.14=ha878542_0
+  - certifi=2022.9.14=pyhd8ed1ab_0
   - cudatoolkit=11.3.1=h2bc3f7f_2
   - cycler=0.11.0=pyhd3eb1b0_0
   - dbus=1.13.18=hb2f20db_0
@@ -29,6 +29,7 @@ dependencies:
   - gstreamer=1.14.0=h28cd5cc_2
   - h5py=3.6.0=py310h18f346e_0
   - hdf5=1.10.6=hb1b8bf9_0
+  - hdf5storage=0.1.16=pyh44b312d_0
   - icu=58.2=he6710b0_3
   - imageio=2.9.0=pyhd3eb1b0_0
   - importlib-metadata=4.11.3=py310h06a4308_0
@@ -66,7 +67,7 @@ dependencies:
   - ncurses=6.3=h7f8727e_2
   - numpy=1.22.3=py310hfa59a62_0
   - numpy-base=1.22.3=py310h9585f30_0
-  - openssl=1.1.1o=h7f8727e_0
+  - openssl=1.1.1q=h7f8727e_0
   - packaging=21.3=pyhd3eb1b0_0
   - pcre=8.45=h295c915_0
   - pillow=9.0.1=py310h22f2fdc_0
