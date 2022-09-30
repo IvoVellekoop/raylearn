@@ -6,11 +6,12 @@ import torch
 from torch import tensor
 import numpy as np
 import h5py
+import hdf5storage
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 # from torchviz import make_dot
 
-from plot_functions import plot_coords, format_prefix
+from plot_functions import plot_coords, format_prefix, plot_rays, plot_lens, plot_plane
 from testing import MSE
 from tpm import TPM
 from vector_functions import components
@@ -28,6 +29,8 @@ do_plot_empty = False
 do_plot_pincushion = False
 do_plot_coverslip = False
 do_plot_obj1_zshift = False
+do_plot_backtrace = False
+do_plot_phase_pattern = True
 
 plt.rc('font', size=12)
 
@@ -444,7 +447,10 @@ if do_plot_coverslip:
 tpm.desired_focus_position_relative_to_sample_plane = tensor((0., 0., 0.))
 
 # Parameters
+tpm.total_coverslip_thickness = tensor((1170e-6,))
 tpm.obj1_zshift = tensor((0.,), requires_grad=True)
+# tpm.obj1_zshift = tensor((-53.43e-6,), requires_grad=True)
+tpm.update()
 
 # Parameter groups
 params_obj1_zshift = {}
@@ -455,8 +461,8 @@ params_obj1_zshift['other'] = {
 }
 
 # Create artificial 'measurement' of collimated rays from the SLM
-Nx = 15
-Ny = 15
+Nx = 21
+Ny = 21
 x_slm = torch.tensor((1., 0.))
 y_slm = torch.tensor((0., 1.))
 x_array = x_slm * torch.linspace(-0.5, 0.5, Nx).view(Nx, 1, 1) * (Nx != 1)
@@ -594,8 +600,10 @@ wavelength_m = 804e-9
 # Compute field with interpolate_shader
 pathlength_to_slm = backrays_at_slm.pathlength_m.detach()
 data = torch.cat((coords, pathlength_to_slm), 2)
-extent = (-0.5, 0.5, -0.5, 0.5)
-field_out = torch.tensor(interpolate_shader(
+a = 0.5
+# a = NA_radius_SLM
+extent = (-a, a, -a, a)
+field_SLM = torch.tensor(interpolate_shader(
     data.detach().numpy(),
     npoints=(tpm.slm_height_pixels, tpm.slm_height_pixels),
     limits=extent,
@@ -603,12 +611,52 @@ field_out = torch.tensor(interpolate_shader(
     ))
 
 
-plt.imshow(np.angle(field_out), extent=extent)
-plt.title('SLM phase correction pattern, '
-          + f'λ={format_prefix(wavelength_m, formatspec=".0f")}m'
-          + f'\ncoverslip={format_prefix(tpm.total_coverslip_thickness, formatspec=".0f")}m,'
-          + f' defocus={format_prefix(tpm.obj1_zshift, formatspec=".0f")}m')
-plt.xlabel('x (SLM heights)')
-plt.ylabel('y (SLM heights)')
-plt.colorbar()
-plt.show()
+if do_plot_backtrace:
+    # Plot rays of backward raytrace
+    plt.figure()
+    ax = plt.gca()
+    scale = 0.02
+    plot_plane(ax, tpm.slm_plane, 0.8, ' SLM', plotkwargs={'color': 'red'})
+    plot_lens(ax, tpm.L5, tpm.f5, scale, ' L5\n')
+    plot_lens(ax, tpm.L7, tpm.f7, scale, ' L7\n')
+
+    plot_lens(ax, tpm.OBJ1, tpm.fobj1, scale, ' OBJ1\n')
+    plot_plane(ax, tpm.sample_plane, scale*0.8, '', ' sample plane')
+    plot_plane(ax, tpm.coverslip_front_plane, scale*0.7, '', ' coverslip\n front', plotkwargs={'color': 'blue'})
+    plot_plane(ax, tpm.coverslip_back_plane, scale*0.6, '', ' coverslip\n back', plotkwargs={'color': 'blue'})
+    plot_rays(ax, tpm.backrays, fraction=0.01)
+    plt.show()
+
+
+if do_plot_phase_pattern:
+    # Plot SLM phase correction pattern
+    plt.imshow(np.angle(field_SLM), extent=extent, cmap='twilight', interpolation='nearest')
+    plt.title('SLM phase correction pattern, '
+              + f'λ={format_prefix(wavelength_m, formatspec=".0f")}m'
+              + f'\ncoverslip={format_prefix(tpm.total_coverslip_thickness, formatspec=".2f")}m,'
+              + f' defocus={format_prefix(tpm.obj1_zshift, formatspec=".0f")}m')
+
+    # Draw a circle to indicate NA
+    N_verts_NA_circle = 200
+    theta_vert_NA_circle = np.linspace(0, 2*np.pi, N_verts_NA_circle)
+    x_NA_circle = NA_radius_SLM * np.cos(theta_vert_NA_circle)
+    y_NA_circle = NA_radius_SLM * np.sin(theta_vert_NA_circle)
+    plt.plot(x_NA_circle, y_NA_circle, '--g', linewidth=2)
+
+    plt.xlabel('x (SLM heights)')
+    plt.ylabel('y (SLM heights)')
+    plt.colorbar()
+    plt.show()
+
+# Save file
+matpath_out = 'LocalData/raylearn-data/TPM/pattern-' \
+    + f'{format_prefix(tpm.total_coverslip_thickness, formatspec=".2f")}m-' \
+    + f'λ{format_prefix(wavelength_m, formatspec=".0f")}m.mat'
+mdict = {
+    'matpath_pencil_beam_positions': matpath,
+    'field_SLM': field_SLM.detach().numpy(),
+    'obj1_zshift': tpm.obj1_zshift.detach().numpy(),
+    'total_coverslip_thickness': tpm.total_coverslip_thickness.detach().numpy(),
+    'wavelength_m': wavelength_m,
+}
+matfile_out = hdf5storage.savemat(matpath_out, mdict)

@@ -133,8 +133,8 @@ class TPM():
         #### Idea: automatically determine when also compensating for focus?
 
         self.desired_focus_position_relative_to_sample_plane = tensor((0., 0., 0.))
-        self.backtrace_Nx = 200
-        self.backtrace_Ny = 200
+        self.backtrace_Nx = 300
+        self.backtrace_Ny = 300
 
     def set_measurement(self, matfile):
         # SLM coords and Galvo rotations
@@ -242,10 +242,10 @@ class TPM():
         self.rays.append(self.rays[-1].intersect_plane(self.slm_plane))
         self.slm_ray = slm_segment(self.rays[-1], self.slm_plane, self.slm_coords)
         self.rays.append(self.slm_ray)
-        self.rays.append(thin_lens(self.rays[-1], self.L5, self.f5))
+        self.rays += abbe_lens(self.rays[-1], self.L5, self.f5)
         self.plane57_ray = self.rays[-1].intersect_plane(self.plane57)
         self.rays.append(self.plane57_ray)
-        self.rays.append(thin_lens(self.rays[-1], self.L7, self.f7))
+        self.rays += abbe_lens(self.rays[-1], self.L7, self.f7)
         self.rays += abbe_lens(self.rays[-1], self.OBJ1, self.fobj1, n_out=self.n_water)
 
         # Backpropagate through water and extra coverslip thickness
