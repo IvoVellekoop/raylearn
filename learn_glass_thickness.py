@@ -41,7 +41,8 @@ plt.rc('font', size=12)
 # matpath = 'LocalData/raylearn-data/TPM/pencil-beam-positions/01-Jun-2022-170um_aligned_to_galvos/raylearn_pencil_beam_738673.606682_170um_aligned_to_galvos.mat'
 # matpath = "F:/ScientificData/pencil-beam-positions/01-Jun-2022-170um_aligned_to_galvos/raylearn_pencil_beam_738673.606682_170um_aligned_to_galvos.mat"
 
-matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-1x170um/raylearn_pencil_beam_738714.642102_1x170um.mat"
+# matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-1x170um/raylearn_pencil_beam_738714.642102_1x170um.mat"
+matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/30-Sep-2022-1x170um/raylearn_pencil_beam_738794.634384_1x170um.mat"
 
 matfile = h5py.File(matpath, 'r')
 
@@ -278,7 +279,8 @@ if do_plot_pincushion:
 # matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-4x170um_2nd/raylearn_pencil_beam_738714.784681_4x170um_2nd.mat"
 # matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-5x170um/raylearn_pencil_beam_738714.692862_5x170um.mat"
 # matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-5x170um_2nd/raylearn_pencil_beam_738714.793049_5x170um_2nd.mat"
-matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-1x400um/raylearn_pencil_beam_738714.801627_1x400um.mat"
+# matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-1x400um/raylearn_pencil_beam_738714.801627_1x400um.mat"
+matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/04-Oct-2022-sample5-1mm/raylearn_pencil_beam_738798.603432_sample5-1mm.mat"
 
 matfile = h5py.File(matpath, 'r')
 
@@ -288,7 +290,9 @@ cam_im_coords_gt = (tensor((matfile['cam_img_col'], matfile['cam_img_row']))
     - tensor((matfile['copt_img/Width'], matfile['copt_img/Height'])) / 2).permute(1, 2, 0)
 
 # Parameters
-tpm.total_coverslip_thickness = tensor((400e-6,), requires_grad=True)
+# tpm.total_coverslip_thickness = tensor((1170e-6,), requires_grad=True)
+tpm.total_coverslip_thickness = tensor((800e-6,), requires_grad=True)
+tpm.sample_zshift = tensor((0.,), requires_grad=True)
 tpm.coverslip_tilt_around_x = tensor((0.0,), requires_grad=True)
 tpm.coverslip_tilt_around_y = tensor((0.0,), requires_grad=True)
 
@@ -301,9 +305,11 @@ params_obj1_zshift['angle'] = {
     # 'Coverslip tilt around x': tpm.coverslip_tilt_around_x,
     # 'Coverslip tilt around y': tpm.coverslip_tilt_around_y,
 }
+params_obj1_zshift['obj'] = {
+    'Sample Plane zshift': tpm.sample_zshift,
+}
 params_obj1_zshift['other'] = {
     'Total Coverslip Thickness': tpm.total_coverslip_thickness,
-    # 'OBJ2 zshift': tpm.obj2_zshift,
     'cam im xshift': tpm.cam_im_xshift,
     'cam im yshift': tpm.cam_im_yshift,
 }
@@ -313,11 +319,12 @@ params_obj1_zshift['other'] = {
 
 # Define optimizer
 optimizer = torch.optim.Adam([
-        {'lr': 1.0e-2, 'params': params_obj1_zshift['angle'].values()},
-        {'lr': 1.0e-4, 'params': params_obj1_zshift['other'].values()},
+        {'lr': 1.0e-1, 'params': params_obj1_zshift['angle'].values()},
+        {'lr': 1.0e-4, 'params': params_obj1_zshift['obj'].values()},
+        {'lr': 2.0e-3, 'params': params_obj1_zshift['other'].values()},
     ], lr=1.0e-5)
 
-iterations = 150
+iterations = 1000
 errors = torch.zeros(iterations)
 
 
@@ -346,7 +353,7 @@ for t in trange:
     cam_ft_coords, cam_im_coords = tpm.raytrace()
 
     # Compute and print error
-    error = 0*MSE(cam_ft_coords_gt, cam_ft_coords) \
+    error = MSE(cam_ft_coords_gt, cam_ft_coords) \
         + MSE(cam_im_coords_gt, cam_im_coords) \
 
     error_value = error.detach().item()
@@ -365,7 +372,7 @@ for t in trange:
     optimizer.zero_grad()
 
     # Plot
-    if t % 100 == 0 and do_plot_coverslip:
+    if t % 200 == 0 and do_plot_coverslip:
         plt.figure(fig.number)
 
         # Fourier cam
@@ -413,7 +420,7 @@ for groupname in params_obj1_zshift:
         if groupname == 'angle':
             print(f'  {paramname}: {params_obj1_zshift[groupname][paramname].detach().item():.3f}rad')
         else:
-            print(f'  {paramname}: {format_prefix(params_obj1_zshift[groupname][paramname])}m')
+            print(f'  {paramname}: {format_prefix(params_obj1_zshift[groupname][paramname], ".3f")}m')
 
 
 if do_plot_coverslip:
@@ -448,8 +455,7 @@ tpm.desired_focus_position_relative_to_sample_plane = tensor((0., 0., 0.))
 
 # Parameters
 tpm.total_coverslip_thickness = tensor((1170e-6,))
-tpm.obj1_zshift = tensor((0.,), requires_grad=True)
-# tpm.obj1_zshift = tensor((-53.43e-6,), requires_grad=True)
+tpm.obj1_zshift.requires_grad = True
 tpm.update()
 
 # Parameter groups
@@ -595,7 +601,7 @@ backrays_at_slm = tpm.backtrace()
 # Propagate to screen and compute screen coordinates
 coords = tpm.slm_plane.transform_rays(backrays_at_slm).detach()
 
-wavelength_m = 804e-9
+wavelength_m = 1040e-9
 
 # Compute field with interpolate_shader
 pathlength_to_slm = backrays_at_slm.pathlength_m.detach()
@@ -632,9 +638,9 @@ if do_plot_phase_pattern:
     # Plot SLM phase correction pattern
     plt.imshow(np.angle(field_SLM), extent=extent, cmap='twilight', interpolation='nearest')
     plt.title('SLM phase correction pattern, '
-              + f'λ={format_prefix(wavelength_m, formatspec=".0f")}m'
+              + f'λ={format_prefix(wavelength_m, formatspec=".2f")}m'
               + f'\ncoverslip={format_prefix(tpm.total_coverslip_thickness, formatspec=".2f")}m,'
-              + f' defocus={format_prefix(tpm.obj1_zshift, formatspec=".0f")}m')
+              + f' extra defocus={format_prefix(tpm.obj1_zshift, formatspec=".0f")}m')
 
     # Draw a circle to indicate NA
     N_verts_NA_circle = 200
@@ -651,7 +657,7 @@ if do_plot_phase_pattern:
 # Save file
 matpath_out = 'LocalData/raylearn-data/TPM/pattern-' \
     + f'{format_prefix(tpm.total_coverslip_thickness, formatspec=".2f")}m-' \
-    + f'λ{format_prefix(wavelength_m, formatspec=".0f")}m.mat'
+    + f'λ{format_prefix(wavelength_m, formatspec=".2f")}m.mat'
 mdict = {
     'matpath_pencil_beam_positions': matpath,
     'field_SLM': field_SLM.detach().numpy(),
@@ -660,3 +666,4 @@ mdict = {
     'wavelength_m': wavelength_m,
 }
 matfile_out = hdf5storage.savemat(matpath_out, mdict)
+print(f'Saved to {matpath_out}')

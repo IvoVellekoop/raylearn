@@ -98,6 +98,7 @@ class TPM():
         self.f7 = 300e-3
         self.f9 = 150e-3
         self.f10 = 200e-3
+        # Objective 1: Nikon CFI75 LWD 16X W
         self.obj1_tubelength = 200e-3           # Objective standard tubelength
         self.obj1_magnification = 16            # Objective magnification
         self.fobj1 = self.obj1_tubelength / self.obj1_magnification
@@ -307,8 +308,8 @@ class TPM():
 
         plot_lens(ax, self.OBJ1, self.fobj1, scale, ' OBJ1\n')
         plot_plane(ax, self.sample_plane, scale*0.8, '', ' sample plane')
-        plot_plane(ax, self.coverslip_front_plane, scale*0.7, '', ' coverslip\n front', plotkwargs={'color': 'blue'})
-        plot_plane(ax, self.coverslip_back_plane, scale*0.6, '', ' coverslip\n back', plotkwargs={'color': 'blue'})
+        plot_plane(ax, self.coverslip_front_plane, scale*0.7, '', ' glass front', plotkwargs={'color': 'blue'})
+        plot_plane(ax, self.coverslip_back_plane, scale*0.6, '', ' glass back', plotkwargs={'color': 'blue'})
         plot_lens(ax, self.OBJ2, self.fobj2, 0.75*scale, 'OBJ2\n')
 
         plot_lens(ax, self.L9, self.f9, scale, ' L9\n')
@@ -319,3 +320,5 @@ class TPM():
 
         # Plot rays
         plot_rays(ax, self.rays, fraction=fraction)
+        plt.xlabel('optical axis, z (m)')
+        plt.ylabel('x (m)')
