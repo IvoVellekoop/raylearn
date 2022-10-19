@@ -99,7 +99,13 @@ def area_para(v, w):
 
 
 def components(v):
-    """Return spatial vector components vx,vy,vz... of ...xMxD vector v as tuple of Tensors."""
+    """
+    Components
+    Return spatial vector components vx,vy,vz... of ...xMxD vector v as tuple of ...xMx1 scalars.
+
+    Example:
+    vx, vy, vz = components(v)
+    """
     return v.unsqueeze(-2).unbind(-1)
 
 
