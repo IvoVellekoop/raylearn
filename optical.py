@@ -9,8 +9,9 @@ see vector_functions.py.
 import torch
 import numpy as np
 
-from testing import checkunitvector
+from testing import checkunitvector, machine_epsilon_f64
 from vector_functions import unit, dot, norm_square, rejection, reflection, rotate, components
+from math_functions import solve_quadratic
 from ray_plane import Ray, Plane
 
 
@@ -244,6 +245,81 @@ def snells(ray_in, normal, n_out):
     dir_out = dir_outrej + dir_outproj      # Combine components
     ray_out = ray_in.copy(direction=dir_out, refractive_index=n_out)
     return ray_out
+
+
+def propagate_to_cylinder(in_ray, cylinder_plane, radius_m, propagation_sign=1):
+    """
+    Cylinder Interface
+    Intersect with cylinder with arbitrary orientation.
+
+    Input
+    -----
+    in_ray              Ray. Incoming ray.
+    cylinder_plane      CoordPlane. Defines the cylinder direction with its normal vector.
+    radius_m            Scalar. Radius of the cylinder.
+    propagation_sign    Scalar: either 1 or -1. Defines the propagation direction (1 = forward,
+                        -1 = backward).
+
+    Output
+    ------
+    out_ray             Ray. Outgoing ray, with position at cylinder interface.
+
+    Notes
+    -----
+    For derivation see #####
+    """
+    # Position and direction vectors, projected on cylinder plane, in coords of cylinder plane
+    Pxy = cylinder_plane.transform_points(in_ray.position_m)
+    Dxy = cylinder_plane.transform_direction(in_ray.direction)
+
+    # Quadratic equation coefficients
+    a = norm_square(Pxy)
+    b = 2 * dot(Dxy, Pxy)
+    c = norm_square(Pxy) - radius_m*radius_m
+
+    # Compute distances to intersections (with sign in propagation direction)
+    distances_m = torch.cat(solve_quadratic(a, b, c), -1) * propagation_sign
+
+    # Nearest intersection distance (in propagation direction)
+    distances_m[distances_m < 100*machine_epsilon_f64] = torch.inf
+    nearest_distance_m = distances_m.min(dim=-1, keepdim=True).values
+    nearest_distance_m[nearest_distance_m == torch.inf] = 0.0
+
+    # Propagate ray to new position
+    out_ray = in_ray.propagate(nearest_distance_m * propagation_sign)
+    return out_ray
+
+
+def cylinder_interface(in_ray, cylinder_plane, radius_m, n_new, propagation_sign=1):
+    """
+    Cylinder Interface
+    Intersect and refract ray with cylinder with arbitrary orientation.
+
+    Input
+    -----
+    in_ray              Ray. Incoming ray.
+    cylinder_plane      CoordPlane. Defines the cylinder direction with its normal vector.
+    radius_m            Scalar. Radius of the cylinder.
+    n_new               Scalar. Refractive index of medium after refraction.
+    propagation_sign    Scalar: either 1 or -1. Defines the propagation direction (1 = forward,
+                        -1 = backward).
+
+    Output
+    ------
+    out_ray         Ray. Propagated and refracted outgoing ray.
+    """
+    # Propagate to cylinder interface
+    ray_at_cylinder = propagate_to_cylinder(in_ray, cylinder_plane, radius_m, propagation_sign)
+
+    # Compute cylinder normal
+    Q = ray_at_cylinder.position_m
+    C = cylinder_plane.position_m
+    N = cylinder_plane.normal
+    normal = unit(rejection(Q-C, N))
+
+    # Refract Ray
+    out_ray = snells(ray_at_cylinder, normal, n_new)
+    return out_ray
 
 
 def mirror(ray_in, mirror_plane):
