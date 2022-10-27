@@ -8,16 +8,19 @@ from vector_functions import norm
 torch.set_default_tensor_type('torch.DoubleTensor')
 
 
-def comparetensors(a, b, error=100):
+machine_epsilon_f64 = 2**-52
+
+
+def comparetensors(a, b, error=1000):
     """
     Check whether torch tensors are of equal value within defined error range.
 
-    Required precision of computed answers: error x float32-epsilon.
+    Required precision of computed answers: error x float64 (a.k.a. double) machine epsilon.
     """
-    return torch.all(torch.abs(a - b) < (error * (2**-23)))
+    return torch.all(torch.abs(a - b) < (error * machine_epsilon_f64))
 
 
-def checkunitvector(a, error=100):
+def checkunitvector(a, error=1000):
     """Check wether tensor is a unit vector."""
     return comparetensors(norm(a), 1, error)
 

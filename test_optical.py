@@ -431,7 +431,7 @@ def test_galvo_mirror1():
     reflected_rays = galvo_mirror(ray_in, galvo_plane, rotations)
 
     # Manually compute direction unit vectors
-    sq2 = np.sqrt(0.5, dtype=np.float32)
+    sq2 = torch.sqrt(Tensor((0.5,)))
     x_dir_man = tensor((0., 0., 0., 0., 0.)).view(5, 1) * x
     y_dir_man = tensor((-1, -sq2, 0, sq2, 1)).view(5, 1) * y
     z_dir_man = tensor((0., sq2, 1., sq2, 0)).view(5, 1) * z
