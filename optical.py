@@ -247,6 +247,26 @@ def snells(ray_in, normal, n_out):
     return ray_out
 
 
+def flat_interface(in_ray, interface_plane, n_new):
+    """
+    Flat Interface
+    Intersect with flat plane interface and refract.
+
+    Input
+    -----
+    in_ray              Ray. Incoming ray.
+    plane               Plane. Defines the plane of the flat interface.
+    n_new               Scalar. Refractive index of refracted, outgoing Ray.
+
+    Output
+    ------
+    out_ray             Ray. Refracted, outgoing Ray.
+    """
+    ray_at_plane = in_ray.intersect_plane(interface_plane)
+    out_ray = snells(ray_at_plane, interface_plane.normal, n_new)
+    return out_ray
+
+
 def propagate_to_cylinder(in_ray, cylinder_plane, radius_m, propagation_sign=1):
     """
     Cylinder Interface
