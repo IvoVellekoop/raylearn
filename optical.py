@@ -255,7 +255,8 @@ def propagate_to_cylinder(in_ray, cylinder_plane, radius_m, propagation_sign=1):
     Input
     -----
     in_ray              Ray. Incoming ray.
-    cylinder_plane      CoordPlane. Defines the cylinder direction with its normal vector.
+    cylinder_plane      CoordPlane. Defines the cylinder direction with its normal vector. x and y
+                        must be unit vectors.
     radius_m            Scalar. Radius of the cylinder.
     propagation_sign    Scalar: either 1 or -1. Defines the propagation direction (1 = forward,
                         -1 = backward).
@@ -268,12 +269,16 @@ def propagate_to_cylinder(in_ray, cylinder_plane, radius_m, propagation_sign=1):
     -----
     For derivation see #####
     """
+
+    checkunitvector(cylinder_plane.x)
+    checkunitvector(cylinder_plane.y)
+
     # Position and direction vectors, projected on cylinder plane, in coords of cylinder plane
     Pxy = cylinder_plane.transform_points(in_ray.position_m)
     Dxy = cylinder_plane.transform_direction(in_ray.direction)
 
     # Quadratic equation coefficients
-    a = norm_square(Pxy)
+    a = norm_square(Dxy)
     b = 2 * dot(Dxy, Pxy)
     c = norm_square(Pxy) - radius_m*radius_m
 

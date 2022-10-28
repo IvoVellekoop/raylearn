@@ -9,7 +9,7 @@ from vector_functions import dot, unit, norm, cross, rejection, rotate,\
                              reflection, components, cartesian3d
 from ray_plane import Ray, Plane, CoordPlane
 from optical import point_source, collimated_source, thin_lens, abbe_lens, snells,\
-                    mirror, galvo_mirror, slm_segment
+                    propagate_to_cylinder, mirror, galvo_mirror, slm_segment
 
 
 torch.set_default_tensor_type('torch.DoubleTensor')
@@ -344,6 +344,72 @@ def test_snells_pathlength():
     assert comparetensors(rays[0].position_m, rays[-1].position_m)
     assert comparetensors(rays[0].direction, rays[-1].direction)
     assert comparetensors(rays[0].pathlength_m, rays[-1].pathlength_m)
+
+
+def test_propagate_to_cylinder():
+    """
+    Test propagation of point sources to cylindrical surface.
+    """
+    origin, x, y, z = cartesian3d()
+
+    # Point sources
+    Nx = 4
+    Ny = 4
+    tan_opening_angle1 = 0.25
+    tan_opening_angle2 = 0.6
+    tan_opening_angle3 = 0.3
+    source_planes = []
+    source_planes += [CoordPlane(1.5*z, tan_opening_angle1 * unit(x-z), tan_opening_angle1 * y)]
+    source_planes += [CoordPlane(3*z, tan_opening_angle2 * unit(x-z), tan_opening_angle2 * y)]
+    source_planes += [CoordPlane(3*z+y, tan_opening_angle3 * -x, tan_opening_angle3 * z)]
+    propagation_sign = [1, 1, -1]
+
+    # Cylinder
+    cylinder_radius_m = 0.4
+    cylinder_plane = CoordPlane(2*x+0.1*y+z, unit(x+z), y)
+
+    raylists = [[], [], []]
+
+    for i in range(3):
+        # Ray trace to cylinder
+        source_ray = point_source(source_planes[i], Nx, Ny)
+        ray_at_cylinder = propagate_to_cylinder(source_ray, cylinder_plane, cylinder_radius_m,
+                                                propagation_sign[i])
+
+        raylists[i] += [source_ray]
+        raylists[i] += [ray_at_cylinder]
+
+        # Compute distance to cylinder axis
+        C = cylinder_plane.position_m
+        N = cylinder_plane.normal
+        Q = ray_at_cylinder.position_m
+        distance_to_cyl_axis = norm(rejection(Q-C, N))
+        assert comparetensors(cylinder_radius_m, distance_to_cyl_axis)
+
+    # # Uncomment for debugging
+    # ### Plot ###
+    # from matplotlib import pyplot as plt
+    # from plot_functions import plot_plane, plot_lens, plot_rays
+    # plt.figure()
+    # ax = plt.gca()
+    # ax.set_aspect(1)
+    # plt.title('propagate point sources to cylinder')
+    # for i in range(3):
+    #     plot_rays(ax, raylists[i], viewplane=cylinder_plane, plotkwargs={'color': f'C{i}'})
+
+    # # Draw a circle
+    # N_verts_circle = 200
+    # theta_vert_circle = np.linspace(0, 2*np.pi, N_verts_circle)
+    # x_circle = cylinder_radius_m * np.cos(theta_vert_circle)
+    # y_circle = cylinder_radius_m * np.sin(theta_vert_circle)
+    # plt.plot(0, 0, '+k')
+    # plt.plot(x_circle, y_circle, 'k')
+    # plt.xlabel('cylinder plane x')
+    # plt.ylabel('cylinder plane y')
+
+    # plt.show()
+    # ############
+
 
 
 def test_mirror1():
