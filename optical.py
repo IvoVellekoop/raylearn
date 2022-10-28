@@ -15,7 +15,7 @@ from math_functions import solve_quadratic
 from ray_plane import Ray, Plane
 
 
-def collimated_source(sourceplane, Nx, Ny, **raykwargs):
+def collimated_source(source_plane, Nx, Ny, **raykwargs):
     """Collimated source.
     Return a Ray object with Nx by Ny by D position_m, where D is vector dimension (usually 3).
     Position and grid spacing determined by input sourceplane and Nx & Ny.
@@ -36,13 +36,13 @@ def collimated_source(sourceplane, Nx, Ny, **raykwargs):
     A Ray object of collimated rays with Nx by Ny by 3 position_m. Direction is defined by
     sourceplane normal vector.
     """
-    x_array = sourceplane.x * torch.linspace(-1.0, 1.0, Nx).view(Nx, 1, 1) * (Nx != 1)
-    y_array = sourceplane.y * torch.linspace(-1.0, 1.0, Ny).view(1, Ny, 1) * (Ny != 1)
-    position = sourceplane.position_m + x_array + y_array
-    return Ray(position, sourceplane.normal, **raykwargs)
+    x_array = source_plane.x * torch.linspace(-1.0, 1.0, Nx).view(Nx, 1, 1) * (Nx != 1)
+    y_array = source_plane.y * torch.linspace(-1.0, 1.0, Ny).view(1, Ny, 1) * (Ny != 1)
+    position = source_plane.position_m + x_array + y_array
+    return Ray(position, source_plane.normal, **raykwargs)
 
 
-def point_source(sourceplane, Nx, Ny, **raykwargs):
+def point_source(source_plane, Nx, Ny, **raykwargs):
     """Point source with limited opening angle.
     Return a Ray object with Nx by Ny by D direction, where D is vector dimension (usually 3).
     Position and grid spacing determined by input sourceplane and Nx & Ny.
@@ -63,10 +63,10 @@ def point_source(sourceplane, Nx, Ny, **raykwargs):
     A Ray object of rays originating from the same point with Nx by Ny by D direction vector,
     where D is vector dimension (usually 3).
     """
-    x_array = sourceplane.x * torch.linspace(-1.0, 1.0, Nx).view(Nx, 1, 1) * (Nx != 1)
-    y_array = sourceplane.y * torch.linspace(-1.0, 1.0, Ny).view(1, Ny, 1) * (Ny != 1)
-    direction = unit(sourceplane.normal + x_array + y_array)
-    return Ray(sourceplane.position_m, direction, **raykwargs)
+    x_array = source_plane.x * torch.linspace(-1.0, 1.0, Nx).view(Nx, 1, 1) * (Nx != 1)
+    y_array = source_plane.y * torch.linspace(-1.0, 1.0, Ny).view(1, Ny, 1) * (Ny != 1)
+    direction = unit(source_plane.normal + x_array + y_array)
+    return Ray(source_plane.position_m, direction, **raykwargs)
 
 
 def thin_lens(in_ray, lens, f):
