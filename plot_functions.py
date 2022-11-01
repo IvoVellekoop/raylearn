@@ -143,12 +143,17 @@ def plot_plane(ax, plane_to_plot, scale=1, text1='', text2='', viewplane=default
         y = scale * plane_to_plot.y.detach()
 
     elif isinstance(plane_to_plot, Plane):
-        x_rej = rejection(viewplane.normal, plane_to_plot.normal.detach())
+        # A Plane has no x- and y-vectors defined. So let's invent them.
+        x_rej = rejection(viewplane.x, plane_to_plot.normal.detach())
         y_rej = rejection(viewplane.y, plane_to_plot.normal.detach())
+
+        # Find suitable x-vector
         if norm(x_rej) > 0:
             x = scale * unit(x_rej).detach()
         else:
             x = Tensor((0., 0., 0.)).detach()
+
+        # Find suitable y-vector
         if norm(y_rej) > 0:
             y = scale * unit(y_rej).detach()
         else:
