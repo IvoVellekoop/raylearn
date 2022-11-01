@@ -43,6 +43,10 @@ function path_string = addrepo(basepath, skip_folders, folder_depth, path_string
     % Recursively add path with subdirectories, but exclude any .git subdirectories, method
     % folders (starting with @) and private folders.
     %
+    % Quick usage:
+    % addrepo('utilities');
+    % addrepo('utilities', ["vol3d", "Example_codes_for_functions"]);
+    %
     % Input:
     % basepath      Char array or string representing path to directory.
     % skip_folders  String array with subfolders (or subsubfolders, etc) to skip.
@@ -57,7 +61,7 @@ function path_string = addrepo(basepath, skip_folders, folder_depth, path_string
     % % Put this code in a file in the main directory of your repository, or edit accordingly
     % mfilearray = strsplit(string(mfilename('fullpath')), filesep);    % Current directory
     % maindir = char(join(mfilearray(1:end-2), filesep));               % Allprojects dir
-    % addrepo(fullfile(maindir, 'utilities'))
+    % addrepo(fullfile(maindir, 'utilities'));
 
     if nargin < 2
         skip_folders = "";
@@ -84,6 +88,7 @@ function path_string = addrepo(basepath, skip_folders, folder_depth, path_string
         if ~any(itemname == [".", "..", ".git", "private"]) ... % Skip current/parent/.git/private
                     && ~any(itemname == skip_folders) ...       % Skip items in skip list
                     && itemname(1) ~= "@" ...                   % Skip method folders
+                    && itemname(1) ~= "+" ...                   % Skip package folders
                     && dirstruct(d).isdir                       % Skip non-folders
 
             % Recurse into subfolder
