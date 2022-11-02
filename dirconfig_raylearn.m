@@ -30,7 +30,7 @@ dirs.localdata = 'C:\LocalData';      % Local Data
 
 %% Add repo paths
 restoredefaultpath
-addrepo(fullfile(dirs.main, 'raylearn'), ["__pycache__", "LocalData"]);
+addrepo(fullfile(dirs.main, 'raylearn'), ["__pycache__", ".pytest_cache", "LocalData"]);
 addrepo(fullfile(dirs.main, 'utilities'));
 addrepo(fullfile(dirs.main, 'hardware/matlab'));
 
