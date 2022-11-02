@@ -8,8 +8,8 @@ from testing import comparetensors
 from vector_functions import dot, unit, norm, cross, rejection, rotate,\
                              reflection, components, cartesian3d
 from ray_plane import Ray, Plane, CoordPlane
-from optical import point_source, collimated_source, thin_lens, abbe_lens, snells,\
-                    propagate_to_cylinder, mirror, galvo_mirror, slm_segment
+from optical import point_source, collimated_source, thin_lens, abbe_lens, snells, flat_interface, \
+                    propagate_to_cylinder, cylinder_interface, mirror, galvo_mirror, slm_segment
 
 
 torch.set_default_tensor_type('torch.DoubleTensor')
@@ -389,27 +389,87 @@ def test_propagate_to_cylinder():
     # # Uncomment for debugging
     # ### Plot ###
     # from matplotlib import pyplot as plt
-    # from plot_functions import plot_plane, plot_lens, plot_rays
+    # from plot_functions import plot_rays, plot_cylinder
     # plt.figure()
     # ax = plt.gca()
     # ax.set_aspect(1)
     # plt.title('propagate point sources to cylinder')
+    # plot_text = ['1. outside', '2. inside', '3. backpropagation']
     # for i in range(3):
     #     plot_rays(ax, raylists[i], viewplane=cylinder_plane, plotkwargs={'color': f'C{i}'})
+    #     xtext, ytext = components(cylinder_plane.transform_points(source_planes[i].position_m))
+    #     plt.text(xtext, ytext, plot_text[i], backgroundcolor=(0.8, 0.8, 0.8, 0.5), ha='center')
 
-    # # Draw a circle
-    # N_verts_circle = 200
-    # theta_vert_circle = np.linspace(0, 2*np.pi, N_verts_circle)
-    # x_circle = cylinder_radius_m * np.cos(theta_vert_circle)
-    # y_circle = cylinder_radius_m * np.sin(theta_vert_circle)
+    # # # Draw a circle
     # plt.plot(0, 0, '+k')
-    # plt.plot(x_circle, y_circle, 'k')
+    # plot_cylinder(ax, cylinder_plane, cylinder_radius_m, 0, 0,
+    #               num_verts_circle=120, viewplane=cylinder_plane)
     # plt.xlabel('cylinder plane x')
     # plt.ylabel('cylinder plane y')
 
     # plt.show()
     # ############
 
+
+def test_cylinder_refraction():
+    """
+    Test refraction through a cylinder, aiming at the cylinder axis. This should be the same as
+    refraction through a slab of the same thickness and refractive index.
+    """
+    origin, x, y, z = cartesian3d()
+
+    # Point source ray elements
+    Nx = 5
+    Ny = 1
+
+    # Parameters
+    n_medium = 1.1
+    n_cyl = 1.7
+    radius_m = 0.55
+    tan_opening_angle = 0.4
+
+    # Planes
+    source_plane = CoordPlane(z, -x, y)
+    cylinder_plane = CoordPlane(origin, y, z)
+    cam_plane = CoordPlane(-z, x, y)
+    slab_front_plane = Plane(radius_m*z, -z)
+    slab_back_plane = Plane(-radius_m*z, -z)
+
+    # Ray tracing through cylinder
+    rays_cyl = [point_source(source_plane, Nx, Ny, refractive_index=n_medium)]
+    rays_cyl += [cylinder_interface(rays_cyl[-1], cylinder_plane, radius_m, n_cyl)]
+    rays_cyl += [cylinder_interface(rays_cyl[-1], cylinder_plane, radius_m, n_medium)]
+    rays_cyl += [rays_cyl[-1].intersect_plane(cam_plane)]
+
+    # Ray tracing through slab
+    rays_slab = rays_cyl[0:1]
+    rays_slab += [flat_interface(rays_slab[-1], slab_front_plane, n_cyl)]
+    rays_slab += [flat_interface(rays_slab[-1], slab_back_plane, n_medium)]
+    rays_slab += [rays_cyl[-1].intersect_plane(cam_plane)]
+
+    # # Uncomment for debugging
+    # ### Plot ###
+    # from matplotlib import pyplot as plt
+    # from plot_functions import plot_plane, plot_rays
+    # plt.figure()
+    # ax = plt.gca()
+    # ax.set_aspect(1)
+    # plt.title('propagate point source through slab and cylinder')
+    # viewplane = CoordPlane(origin, x, z)
+    # plot_plane(ax, slab_front_plane, scale=1.3, viewplane=viewplane)
+    # plot_plane(ax, slab_back_plane, scale=1.3, viewplane=viewplane)
+    # plot_rays(ax, rays_slab, viewplane=viewplane)
+
+    # plt.xlabel('x')
+    # plt.ylabel('z')
+
+    # plt.show()
+    # ############
+
+    # Assertion
+    assert comparetensors(rays_cyl[-1].position_m, rays_slab[-1].position_m)
+    assert comparetensors(rays_cyl[-1].direction, rays_slab[-1].direction)
+    assert comparetensors(rays_cyl[-1].pathlength_m, rays_slab[-1].pathlength_m)
 
 
 def test_mirror1():
@@ -703,6 +763,8 @@ def test_pathlength3():
     rays += rays_back
     rays += [rays[-1].intersect_plane(source_plane)]
 
+    # # Uncomment for debugging
+    # # ### Plot ###
     # from matplotlib import pyplot as plt
     # from plot_functions import plot_plane, plot_lens, plot_rays
     # plt.figure()
@@ -713,6 +775,7 @@ def test_pathlength3():
     # plot_plane(ax, end_plane, scale=0.2, text1='end plane')
     # ax.set_aspect(1)
     # plt.show()
+    # # ############
 
     assert comparetensors(rays[-1].position_m.std(dim=(-2, -3)), 0)
     assert comparetensors(rays[-1].pathlength_m, 0)
@@ -753,6 +816,7 @@ def test_pathlength4():
     back_to_the_start = rays_back_at_lens[1].intersect_plane(source_plane)
 
     # # Uncomment plot code for debugging
+    # ### Plot ###
     # from matplotlib import pyplot as plt
     # from plot_functions import plot_plane, plot_lens, plot_rays
     # fig = plt.figure()
@@ -767,6 +831,7 @@ def test_pathlength4():
     # plt.xlabel('z (m)')
     # plt.ylabel('y (m)')
     # plt.show()
+    # ############
 
     assert comparetensors(end_ray.pathlength_m.std(), 0)
     assert comparetensors(end_ray.position_m.std(dim=(-2, -3)), 0)
@@ -808,6 +873,7 @@ def test_pathlength5():
     back_to_the_start = rays_back_at_lens[1].intersect_plane(source_plane)
 
     # # Uncomment plot code for debugging
+    # ### Plot ###
     # from matplotlib import pyplot as plt
     # from plot_functions import plot_plane, plot_lens, plot_rays
     # fig = plt.figure()
@@ -822,6 +888,7 @@ def test_pathlength5():
     # plt.xlabel('z (m)')
     # plt.ylabel('y (m)')
     # plt.show()
+    # ############
 
     assert comparetensors(end_ray.pathlength_m, f*(n1+n2))
     assert comparetensors(end_ray.direction.std(dim=(-2, -3)), 0)
