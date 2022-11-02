@@ -74,7 +74,7 @@ function path_string = addrepo(basepath, skip_folders, folder_depth, path_string
 
     % Check if it exists
     assert(isfolder(basepath), sprintf('The repository %s could not be found.', basepath))
-    path_string = strcat(path_string, ":", basepath);   % Build the path_string
+    path_string = strcat(path_string, ";", basepath);   % Build the path_string
 
     dirstruct = dir(basepath);                          % List subfolders and files
     D = length(dirstruct);                              % Number of files and subfolders
@@ -98,7 +98,7 @@ function path_string = addrepo(basepath, skip_folders, folder_depth, path_string
 
     % If recursion is at basepath, we're done. Add the path_string to the Matlab path.
     if folder_depth == 0
-        addpath(strcat(path_string, ":"))
+        addpath(strcat(path_string, ";"))
         fprintf('Found repo %s.\n', basepath)
     end
 end
