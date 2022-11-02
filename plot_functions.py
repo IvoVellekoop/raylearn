@@ -7,7 +7,7 @@ Functions for plotting Rays, Planes, stuff to draw your defined optical elements
 import torch
 from torch import stack, Tensor
 import numpy as np
-from vector_functions import norm, norm_square, unit, rejection, cartesian3d
+from vector_functions import norm, norm_square, unit, rejection, cartesian3d, cross
 from ray_plane import Plane, CoordPlane
 
 
@@ -208,3 +208,64 @@ def plot_lens(ax, lensplane, f, scale=1, pretext1='', text2='', viewplane=defaul
     text1 = pretext1 + f' f={format_prefix(f, ".1f")}m'     # Write pretext and focal distance
     ln = plot_plane(ax, lensplane, scale, text1, text2, viewplane, plotkwargs)
     return ln
+
+
+def plot_cylinder(ax, cylinder_plane, radius_m, length_m, offset_m, viewplane=default_viewplane(),
+                  plotkwargs={'color': 'black'}):
+    """
+    Plot a cylinder with caps.
+
+    Input
+    -----
+        ax              Matplotlib Axis object. Figure axis to plot on.
+        cylinder_plane  CoordPlane. The cylinder plane.
+        radius_m        Scalar. Radius of the cylinder.
+        length_m        Scalar. Length of the cylinder (cap to cap).
+        offset_m        Scalar. Offset of the cylinder along the cylinder axis (0 = centered).
+        viewplane       CoordPlane. Viewing plane to project positions onto.
+        plotkwargs      Dictionary. Keyword arguments to be passed onto the plot function.
+
+    Output
+    ------
+        lines           List of Matplotlib Line2D objects representing the plotted data.
+    """
+    N = cylinder_plane.normal               # Unit vector along cylinder axis
+    x_cross = cross(N, viewplane.normal)    # Vector perpend. to both cyl. normal and view normal
+
+    lines = []
+
+    # If cylinder normal is not viewplane normal, the cross product is nonzero.
+    if norm(x_cross) > 0:
+        # Find suitable x/y-vector for drawing the straight lines
+        x = unit(x_cross)       # Cylinder unit vector perpend. to both cyl. normal and view normal
+        y = cross(x, N)         # Cylinder unit vector perpend. to both cyl. plane and x
+
+        # Vectors pointing from cylinder position to where cylinder cap centers are drawn
+        circle_centers = N * (offset_m + length_m * torch.Tensor((-0.5, 0.5)).view(-1, 1, 1))
+
+        # Draw straight lines from circle1 to circle2
+        lines_3D = cylinder_plane.position_m + circle_centers \
+            + x * radius_m * torch.Tensor((-1, 1)).view(-1, 1)
+        lines_x, lines_y = viewplane.transform_points(lines_3D).detach().unbind(-1)  # Project 2D
+        lines += [ax.plot(lines_x, lines_y, **plotkwargs)]                  # Plot straight lines
+    else:
+        # Cylinder is pointed at viewplane. Use cylinder vectors and skip drawing straight lines.
+        x = cylinder_plane.x
+        y = cylinder_plane.y
+        circle_centers = torch.Tensor((0., 0.)).view(-1, 1, 1)
+
+    # Draw projected circles
+    N_verts_circle = 100
+    theta_vert_circle = torch.linspace(0, 2*np.pi, N_verts_circle).view(-1, 1)
+    circle1 = cylinder_plane.position_m + circle_centers[0] + radius_m \
+        * (torch.cos(theta_vert_circle) * x + torch.sin(theta_vert_circle) * y).detach()
+    circle2 = cylinder_plane.position_m + circle_centers[1] + radius_m \
+        * (torch.cos(theta_vert_circle) * x + torch.sin(theta_vert_circle) * y).detach()
+
+    # Project circles onto viewplane
+    x_circle1, y_circle1 = viewplane.transform_points(circle1).unbind(-1)
+    x_circle2, y_circle2 = viewplane.transform_points(circle2).unbind(-1)
+
+    # Plot projected circles
+    lines += [ax.plot(x_circle1, y_circle1, **plotkwargs)]
+    lines += [ax.plot(x_circle2, y_circle2, **plotkwargs)]
