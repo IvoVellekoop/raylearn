@@ -210,24 +210,25 @@ def plot_lens(ax, lensplane, f, scale=1, pretext1='', text2='', viewplane=defaul
     return ln
 
 
-def plot_cylinder(ax, cylinder_plane, radius_m, length_m, offset_m, viewplane=default_viewplane(),
-                  plotkwargs={'color': 'black'}):
+def plot_cylinder(ax, cylinder_plane, radius_m, length_m, offset_m, num_verts_circle=60,
+                  viewplane=default_viewplane(), plotkwargs={'color': 'black'}):
     """
     Plot a cylinder with caps.
 
     Input
     -----
-        ax              Matplotlib Axis object. Figure axis to plot on.
-        cylinder_plane  CoordPlane. The cylinder plane.
-        radius_m        Scalar. Radius of the cylinder.
-        length_m        Scalar. Length of the cylinder (cap to cap).
-        offset_m        Scalar. Offset of the cylinder along the cylinder axis (0 = centered).
-        viewplane       CoordPlane. Viewing plane to project positions onto.
-        plotkwargs      Dictionary. Keyword arguments to be passed onto the plot function.
+        ax                  Matplotlib Axis object. Figure axis to plot on.
+        cylinder_plane      CoordPlane. The cylinder plane.
+        radius_m            Scalar. Radius of the cylinder.
+        length_m            Scalar. Length of the cylinder (cap to cap).
+        num_verts_circle    Positive integer. Number of vertices per cylinder cap.
+        offset_m            Scalar. Offset of the cylinder along the cylinder axis (0 = centered).
+        viewplane           CoordPlane. Viewing plane to project positions onto.
+        plotkwargs          Dictionary. Keyword arguments to be passed onto the plot function.
 
     Output
     ------
-        lines           List of Matplotlib Line2D objects representing the plotted data.
+        lines               List of Matplotlib Line2D objects representing the plotted data.
     """
     N = cylinder_plane.normal               # Unit vector along cylinder axis
     x_cross = cross(N, viewplane.normal)    # Vector perpend. to both cyl. normal and view normal
@@ -243,7 +244,7 @@ def plot_cylinder(ax, cylinder_plane, radius_m, length_m, offset_m, viewplane=de
         # Vectors pointing from cylinder position to where cylinder cap centers are drawn
         circle_centers = N * (offset_m + length_m * torch.Tensor((-0.5, 0.5)).view(-1, 1, 1))
 
-        # Draw straight lines from circle1 to circle2
+        # Draw straight edge lines of the cylinder from circle1 to circle2
         lines_3D = cylinder_plane.position_m + circle_centers \
             + x * radius_m * torch.Tensor((-1, 1)).view(-1, 1)
         lines_x, lines_y = viewplane.transform_points(lines_3D).detach().unbind(-1)  # Project 2D
@@ -255,17 +256,9 @@ def plot_cylinder(ax, cylinder_plane, radius_m, length_m, offset_m, viewplane=de
         circle_centers = torch.Tensor((0., 0.)).view(-1, 1, 1)
 
     # Draw projected circles
-    N_verts_circle = 100
-    theta_vert_circle = torch.linspace(0, 2*np.pi, N_verts_circle).view(-1, 1)
-    circle1 = cylinder_plane.position_m + circle_centers[0] + radius_m \
-        * (torch.cos(theta_vert_circle) * x + torch.sin(theta_vert_circle) * y).detach()
-    circle2 = cylinder_plane.position_m + circle_centers[1] + radius_m \
+    theta_vert_circle = torch.linspace(0, 2*np.pi, num_verts_circle).view(-1, 1)  # Circle theta
+    circles_3D = cylinder_plane.position_m + circle_centers + radius_m \
         * (torch.cos(theta_vert_circle) * x + torch.sin(theta_vert_circle) * y).detach()
 
-    # Project circles onto viewplane
-    x_circle1, y_circle1 = viewplane.transform_points(circle1).unbind(-1)
-    x_circle2, y_circle2 = viewplane.transform_points(circle2).unbind(-1)
-
-    # Plot projected circles
-    lines += [ax.plot(x_circle1, y_circle1, **plotkwargs)]
-    lines += [ax.plot(x_circle2, y_circle2, **plotkwargs)]
+    x_circles, y_circles = viewplane.transform_points(circles_3D).unbind(-1)  # Viewplane projection
+    lines += [ax.plot(x_circles.T, y_circles.T, **plotkwargs)]              # Plot projected circles
