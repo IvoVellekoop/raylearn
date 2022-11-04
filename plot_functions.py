@@ -210,7 +210,7 @@ def plot_lens(ax, lensplane, f, scale=1, pretext1='', text2='', viewplane=defaul
     return ln
 
 
-def plot_cylinder(ax, cylinder_plane, radius_m, length_m, offset_m, num_verts_circle=60,
+def plot_cylinder(ax, cylinder_plane, radius_m, length_m, offset_m, num_verts_circle=80,
                   viewplane=default_viewplane(), plotkwargs={'color': 'black'}):
     """
     Plot a cylinder with caps.
@@ -258,7 +258,7 @@ def plot_cylinder(ax, cylinder_plane, radius_m, length_m, offset_m, num_verts_ci
     # Draw projected circles
     theta_vert_circle = torch.linspace(0, 2*np.pi, num_verts_circle).view(-1, 1)  # Circle theta
     circles_3D = cylinder_plane.position_m + circle_centers + radius_m \
-        * (torch.cos(theta_vert_circle) * x + torch.sin(theta_vert_circle) * y).detach()
+        * (torch.cos(theta_vert_circle) * x + torch.sin(theta_vert_circle) * y)
 
-    x_circles, y_circles = viewplane.transform_points(circles_3D).unbind(-1)  # Viewplane projection
+    x_circles, y_circles = viewplane.transform_points(circles_3D).detach().unbind(-1)  # Viewplane projection
     lines += [ax.plot(x_circles.T, y_circles.T, **plotkwargs)]              # Plot projected circles
