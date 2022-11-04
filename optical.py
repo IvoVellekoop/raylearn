@@ -15,6 +15,28 @@ from math_functions import solve_quadratic
 from ray_plane import Ray, Plane
 
 
+class OpticalSystem():
+    """
+    Template class for an optical system.
+    """
+    def __init__(self):
+        pass
+
+    def update(self):
+        pass
+
+    def raytrace(self, in_ray):
+        rays = []
+        return rays
+
+    def backtrace(self, in_ray):
+        rays = []
+        return rays
+
+    def plot(self, ax, viewplane):
+        pass
+
+
 def collimated_source(source_plane, Nx, Ny, **raykwargs):
     """Collimated source.
     Return a Ray object with Nx by Ny by D position_m, where D is vector dimension (usually 3).
