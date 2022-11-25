@@ -7,5 +7,4 @@
 *.m~
 __pycache__/
 /tmp*
-.vscode
 *.mat
