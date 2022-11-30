@@ -139,25 +139,28 @@ def plot_plane(ax, plane_to_plot, scale=1, text1='', text2='', viewplane=default
 
     if isinstance(plane_to_plot, CoordPlane):
 
-        x = scale * plane_to_plot.x.detach()
-        y = scale * plane_to_plot.y.detach()
+        x = scale * plane_to_plot.x
+        y = scale * plane_to_plot.y
 
     elif isinstance(plane_to_plot, Plane):
         # A Plane has no x- and y-vectors defined. So let's invent them.
-        x_rej = rejection(viewplane.x, plane_to_plot.normal.detach())
-        y_rej = rejection(viewplane.y, plane_to_plot.normal.detach())
+        x_rej = rejection(viewplane.x, plane_to_plot.normal)
+        y_rej = rejection(viewplane.y, plane_to_plot.normal)
 
         # Find suitable x-vector
         if norm(x_rej) > 0:
-            x = scale * unit(x_rej).detach()
+            x = scale * unit(x_rej)
         else:
-            x = Tensor((0., 0., 0.)).detach()
+            x = Tensor((0., 0., 0.))
 
         # Find suitable y-vector
         if norm(y_rej) > 0:
-            y = scale * unit(y_rej).detach()
+            y = scale * unit(y_rej)
         else:
-            y = Tensor((0., 0., 0.)).detach()
+            y = Tensor((0., 0., 0.))
+
+    x.detach_()
+    y.detach_()
 
     # Compute 4 corner points of plane square around plane position
     A = position_m + x + y
