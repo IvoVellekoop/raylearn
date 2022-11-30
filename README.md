@@ -70,7 +70,7 @@ Running/debugging the python files in VS Code:
 
 1. Follow the steps in *Installing the required Python packages from Anaconda* and *Installing VS Code extensions for debugging Python*.
 2. View → Command palette → search for *Python: Select Interpreter* → pick the option corresponding to the *raylearn* anaconda environment.
-3. Open a Python file, go to Run → Start Debugging → when asked for Debug Configuration, pick Python File.
+3. Open a Python file, go to Run → Start Debugging → when asked for *Debug Configuration*, pick *Python File*.
 4. You can try one of the examples (e.g. example_one_lens.py or example_rotating_cylinder.py) and go to Run → Start Debugging (Default shortcut: F5).
 
 ## Unit testing
