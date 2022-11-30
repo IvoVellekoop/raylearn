@@ -1,10 +1,8 @@
-
 import matplotlib.pyplot as plt
 import numpy as np
-from torch import tensor, linspace
 import torch
 
-from ray_plane import Ray, Plane, CoordPlane
+from ray_plane import Plane, CoordPlane
 from plot_functions import plot_plane, plot_lens, plot_rays, plot_coords
 from optical import point_source, collimated_source, thin_lens, snells
 from interpolate import interpolate2d
@@ -20,6 +18,7 @@ plt.rc('font', size=12)
 This is an example to test interpolation functions. Different optical systems
 are provided, default is point source.
 """
+
 
 class FocusingSystem():
 
@@ -39,11 +38,11 @@ class FocusingSystem():
         # Define camera
         self.cam_im_plane = CoordPlane(origin + 1.5*self.f1*z, -x, y*np.cos(0.2)-z*np.sin(0.2))
 
-        self.slab1 = Plane(origin+1.2*self.f1*z,-z)
-        self.slab2 = Plane(origin+1.3*self.f1*z,-z)
+        self.slab1 = Plane(origin+1.2*self.f1*z, -z)
+        self.slab2 = Plane(origin+1.3*self.f1*z, -z)
 
-        self.imageplane = Plane(origin+2*self.f1*z,-z)
-        
+        self.imageplane = Plane(origin+2*self.f1*z, -z)
+
         self.n1 = 1
         self.n2 = 1.5
 
@@ -64,10 +63,10 @@ class FocusingSystem():
         return self.cam_im_plane.transform(self.rays[-1])
 
     def plot(self):
-        fig = plt.figure(figsize=(8,4))
+        fig = plt.figure(figsize=(8, 4))
         fig.dpi = 144
         ax = plt.gca()
-        
+
         # Plot lenses and planes
         scale = 2*self.beam_width
         plot_lens(ax, self.L1, self.f1, scale, '⟷ L1\n  ')
@@ -82,6 +81,7 @@ class FocusingSystem():
 
         plt.show()
 
+
 class PointsourceSystem():
 
     def __init__(self):
@@ -94,11 +94,10 @@ class PointsourceSystem():
         self.source_Nx = 51
         self.source_Ny = 51
 
+        self.slab1 = Plane(origin+37.5e-6*z, -z)
+        self.slab2 = Plane(origin+112.5e-6 * z, -z)
+
         # Define camera
-
-        self.slab1 = Plane(origin+37.5e-6*z,-z)
-        self.slab2 = Plane(origin+112.5e-6 * z,-z)
-
         self.cam_im_plane = CoordPlane(origin + 150e-6*z, -x, y)
 
         self.n1 = 1
@@ -115,13 +114,14 @@ class PointsourceSystem():
 
         self.rays.append(self.rays[-1].intersect_plane(self.cam_im_plane))
 
-        return self.cam_im_plane.transform(self.rays[-1])
+        return self.cam_im_plane.transform_rays(self.rays[-1])
 
     def plot(self):
-        fig = plt.figure(figsize=(5,4))
+        fig = plt.figure(figsize=(5, 4))
         fig.dpi = 144
         ax = plt.gca()
-        
+        ax.ticklabel_format(scilimits=(-3, 3))
+
         # Plot lenses and planes
         scale = 150e-6
         # plot_lens(ax, self.L1, self.f1, scale, '⟷ L1\n  ')
@@ -132,9 +132,10 @@ class PointsourceSystem():
         plot_plane(ax, self.slab2, scale)
 
         # Plot rays
-        plot_rays(ax, self.rays)
+        plot_rays(ax, self.rays, fraction=0.02)
 
         plt.show()
+
 
 class PlaneWaveSystem:
 
@@ -145,7 +146,10 @@ class PlaneWaveSystem:
         # Define source
         self.theta = 0.3
         self.beam_width = 5e-6
-        self.sourceplane = CoordPlane(origin, -x*self.beam_width, y*self.beam_width*np.cos(self.theta)-z*self.beam_width*np.sin(self.theta))
+        self.sourceplane = CoordPlane(
+            origin,
+            -x*self.beam_width,
+            y*self.beam_width*np.cos(self.theta) - z*self.beam_width*np.sin(self.theta))
         self.source_Nx = 5
         self.source_Ny = 5
 
@@ -161,24 +165,25 @@ class PlaneWaveSystem:
         return self.cam_im_plane.transform(self.rays[-1])
 
     def plot(self):
-        fig = plt.figure(figsize=(8,4))
+        fig = plt.figure(figsize=(8, 4))
         fig.dpi = 144
         ax = plt.gca()
-        
+
         # Plot lenses and planes
         scale = 0.025
         plot_plane(ax, self.cam_im_plane, 0.01 * scale, ' Cam')
 
         # Plot rays
-        plot_rays(ax, self.rays)
+        plot_rays(ax, self.rays, fraction=0.02)
 
         plt.show()
 
+
 """
 Real example starts here...
-Trace light from a point source through a glass slide, showing defocus and 
+Trace light from a point source through a glass slide, showing defocus and
 barrel distortion. Performs only (fast) shader interpolation by default. Other
-interpolation algorithms can be used by uncommenting the indicated code. 
+interpolation algorithms can be used by uncommenting the indicated code.
 """
 # Simple system for testing
 system = PointsourceSystem()
@@ -187,6 +192,7 @@ system.plot()
 
 fig = plt.figure(figsize=(5, 4))
 ax1 = plt.gca()
+ax1.ticklabel_format(scilimits=(-3, 3))
 plot_coords(ax1, cam_coords)
 plt.title('Ray positions at camera plane')
 plt.xlabel('x [m]')
@@ -197,7 +203,8 @@ plt.show()
 planepts = 600
 max_size = 75e-6
 
-field_coords = coord_grid(limits=(-max_size, max_size, -max_size,max_size), resolution=(planepts,planepts))
+field_coords = coord_grid(limits=(-max_size, max_size, -max_size, max_size),
+                          resolution=(planepts, planepts))
 
 # # Loop rows to interpolate larger sets of rays (very slow)
 # field_out_interpolate = torch.empty(planepts,planepts,1, dtype=torch.cfloat)
@@ -213,14 +220,16 @@ field_coords = coord_grid(limits=(-max_size, max_size, -max_size,max_size), reso
 # Try interpolation in a shader (very fast)
 pos = cam_coords
 path = system.rays[-1].pathlength_m
-data = torch.cat((pos,path),2)
-field_out_shader = torch.tensor(interpolate_shader(data.numpy(), limits=(-max_size, max_size, -max_size,max_size), npoints=(planepts,planepts)))
+data = torch.cat((pos, path), 2)
+field_out_shader = torch.tensor(interpolate_shader(
+    data.numpy(), limits=(-max_size, max_size, -max_size, max_size), npoints=(planepts, planepts)))
 
 # Display interpolated field
 fig = plt.figure(figsize=(5, 4))
 fig.dpi = 144
 ax1 = plt.gca()
-plt.imshow(torch.angle(field_out_shader), extent=(-max_size, max_size, -max_size, max_size), interpolation='none', origin='lower')
+plt.imshow(torch.angle(field_out_shader), extent=(-max_size, max_size, -max_size, max_size),
+           interpolation='none', origin='lower')
 plt.colorbar()
 plt.title('Field at camera plane')
 plt.xlabel('x [m]')
