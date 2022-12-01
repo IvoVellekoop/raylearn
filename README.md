@@ -71,7 +71,19 @@ Running/debugging the python files in VS Code:
 1. Follow the steps in *Installing the required Python packages from Anaconda* and *Installing VS Code extensions for debugging Python*.
 2. View → Command palette → search for *Python: Select Interpreter* → pick the option corresponding to the *raylearn* anaconda environment.
 3. Open a Python file, go to Run → Start Debugging → when asked for *Debug Configuration*, pick *Python File*.
-4. You can try one of the examples (e.g. example_one_lens.py or example_rotating_cylinder.py) and go to Run → Start Debugging (Default shortcut: F5).
+
+You can try one of the examples (e.g. example_one_lens.py or example_rotating_cylinder.py) and go to Run → Start Debugging (Default shortcut: F5).
+
+A few tips on debugging:
+
+- Breakpoints can be set by either:
+  - clicking the gutter (next to the line number)
+  - or Run → Toggle Breakpoint
+  - or default shortcut: F9
+- When an error or breakpoint is encountered, code execution is paused and you are dropped into debugging mode.
+- From the sidebar, you can pick where in the *call stack* you want to debug (i.e. from which function level the variables are available).
+- In the debug console, you can execute one-line Python code to inspect what is going on.
+- Debug commands like: *Step over*, *Step into*, *Step out* and *Continue* are available from the *Run* menu.
 
 ## Unit testing
 
@@ -80,12 +92,12 @@ Unit tests are run using the pytest package. To run all tests either:
 - Let VS Code run pytest for you:
   
   1. Follow the steps in *Getting started* to set up the Python interpreter.
-  2. Either: 
-     - Go to View → Testing, or the sidebar → Testing, and click Run Tests (double triangle ⏩ icon).
+  2. Either:
+     - Go to View → Testing, or the activity bar (= sidebar with icons) → Testing (erlenmeyer icon), and click Run Tests (double triangle icon).
      - Or execute *Test: Run All Tests* from the command palette.
   3. Expand >items in the list to view all of its test results.
-     
-     Note: If this doesn't work, pytest might not be set up properly with VS Code. Go to settings and search for *pytest*.
+
+  Note: If this doesn't work, pytest might not be set up properly with VS Code. Go to settings and search for *pytest*.
 
 - Run pytest directly from the terminal:
   
