@@ -137,10 +137,9 @@ def thin_lens(in_ray, lens, f):
 
 def abbe_lens(in_ray, lens, f, n_out=1.0):
     """
-    Thin lens
-    Follows height = tan(angle). Pathlength is corrected for point sources at the front focal plane.
-    In other cases, only works for paraxial rays. Rays are 'refracted' such that the thin lens law
-    1/f = 1/s1 + 1/s2 works (where f=focal distance, s1 and s2 = object and image distance to lens).
+    Abbe lens
+    Conforms to the Abbe sine condition *for each point at both focal planes*:
+    height_out ∝ sin(angle_in) and sin(angle_out) ∝ height_in. Pathlength is fully corrected.
 
     todo: Explain the steps of computation in a drawing in some documentation.
 
