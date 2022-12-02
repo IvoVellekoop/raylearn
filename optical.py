@@ -327,9 +327,10 @@ def propagate_to_cylinder(in_ray, cylinder_plane, radius_m, propagation_sign=1):
     distances_m = torch.cat(solve_quadratic(a, b, c), -1) * propagation_sign
 
     # Nearest intersection distance (in propagation direction)
-    distances_m[distances_m < 100*machine_epsilon_f64] = torch.inf
-    nearest_distance_m = distances_m.min(dim=-1, keepdim=True).values
-    nearest_distance_m[nearest_distance_m == torch.inf] = 0.0
+    distances_m[distances_m < 100*machine_epsilon_f64] = torch.inf      # Interface at or behind ray
+    nearest_distance_m = distances_m.min(dim=-1, keepdim=True).values   # Nearest interface
+    nearest_distance_m[nearest_distance_m == torch.inf] = 0.0   # No interface in front of ray
+    nearest_distance_m[nearest_distance_m.isnan()] = 0.0        # Rays that miss cylinder entirely
 
     # Propagate ray to new position
     out_ray = in_ray.propagate(nearest_distance_m * propagation_sign)
