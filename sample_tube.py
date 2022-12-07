@@ -36,13 +36,17 @@ class SampleTube(OpticalSystem):
             self.slide_top_plane.position_m + self.outer_radius_m * self.slide_top_plane.normal,
             rotate(self.slide_top_plane.x, self.slide_top_plane.normal, self.tube_angle),
             self.slide_top_plane.normal)    # Slide y == Cyl. plane normal
-        self.desired_focus_plane = translate(self.slide_top_plane, self.slide_top_plane.normal)
+
+        shell_thickness = self.outer_radius_m - self.inner_radius_m
+        self.desired_focus_plane = translate(
+            self.slide_top_plane, shell_thickness * self.slide_top_plane.normal)
 
     def raytrace(self, in_ray):
         rays = []
         rays += [cylinder_interface(in_ray, self.cyl_plane, self.outer_radius_m, self.n_tube)]
         rays += [cylinder_interface(rays[-1], self.cyl_plane, self.inner_radius_m, self.n_inside)]
         rays += [cylinder_interface(rays[-1], self.cyl_plane, self.inner_radius_m, self.n_tube)]
+        self.rays_at_desired_focus = rays[-1]
         rays += [cylinder_interface(rays[-1], self.cyl_plane, self.outer_radius_m, self.n_outside)]
         rays += [flat_interface(rays[-1], self.slide_top_plane, self.n_slide)]
         rays += [rays[-1].intersect_plane(self.slide_bottom_plane)]

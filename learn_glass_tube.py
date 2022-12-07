@@ -29,10 +29,10 @@ from dirconfig_raylearn import dirs
 # https://en.wikipedia.org/wiki/Machine_epsilon
 torch.set_default_tensor_type('torch.DoubleTensor')
 
-do_plot_empty = True
+do_plot_empty = False
 do_plot_pincushion = False
 do_plot_tube = False
-do_plot_obj1_zshift = False
+do_plot_obj1_zshift = True
 do_plot_backtrace = False
 do_plot_phase_pattern = True
 
@@ -326,7 +326,7 @@ optimizer = torch.optim.Adam([
         {'lr': 2.0e-5, 'params': params_obj1_zshift['other'].values()},
     ], lr=1.0e-5)
 
-iterations = 10
+iterations = 1
 errors = torch.zeros(iterations)
 
 
@@ -540,8 +540,8 @@ for t in trange:
     cam_ft_coords, cam_im_coords = tpm.raytrace()
 
     # Compute and print error
-    rays_focus = tpm.rays_on_desired_focus_plane
-    error = MSE(rays_focus.position_m, tpm.desired_focus_plane.position_m)
+    rays_focus = tpm.sample.rays_at_desired_focus
+    error = MSE(rays_focus.position_m, tpm.sample.desired_focus_plane.position_m)
 
     error_value = error.detach().item()
     errors[t] = error_value
