@@ -13,7 +13,7 @@ from testing import checkunitvector, machine_epsilon_f64
 from vector_functions import unit, dot, norm_square, rejection, reflection, rotate, components, \
     cartesian3d
 from math_functions import solve_quadratic
-from ray_plane import Ray, Plane, translate
+from ray_plane import Ray, CoordPlane, Plane, translate, copy_update
 from plot_functions import default_viewplane, plot_plane
 
 
@@ -48,13 +48,14 @@ class Coverslip(OpticalSystem):
     def __init__(self):
         super().__init__()
         origin, x, y, z = cartesian3d()
-        self.coverslip_front_plane = Plane(origin, z)
         self.coverslip_thickness_m = 170e-6
         self.n_coverslip = 1.5185
         self.n_out_backside = 1.0
         self.n_out_frontside = 1.3304
+        self.sample_plane = CoordPlane(origin, x, y)
 
     def update(self):
+        self.coverslip_front_plane = copy_update(self.sample_plane)
         self.coverslip_back_plane = translate(self.coverslip_front_plane, self.coverslip_thickness_m
                                               * self.coverslip_front_plane.normal)
 
@@ -70,9 +71,9 @@ class Coverslip(OpticalSystem):
 
     def plot(self, ax, viewplane=default_viewplane(), plotkwargs={'color': 'black'}):
         plot_scale = 5e-3
-        plot_plane(ax, self.coverslip_front_plane, scale=plot_scale,
+        plot_plane(ax, self.coverslip_front_plane, text1='Coverslip\nfront', scale=plot_scale,
                    viewplane=viewplane, plotkwargs=plotkwargs)
-        plot_plane(ax, self.coverslip_back_plane, scale=plot_scale,
+        plot_plane(ax, self.coverslip_back_plane, text2='Coverslip\nback', scale=plot_scale,
                    viewplane=viewplane, plotkwargs=plotkwargs)
         pass
 
@@ -172,7 +173,7 @@ def thin_lens(in_ray, lens, f):
         + propagation_sign * (2*f - PW_distance_m)          # Compute pathlength
 
     # Return outgoing Ray
-    return S_Ray.copy(position_m=P, direction=out_dir, pathlength_m=new_pathlength_m)
+    return copy_update(S_Ray, position_m=P, direction=out_dir, pathlength_m=new_pathlength_m)
 
 
 def abbe_lens(in_ray, lens, f, n_out=1.0):
@@ -227,7 +228,7 @@ def abbe_lens(in_ray, lens, f, n_out=1.0):
     out_dir = out_dir_rej + out_dir_proj                    # Outgoing direction (forward)
 
     # Outgoing Ray at Back focal plane
-    Q_ray = in_ray.copy(position_m=Q, direction=out_dir*propagation_sign,
+    Q_ray = copy_update(in_ray, position_m=Q, direction=out_dir*propagation_sign,
                         pathlength_m=new_pathlength, refractive_index=n_out)
 
     # Rays at principal spheres
@@ -345,7 +346,7 @@ def snells(ray_in, normal, n_out):
     dir_outrej = n_in/n_out * dir_inrej     # Perpendicular component (i.e. along plane) of dir_out
     dir_outproj = - N * torch.sqrt(1 - norm_square(dir_outrej))     # Parallel component of dir_out
     dir_out = dir_outrej + dir_outproj      # Combine components
-    ray_out = ray_in.copy(direction=dir_out, refractive_index=n_out)
+    ray_out = copy_update(ray_in, direction=dir_out, refractive_index=n_out)
     return ray_out
 
 
@@ -532,5 +533,5 @@ def slm_segment(ray_in, slm_plane, slm_coords):
     """
     x_slm, y_slm = components(slm_coords)    # Split vector dimensions
     position_m = slm_plane.position_m + slm_plane.x * x_slm + slm_plane.y * y_slm
-    ray_out = ray_in.copy(position_m=position_m)
+    ray_out = copy_update(ray_in, position_m=position_m)
     return ray_out

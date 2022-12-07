@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from vector_functions import cartesian3d, unit, rotate
-from ray_plane import Ray, Plane, CoordPlane
+from ray_plane import Ray, Plane, CoordPlane, copy_update
 from plot_functions import plot_plane, plot_lens, plot_rays
 from optical import point_source, thin_lens
 
@@ -70,7 +70,7 @@ class System(torch.nn.Module):
 
         # Objective
         self.rays.append(thin_lens(self.rays[-1], self.OBJ1, self.fobj1))
-        self.rays.append(self.rays[-1].copy(refractive_index=1))
+        self.rays.append(copy_update(self.rays[-1], refractive_index=1))
 
         # End plane
         end_planes_positions = self.OBJ1.position_m + self.end_distance * self.rays[-1].direction

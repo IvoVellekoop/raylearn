@@ -3,7 +3,7 @@ Tube Sample. Cylindrical tube sample class.
 """
 from torch import Tensor
 
-from ray_plane import CoordPlane
+from ray_plane import CoordPlane, copy_update, translate
 from vector_functions import cartesian3d, rotate
 from optical import OpticalSystem, cylinder_interface, flat_interface
 from plot_functions import plot_cylinder, plot_plane, default_viewplane
@@ -12,7 +12,8 @@ from plot_functions import plot_cylinder, plot_plane, default_viewplane
 class SampleTube(OpticalSystem):
     """
     Tube Sample. Cylindrical tube sitting on a microscope slide, sample class. Tube direction is
-    defined in the top slide plane y direction (for angle=0).
+    defined in the top slide plane y direction (for angle=0). The slide top plane is defined at the
+    sample plane, but with the normal pointing in the opposite direction.
     """
     def __init__(self):
         super().__init__()
@@ -25,16 +26,17 @@ class SampleTube(OpticalSystem):
         self.n_slide = 1.5191               # Soda Lime Glass @715nm
         self.n_inside = 1.3304              # Water inside the tube @715nm
         self.n_outside = 1.3304             # Water between tube and slide @715nm
-        self.slide_top_plane = CoordPlane(origin, x, y)
+        self.sample_plane = CoordPlane(origin, x, y)
 
     def update(self):
-        self.slide_bottom_plane = CoordPlane(
-            self.slide_top_plane.position_m - 2 * self.outer_radius_m * self.slide_top_plane.normal,
-            self.slide_top_plane.x, self.slide_top_plane.y)
+        self.slide_top_plane = copy_update(self.sample_plane, x=-self.sample_plane.x)
+        self.slide_bottom_plane = translate(self.slide_top_plane,
+                                            -self.slide_thickness_m*self.slide_top_plane.normal)
         self.cyl_plane = CoordPlane(
             self.slide_top_plane.position_m + self.outer_radius_m * self.slide_top_plane.normal,
             rotate(self.slide_top_plane.x, self.slide_top_plane.normal, self.tube_angle),
             self.slide_top_plane.normal)    # Slide y == Cyl. plane normal
+        self.desired_focus_plane = translate(self.slide_top_plane, self.slide_top_plane.normal)
 
     def raytrace(self, in_ray):
         rays = []

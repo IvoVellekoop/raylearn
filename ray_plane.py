@@ -47,7 +47,7 @@ class Ray:
         """Propagate ray a defined distance and return as new Ray."""
         destination = self.position_m + self.direction * distance_m
         new_pathlength_m = self.pathlength_m + self.refractive_index * distance_m
-        return self.copy(position_m=destination, pathlength_m=new_pathlength_m)
+        return copy_update(self, position_m=destination, pathlength_m=new_pathlength_m)
 
     def intersect_plane(self, plane):
         """Return new Ray at intersection with Plane or CoordPlane."""
@@ -62,16 +62,7 @@ class Ray:
     def mask(self, mask_factors):
         """Mask Ray with given mask_factors array."""
         intensity = self.intensity * mask_factors
-        return self.copy(intensity=intensity)
-
-    def copy(self, **kwargs):
-        """
-        Create copy of this Ray, with some slight alterations passed as keyword arguments.
-        Note that torch tensor attribute will reference the same value as the original Ray.
-        """
-        copiedray = copy.copy(self)
-        copiedray.__dict__.update(**kwargs)
-        return copiedray
+        return copy_update(self, intensity=intensity)
 
 
 class Plane:
@@ -161,4 +152,14 @@ def translate(instance, v):
     new_position_m = instance.position_m + v
     copied_object = copy.copy(instance)
     copied_object.position_m = new_position_m
+    return copied_object
+
+
+def copy_update(instance, **kwargs):
+    """
+    Create copy of this object, with some slight alterations passed as keyword arguments.
+    Note that torch tensor attributes will reference the same value as the original object.
+    """
+    copied_object = copy.copy(instance)
+    copied_object.__dict__.update(**kwargs)
     return copied_object
