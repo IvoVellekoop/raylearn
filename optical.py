@@ -10,9 +10,11 @@ import torch
 import numpy as np
 
 from testing import checkunitvector, machine_epsilon_f64
-from vector_functions import unit, dot, norm_square, rejection, reflection, rotate, components
+from vector_functions import unit, dot, norm_square, rejection, reflection, rotate, components, \
+    cartesian3d
 from math_functions import solve_quadratic
-from ray_plane import Ray, Plane
+from ray_plane import Ray, Plane, translate
+from plot_functions import default_viewplane, plot_plane
 
 
 class OpticalSystem():
@@ -34,6 +36,44 @@ class OpticalSystem():
         return rays
 
     def plot(self, ax, viewplane):
+        pass
+
+
+class Coverslip(OpticalSystem):
+    """
+    Coverslip as optical system.
+
+    Coverslip front plane normal is pointed in direction of back plane.
+    """
+    def __init__(self):
+        super().__init__()
+        origin, x, y, z = cartesian3d()
+        self.coverslip_front_plane = Plane(origin, z)
+        self.coverslip_thickness_m = 170e-6
+        self.n_coverslip = 1.5185
+        self.n_out_backside = 1.0
+        self.n_out_frontside = 1.3304
+
+    def update(self):
+        self.coverslip_back_plane = translate(self.coverslip_front_plane, self.coverslip_thickness_m
+                                              * self.coverslip_front_plane.normal)
+
+    def raytrace(self, in_ray):
+        rays = [flat_interface(in_ray, self.coverslip_front_plane, self.n_coverslip)]
+        rays += [flat_interface(rays[-1], self.coverslip_back_plane, self.n_out_backside)]
+        return rays
+
+    def backtrace(self, in_ray):
+        rays = [flat_interface(in_ray, self.coverslip_back_plane, self.n_coverslip)]
+        rays += [flat_interface(rays[-1], self.coverslip_front_plane, self.n_out_frontside)]
+        return rays
+
+    def plot(self, ax, viewplane=default_viewplane(), plotkwargs={'color': 'black'}):
+        plot_scale = 5e-3
+        plot_plane(ax, self.coverslip_front_plane, scale=plot_scale,
+                   viewplane=viewplane, plotkwargs=plotkwargs)
+        plot_plane(ax, self.coverslip_back_plane, scale=plot_scale,
+                   viewplane=viewplane, plotkwargs=plotkwargs)
         pass
 
 
@@ -195,6 +235,47 @@ def abbe_lens(in_ray, lens, f, n_out=1.0):
     P2_ray = Q_ray.propagate(-f*propagation_sign)
 
     return (P1_ray, P2_ray)
+
+
+def coverslip_correction(in_ray, normal, coverslip_thickness_m, n_coverslip, n_out,
+                         propagation_sign):
+    """
+    Coverslip correction.
+
+    Can be used e.g. in combination with an Abbe sine lens function, to incorporate the coverslip
+    correction of an objective. The coverslip correction is implemented by backtracing the effect of
+    a coverslip. This function effectively shifts the Ray positions along a plane, depending on the
+    Ray directions and the given coverslip properties.
+
+    Input
+    -----
+        in_ray:                 Ray object. Input Ray.
+        normal:                 Normal unit vector of coverslip Plane.
+        coverslip_thickness_m:  Thickness of coverslip.
+        n_coverslip:            Refractive index of coverslip.
+        n_out:                  Refractive index of medium of outgoing Ray.
+        propagation_sign:       Either 1 for forward or -1 for backward propagation.
+
+    Output
+    ------
+        out_ray:                Ray object. Ray after coverslip correction.
+    """
+
+    assert checkunitvector(normal)
+
+    # Get a Plane normal in opposite direction of propagation
+    N = -normal * propagation_sign * torch.sign(dot(normal, in_ray.direction))
+
+    # Create a coverslip plane located 1 coverslip thickness behind the ray
+    coverslip_front_plane = Plane(in_ray.position_m, N)
+    coverslip_back_plane = translate(coverslip_front_plane, N * coverslip_thickness_m)
+
+    # Ray trace
+    ray1 = snells(in_ray, N, n_coverslip)                       # Refract to coverslip medium
+    ray2 = flat_interface(ray1, coverslip_back_plane, n_out)    # Coverslip 'back' interface
+    out_ray = ray2.intersect_plane(coverslip_front_plane)       # Propagate back to original plane
+
+    return out_ray
 
 
 def smooth_grid(xy, power):
