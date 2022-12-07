@@ -3,14 +3,15 @@ The Two Photon Microscope.
 """
 
 import torch
-from torch import tensor
+from torch import tensor, Tensor
 import numpy as np
 import matplotlib.pyplot as plt
 
 from vector_functions import rotate, cartesian3d
 from ray_plane import Ray, Plane, CoordPlane
-from plot_functions import plot_plane, plot_lens, plot_rays
-from optical import point_source, thin_lens, abbe_lens, snells, galvo_mirror, slm_segment
+from plot_functions import plot_plane, plot_lens, plot_rays, default_viewplane
+from optical import OpticalSystem, point_source, thin_lens, abbe_lens, snells, galvo_mirror, \
+    slm_segment, flat_interface, coverslip_correction
 
 
 # Set default tensor type to double (64 bit)
@@ -23,7 +24,7 @@ torch.set_default_tensor_type('torch.DoubleTensor')
 plt.rc('font', size=12)
 
 
-class TPM():
+class TPM(OpticalSystem):
     """
     The Two Photon Microscope.
 
@@ -46,6 +47,7 @@ class TPM():
         Hence the Galvo Mirrors and SLM are all defined on the same position,
         skipping the 4F system lenses in between them.
         """
+        super().__init__()
 
         # Define refractive indices at wavelength of 715nm
         # References:
@@ -53,7 +55,7 @@ class TPM():
         # https://refractiveindex.info/?shelf=glass&book=soda-lime&page=Rubin-clear
         # https://refractiveindex.info/?shelf=glass&book=SCHOTT-multipurpose&page=D263TECO
         self.n_water = 1.3304
-        self.n_coverslip = 1.5185
+        self.n_obj2_coverslip = 1.5185
 
         # Define coordinate system
         self.coordsystem = cartesian3d()
@@ -108,6 +110,7 @@ class TPM():
         self.fobj2 = self.obj2_tubelength / self.obj2_magnification
         self.obj1_NA = 0.8
         self.obj2_NA = 0.8
+        self.obj2_coverslip_thickness_m = 170e-6
 
         # Initial z-shifts of lens planes
         self.obj1_zshift = tensor((0.,))
@@ -187,18 +190,6 @@ class TPM():
             -x * self.backtrace_source_opening_tan_angle,
             y * self.backtrace_source_opening_tan_angle)
 
-        # Coverslip
-        # Note, the 170um coverslip is ignored as it is modeled as part of the ideal lens
-        # Only the 'extra thickness' is simulated
-        coverslip_normal = rotate(-z, x, self.coverslip_tilt_around_x)
-        coverslip_normal = rotate(coverslip_normal, y, self.coverslip_tilt_around_y)
-
-        coverslip_extra_thickness = self.total_coverslip_thickness - 170e-6
-        self.coverslip_back_plane = Plane(self.sample_plane.position_m, coverslip_normal)
-        self.coverslip_front_plane = Plane(
-            self.coverslip_back_plane.position_m + coverslip_extra_thickness * coverslip_normal,
-            coverslip_normal)
-
         # Objective
         self.OBJ2 = Plane(self.sample_plane.position_m + self.fobj2*z + self.obj2_zshift*z, -z)
         self.L9 = Plane(self.OBJ2.position_m + (self.fobj2 + self.f9 + self.L9_zshift)*z, -z)
@@ -214,6 +205,7 @@ class TPM():
                                        self.cam_ft_xshift*x + self.cam_ft_yshift*y,
                                        self.cam_pixel_size * -x,
                                        self.cam_pixel_size * -y)
+        self.sample.update()
 
     def raytrace(self):
         """
@@ -249,15 +241,13 @@ class TPM():
         self.rays += abbe_lens(self.rays[-1], self.L7, self.f7)
         self.rays += abbe_lens(self.rays[-1], self.OBJ1, self.fobj1, n_out=self.n_water)
 
-        # Backpropagate through water and extra coverslip thickness
-        self.rays.append(self.rays[-1].intersect_plane(self.coverslip_front_plane))
-        self.rays.append(snells(self.rays[-1], self.coverslip_front_plane.normal, self.n_coverslip))
-
-        # Propagate through coverslip
-        self.rays.append(self.rays[-1].intersect_plane(self.coverslip_back_plane))
-        self.rays_on_desired_focus_plane = self.rays[-1].intersect_plane(self.desired_focus_plane)
+        # Propagate through sample
+        self.rays += self.sample.raytrace(self.rays[-1])
 
         # Propagation from objective 2
+        self.rays += [coverslip_correction(
+            self.rays[-1], self.OBJ2.normal, self.obj2_coverslip_thickness_m, self.n_obj2_coverslip,
+            n_out=1.0, propagation_sign=1)]
         self.rays += abbe_lens(self.rays[-1], self.OBJ2, self.fobj2, n_out=1.0)
         self.rays.append(thin_lens(self.rays[-1], self.L9, self.f9))
 
@@ -280,6 +270,8 @@ class TPM():
         """
         origin, x, y, z = self.coordsystem
 
+        ############# Rewrite!
+
         # Place point source at desired focus location
         self.backrays = [point_source(self.desired_focus_plane,
                          self.backtrace_Nx,
@@ -294,7 +286,7 @@ class TPM():
         self.backrays += [self.backrays[-1].intersect_plane(self.slm_plane)]
         return self.backrays[-1]
 
-    def plot(self, ax=plt.gca(), fraction=1):
+    def plot(self, ax, fraction=1):
         """Plot the TPM setup and the current rays."""
 
         # Plot lenses and planes
@@ -308,8 +300,7 @@ class TPM():
 
         plot_lens(ax, self.OBJ1, self.fobj1, scale, ' OBJ1\n')
         plot_plane(ax, self.sample_plane, scale*0.8, '', ' sample plane')
-        plot_plane(ax, self.coverslip_front_plane, scale*0.7, '', ' glass front', plotkwargs={'color': 'blue'})
-        plot_plane(ax, self.coverslip_back_plane, scale*0.6, '', ' glass back', plotkwargs={'color': 'blue'})
+        self.sample.plot(ax)
         plot_lens(ax, self.OBJ2, self.fobj2, 0.75*scale, 'OBJ2\n')
 
         plot_lens(ax, self.L9, self.f9, scale, ' L9\n')
