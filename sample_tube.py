@@ -18,7 +18,7 @@ class SampleTube(OpticalSystem):
         super().__init__()
         origin, x, y, z = cartesian3d()
         self.inner_radius_m = Tensor((350e-6,))
-        self.outer_radius_m = Tensor((500e-6,))
+        self.outer_radius_m = Tensor((485e-6,))
         self.slide_thickness_m = Tensor((1e-3,))
         self.tube_angle = Tensor((0.,))     # Angle of tube around slide normal vector
         self.n_tube = 1.5127                # Schott N-BK7 @715nm
