@@ -143,3 +143,22 @@ class CoordPlane():
         x = dot(direction, self.x) / norm_square(self.x)
         y = dot(direction, self.y) / norm_square(self.y)
         return torch.cat((x, y), -1)
+
+
+def translate(instance, v):
+    """
+    Translate object with position_m property. Returns a new instance.
+
+    Input
+    -----
+        instance    Object that has a position_m property.
+        v           Relative translation vector.
+
+    Output
+    ------
+        instance    New instance of the object class, with new position_m.
+    """
+    new_position_m = instance.position_m + v
+    copied_object = copy.copy(instance)
+    copied_object.position_m = new_position_m
+    return copied_object
