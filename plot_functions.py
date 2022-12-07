@@ -110,7 +110,7 @@ def plot_coords(ax, coords, plotkwargs={'color': 'tab:blue'}):
 
 
 def plot_plane(ax, plane_to_plot, scale=1, text1='', text2='', viewplane=default_viewplane(),
-               plotkwargs={'color': 'black'}):
+               plotkwargs={'color': 'black'}, arrow_plotkwargs={'alpha': 0.5}):
     """
     Plot a plane.
 
@@ -128,6 +128,8 @@ def plot_plane(ax, plane_to_plot, scale=1, text1='', text2='', viewplane=default
         text2           String. Text label 2. Is put at another of the square corners.
         viewplane       CoordPlane. Viewing plane to project positions onto.
         plotkwargs      Dictionary. Keyword arguments to be passed onto the plot function.
+        arrow_plotkwargs    Dictionary. Additional keyword arguments to be passed only for the
+                            arrow. Extends/updates the plotkwargs dictionary.
 
     Output
     ------
@@ -179,14 +181,18 @@ def plot_plane(ax, plane_to_plot, scale=1, text1='', text2='', viewplane=default
 
     parallelogram = ax.plot((Ax, Bx, Cx, Dx, Ax),
                             (Ay, By, Cy, Dy, Ay), **plotkwargs)
-    arrow = ax.arrow(Px, Py, nx, ny, width=0.1*arrow_scale, **plotkwargs)
+
+    # Extend/update plotkwargs with arrow_plotkwargs
+    arrow_plotkwargs_full = plotkwargs.copy()
+    arrow_plotkwargs_full.update(arrow_plotkwargs)
+    arrow = ax.arrow(Px, Py, nx, ny, width=0.05*arrow_scale, **arrow_plotkwargs_full)
     ax.text(Bx, By, text1)
     ax.text(Dx, Dy, text2)
     return (parallelogram, arrow)
 
 
 def plot_lens(ax, lensplane, f, scale=1, pretext1='', text2='', viewplane=default_viewplane(),
-              plotkwargs={'color': 'black'}):
+              plotkwargs={'color': 'black'}, arrow_plotkwargs={'alpha': 0.5}):
     """
     Plot a lens plane
 
@@ -202,6 +208,8 @@ def plot_lens(ax, lensplane, f, scale=1, pretext1='', text2='', viewplane=defaul
         pretext         String. Extra pre-text for text label 1. Is put at one of the corners.
         viewplane       CoordPlane. Viewing plane to project positions onto.
         plotkwargs      Dictionary. Keyword arguments to be passed onto the plot function.
+        arrow_plotkwargs    Dictionary. Additional keyword arguments to be passed only for the
+                            arrow. Extends/updates the plotkwargs dictionary.
 
     Output
     ------
