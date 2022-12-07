@@ -182,7 +182,7 @@ class TPM(OpticalSystem):
 
         # Sample plane
         self.sample_plane = CoordPlane(self.L7.position_m + (self.f7 + 2*self.fobj1 +
-                                       self.sample_zshift) * z, -x, y)
+                                       self.sample_zshift) * z, x, y)
 
         # Desired focal plane: aim focus here, place point source for backtrace here
         self.desired_focus_plane = CoordPlane(
@@ -205,6 +205,8 @@ class TPM(OpticalSystem):
                                        self.cam_ft_xshift*x + self.cam_ft_yshift*y,
                                        self.cam_pixel_size * -x,
                                        self.cam_pixel_size * -y)
+
+        self.sample.sample_plane = self.sample_plane
         self.sample.update()
 
     def raytrace(self):
@@ -300,7 +302,7 @@ class TPM(OpticalSystem):
 
         plot_lens(ax, self.OBJ1, self.fobj1, scale, ' OBJ1\n')
         plot_plane(ax, self.sample_plane, scale*0.8, '', ' sample plane')
-        self.sample.plot(ax)
+        self.sample.plot(ax, plotkwargs={'color': 'green'})
         plot_lens(ax, self.OBJ2, self.fobj2, 0.75*scale, 'OBJ2\n')
 
         plot_lens(ax, self.L9, self.f9, scale, ' L9\n')

@@ -61,9 +61,7 @@ tpm = TPM()
 tpm.set_measurement(matfile)
 tpm.sample = Coverslip()
 tpm.update()
-tpm.sample.coverslip_front_plane = CoordPlane(tpm.sample_plane.position_m.clone(),
-                                        tpm.sample_plane.x.clone(),
-                                        tpm.sample_plane.y.clone())
+tpm.sample.coverslip_front_plane = tpm.sample_plane
 tpm.update()
 tpm.raytrace()
 
@@ -296,10 +294,6 @@ tpm.sample_zshift = tensor((0.,), requires_grad=True)
 tpm.set_measurement(matfile)
 tpm.sample = SampleTube()
 tpm.sample.tube_angle = tensor((np.radians(90.),), requires_grad=True)
-# tpm.sample.slide_top_plane = CoordPlane(tpm.sample_plane.position_m.clone().detach(),
-#                                         tpm.sample_plane.x.clone().detach(),
-#                                         tpm.sample_plane.y.clone().detach())
-tpm.sample.slide_top_plane = tpm.sample_plane
 tpm.sample.inner_radius_m.requires_grad = True
 tpm.sample.outer_radius_m.requires_grad = True
 tpm.update()
@@ -332,7 +326,7 @@ optimizer = torch.optim.Adam([
         {'lr': 2.0e-5, 'params': params_obj1_zshift['other'].values()},
     ], lr=1.0e-5)
 
-iterations = 0
+iterations = 10
 errors = torch.zeros(iterations)
 
 
