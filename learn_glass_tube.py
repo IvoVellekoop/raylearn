@@ -32,8 +32,8 @@ torch.set_default_tensor_type('torch.DoubleTensor')
 do_plot_empty = False
 do_plot_pincushion = False
 do_plot_tube = False
-do_plot_obj1_zshift = True
-do_plot_backtrace = False
+do_plot_obj1_zshift = False
+do_plot_backtrace = True
 do_plot_phase_pattern = True
 
 plt.rc('font', size=12)
@@ -296,6 +296,8 @@ tpm.sample = SampleTube()
 tpm.sample.tube_angle = tensor((np.radians(90.),), requires_grad=True)
 tpm.sample.inner_radius_m.requires_grad = True
 tpm.sample.outer_radius_m.requires_grad = True
+tpm.sample_zshift.requires_grad = True
+tpm.obj2_zshift.requires_grad = True
 tpm.update()
 
 # Parameter groups
@@ -306,7 +308,8 @@ params_obj1_zshift['angle'] = {
     'Tube angle': tpm.sample.tube_angle
 }
 params_obj1_zshift['obj'] = {
-    'Sample Plane zshift': tpm.sample_zshift,
+    'Sample Plane z-shift': tpm.sample_zshift,
+    'OBJ2 z-shift': tpm.obj2_zshift,
 }
 params_obj1_zshift['other'] = {
     # 'Total Coverslip Thickness': tpm.total_coverslip_thickness,
@@ -326,7 +329,7 @@ optimizer = torch.optim.Adam([
         {'lr': 2.0e-5, 'params': params_obj1_zshift['other'].values()},
     ], lr=1.0e-5)
 
-iterations = 1
+iterations = 0
 errors = torch.zeros(iterations)
 
 
@@ -374,7 +377,7 @@ for t in trange:
     optimizer.zero_grad()
 
     # Plot
-    if t % 200 == 0 and do_plot_tube:
+    if t % 100 == 0 and do_plot_tube:
         plt.figure(fig.number)
 
         # Fourier cam
@@ -603,14 +606,14 @@ if do_plot_obj1_zshift:
 ################# Use inference mode
 # Place point source at focal position
 # Choose the opening angle such that the NA is overfilled
-tpm.backtrace_source_opening_tan_angle = 1.5 * np.tan(np.arcsin(tpm.obj1_NA / tpm.n_coverslip))
+tpm.backtrace_source_opening_tan_angle = 1.2 * np.tan(np.arcsin(tpm.obj1_NA / tpm.n_water))
 tpm.update()
 backrays_at_slm = tpm.backtrace()
 
 # Propagate to screen and compute screen coordinates
 coords = tpm.slm_plane.transform_rays(backrays_at_slm).detach()
 
-wavelength_m = 1040e-9
+wavelength_m = 804e-9
 
 # Compute field with interpolate_shader
 pathlength_to_slm = backrays_at_slm.pathlength_m.detach()
@@ -634,12 +637,13 @@ if do_plot_backtrace:
     plot_plane(ax, tpm.slm_plane, 0.8, ' SLM', plotkwargs={'color': 'red'})
     plot_lens(ax, tpm.L5, tpm.f5, scale, ' L5\n')
     plot_lens(ax, tpm.L7, tpm.f7, scale, ' L7\n')
-
     plot_lens(ax, tpm.OBJ1, tpm.fobj1, scale, ' OBJ1\n')
     plot_plane(ax, tpm.sample_plane, scale*0.8, '', ' sample plane')
-    plot_plane(ax, tpm.coverslip_front_plane, scale*0.7, '', ' coverslip\n front', plotkwargs={'color': 'blue'})
-    plot_plane(ax, tpm.coverslip_back_plane, scale*0.6, '', ' coverslip\n back', plotkwargs={'color': 'blue'})
-    plot_rays(ax, tpm.backrays, fraction=0.01)
+    plot_plane(ax, tpm.desired_focus_plane, scale * 0.9, ' Desired\nFocus\nPlane')
+
+    tpm.sample.plot(ax)
+    plot_rays(ax, tpm.backrays, fraction=0.0005)
+
     plt.show()
 
 
@@ -674,5 +678,5 @@ mdict = {
     'total_coverslip_thickness': tpm.total_coverslip_thickness.detach().numpy(),
     'wavelength_m': wavelength_m,
 }
-matfile_out = hdf5storage.savemat(matpath_out, mdict)
-print(f'Saved to {matpath_out}')
+# matfile_out = hdf5storage.savemat(matpath_out, mdict)
+# print(f'Saved to {matpath_out}')

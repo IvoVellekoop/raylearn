@@ -5,7 +5,7 @@ from torch import Tensor
 
 from ray_plane import CoordPlane, copy_update, translate
 from vector_functions import cartesian3d, rotate
-from optical import OpticalSystem, cylinder_interface, flat_interface
+from optical import OpticalSystem, cylinder_interface, flat_interface, point_source
 from plot_functions import plot_cylinder, plot_plane, default_viewplane
 
 
@@ -54,6 +54,8 @@ class SampleTube(OpticalSystem):
 
     def backtrace(self, in_ray):
         rays = []
+        rays += [cylinder_interface(in_ray, self.cyl_plane, self.inner_radius_m, self.n_tube, propagation_sign=1)]
+        rays += [cylinder_interface(rays[-1], self.cyl_plane, self.outer_radius_m, self.n_outside, propagation_sign=1)]
         return rays
 
     def plot(self, ax, viewplane=default_viewplane(), plotkwargs={'color': 'black'}):

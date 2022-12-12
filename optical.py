@@ -58,6 +58,7 @@ class Coverslip(OpticalSystem):
         self.coverslip_front_plane = copy_update(self.sample_plane)
         self.coverslip_back_plane = translate(self.coverslip_front_plane, self.coverslip_thickness_m
                                               * self.coverslip_front_plane.normal)
+        self.desired_focus_plane = copy_update(self.coverslip_back_plane)
 
     def raytrace(self, in_ray):
         rays = [flat_interface(in_ray, self.coverslip_front_plane, self.n_coverslip)]
@@ -419,7 +420,7 @@ def propagate_to_cylinder(in_ray, cylinder_plane, radius_m, propagation_sign=1):
     return out_ray
 
 
-def cylinder_interface(in_ray, cylinder_plane, radius_m, n_new, propagation_sign=1):
+def cylinder_interface(in_ray, cylinder_plane, radius_m, n_new, propagation_sign=1): ####### prop sign should have no default
     """
     Cylinder Interface
     Intersect and refract ray with cylinder with arbitrary orientation.

@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from vector_functions import rotate, cartesian3d
-from ray_plane import Ray, Plane, CoordPlane
+from ray_plane import Ray, Plane, CoordPlane, copy_update
 from plot_functions import plot_plane, plot_lens, plot_rays, default_viewplane
 from optical import OpticalSystem, point_source, thin_lens, abbe_lens, snells, galvo_mirror, \
     slm_segment, flat_interface, coverslip_correction
@@ -184,12 +184,6 @@ class TPM(OpticalSystem):
         self.sample_plane = CoordPlane(self.L7.position_m + (self.f7 + 2*self.fobj1 +
                                        self.sample_zshift) * z, x, y)
 
-        # Desired focal plane: aim focus here, place point source for backtrace here
-        self.desired_focus_plane = CoordPlane(
-            self.sample_plane.position_m + self.desired_focus_position_relative_to_sample_plane,
-            -x * self.backtrace_source_opening_tan_angle,
-            y * self.backtrace_source_opening_tan_angle)
-
         # Objective
         self.OBJ2 = Plane(self.sample_plane.position_m + self.fobj2*z + self.obj2_zshift*z, -z)
         self.L9 = Plane(self.OBJ2.position_m + (self.fobj2 + self.f9 + self.L9_zshift)*z, -z)
@@ -208,6 +202,12 @@ class TPM(OpticalSystem):
 
         self.sample.sample_plane = self.sample_plane
         self.sample.update()
+
+        # Desired focal plane: aim focus here, place point source for backtrace here
+        self.desired_focus_plane = copy_update(self.sample.desired_focus_plane,
+            x=-x * self.backtrace_source_opening_tan_angle,
+            y=y * self.backtrace_source_opening_tan_angle)
+
 
     def raytrace(self):
         """
@@ -272,16 +272,12 @@ class TPM(OpticalSystem):
         """
         origin, x, y, z = self.coordsystem
 
-        ############# Rewrite!
-
         # Place point source at desired focus location
-        self.backrays = [point_source(self.desired_focus_plane,
+        self.backrays = [point_source(self.sample.desired_focus_plane,
                          self.backtrace_Nx,
                          self.backtrace_Ny,
-                         refractive_index=self.n_coverslip)]
-        self.backrays += [self.backrays[-1].intersect_plane(self.coverslip_front_plane)]
-        self.backrays += [snells(self.backrays[-1],
-                          self.coverslip_front_plane.normal, self.n_water)]
+                         refractive_index=self.sample.n_inside)]
+        self.backrays += self.sample.backtrace(self.backrays[-1])
         self.backrays += abbe_lens(self.backrays[-1], self.OBJ1, self.fobj1, n_out=1.0)
         self.backrays += [thin_lens(self.backrays[-1], self.L7, self.f7)]
         self.backrays += [thin_lens(self.backrays[-1], self.L5, self.f5)]
