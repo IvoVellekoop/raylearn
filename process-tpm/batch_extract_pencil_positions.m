@@ -16,7 +16,9 @@ end
 dosavedata = 0;                     % Toggle saving data
 doshowplot = 1;                     % Toggle showing plot of each found position (for debugging)
 dosaveplot = 1;                     % Toggle saving plots
-plotsubdir = 'plot';                % Subdirectory for saving plot frames
+plotsubdir = 'plot';               % Subdirectory for saving plot frames
+fig_size_pix = 700;                 % Figure size in pixels
+
 meanthreshfactor = 5;               % This factor scales the threshold
 bgcornersize = 10;                  % Corner size in pixels. These will be used for noise level estimation.
 percentile = 97;                    % Percentile of the corner pixel values to use
@@ -48,7 +50,7 @@ fprintf('\nTotal data size: %s\nLoading data...\n', bytes2str(bytestotal))
 
 if doshowplot
     fig = figure;
-    fig_resize(900, 1.2, 0, fig);
+    fig_resize(fig_size_pix, 1.2, 0, fig);
     movegui('center');
 end
 
@@ -142,6 +144,7 @@ for d = 1:D
                 
                 if dosaveplot       % Save figures as PNG images
                     figure_path = fullfile(filelist(f).folder, plotsubdir, sprintf('frame_f%i-g%i.png', f, g));
+                    fprintf('Saving figure f%i,g%i to: %s\n', f, g, figure_path)
                     saveas(fig, figure_path)
                 end
             end
@@ -207,12 +210,28 @@ function plotframe(frame, row, col, titlestr)
     % col       Numeric. Column coordinate of beam spot.
     % titlestr  String/char array. Title above plot.
     
-    imagesc(frame);
+    % Compute axis ranges and coords
+    pix_size_mm = 5.5e-3;
+    xsize_mm = size(frame, 2) * pix_size_mm;
+    ysize_mm = size(frame, 1) * pix_size_mm;
+    xdata = [-xsize_mm xsize_mm]/2;
+    ydata = [-ysize_mm ysize_mm]/2;
+    
+    x = pix_size_mm * (row - size(frame, 2)/2);
+    y = pix_size_mm * (col - size(frame, 1)/2);
+    
+    % Plot
+    imagesc(xdata, ydata, frame);
     colorbar;
     axis image
     hold on
-    plot(row, col, '+k')
+    plot(x, y, '+k')
     hold off
+    
+    % Text
     title(titlestr)
+    set(gca, 'fontsize', 14)
+    xlabel('x (mm)')
+    ylabel('y (mm)')
 end
 
