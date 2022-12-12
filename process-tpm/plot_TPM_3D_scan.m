@@ -1,6 +1,10 @@
 clear; close all; clc
 
 % Plot TPM 3D scan
+
+% Note: combine plots with imagemagick:
+% magick montage 0* -tile 3x -geometry +0+0 montage_0.5um-beads-in-25uL-tube.png
+
 forcereset = 0;
 
 if forcereset || ~exist('dirs', 'var')
@@ -16,14 +20,17 @@ end
 %%%%% Automate: M matrix, pixels in frame / pixels per line, zoom
 
 % tifpath = "/home/dani/LocalData/raylearn-data/TPM/TPM-3D-scans/beads-0.5um-in-25uL-cyl-zoom30-zstep0.4um_00002.tif";
-% zoom = 30;
-% factor = 4;
-% zstep_um = 0.4;
-
-tifpath = "/home/dani/LocalData/raylearn-data/TPM/TPM-3D-scans/beads-0.5um-in-25uL-cyl-zoom15-zstep0.5_00001.tif";
-zoom = 15;
+tifpath = "D:\ScientificData\TPM-3D-scans\beads-0.5um-in-25uL-cyl-zoom30-zstep0.4um_00002.tif";
+zoom = 30;
 factor = 4;
-zstep_um = 0.5;
+zstep_um = 0.4;
+
+% % tifpath = "/home/dani/LocalData/raylearn-data/TPM/TPM-3D-scans/beads-0.5um-in-25uL-cyl-zoom15-zstep0.5_00001.tif";
+% tifpath = "D:\ScientificData\TPM-3D-scans\beads-0.5um-in-25uL-cyl-zoom15-zstep0.5_00001.tif";
+% zoom = 15;
+% factor = 4;
+% zstep_um = 0.5;
+
 pixels_per_um = 0.2033 * factor * zoom;
 
 FOV_um = 1/pixels_per_um * 1024;
@@ -69,22 +76,22 @@ im3(framestack, ...
 colormap inferno
 
 fig_resize(650, 1.05);
-savename = ['plots/0.5' 181 'm-beads-in-25' 181 'L-tube-cropped-slice%03i.png'];
+savename = ['../plots/0.5' 181 'm-beads-in-25' 181 'L-tube-cropped-slice%03i.png'];
 
-fig.UserData.slicenum = 21;
+fig.UserData.slicenum = 5;
 
 %% Save plots of a few different slices
 fig.UserData.changeslice(fig, 0)
 ax = gca;
 
-for s = 1:1
-    saveas(fig, sprintf(savename, fig.UserData.slicenum))
-    fig.UserData.changeslice(fig, 0)
-    
+for s = 1:6
     zposition_um = zstep_um * fig.UserData.slicenum - stack_depth_um/2;
     subtitle = ax.Title.String{2,1};
     subtitle = sprintf(['%s, z=%.2f' 181 'm'], subtitle, zposition_um);
     ax.Title.String{2,1} = subtitle;
+    
+    saveas(fig, sprintf(savename, fig.UserData.slicenum))
+    fig.UserData.changeslice(fig, 4)
 end
 
 
