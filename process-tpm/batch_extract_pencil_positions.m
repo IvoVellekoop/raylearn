@@ -13,13 +13,16 @@ if forcereset || ~exist('dirs', 'var')
 end
 
 % Settings
-doshowplot = 0;                     % Toggle showing plot of each found position (for debugging)
-dosave = 1;                         % Toggle saving
+dosavedata = 0;                     % Toggle saving data
+doshowplot = 1;                     % Toggle showing plot of each found position (for debugging)
+dosaveplot = 1;                     % Toggle saving plots
+plotsubdir = 'plot';                % Subdirectory for saving plot frames
 meanthreshfactor = 5;               % This factor scales the threshold
 bgcornersize = 10;                  % Corner size in pixels. These will be used for noise level estimation.
 percentile = 97;                    % Percentile of the corner pixel values to use
 percentilefactor = 2;               % Multiply percentile pixel value with this
 medfiltsize = 5;                    % Size of the median filter
+max_num_pixels_at_edge = 4;         % Maximum number of mask pixels at the edge before a measurement is considered as failed
 inputpattern = [dirs.localdata '/raylearn-data/TPM/pencil-beam-raw/*/raylearn_pencil_beam*'];
 % inputpattern = [dirs.localdata '\raylearn-data\TPM\pencil-beams-split\04-May-2021-grid\raylearn_pencil_beam*'];
 outputgroupfolder = [dirs.localdata '/raylearn-data/TPM/pencil-beam-positions'];
@@ -85,6 +88,10 @@ for d = 1:D
 
             frame_ft_sum = zeros(size(frames_ft(:,:,1)));
             frame_img_sum = zeros(size(frames_img(:,:,1)));
+            
+            if doshowplot && dosaveplot
+                mkdir(fullfile(filelist(f).folder, plotsubdir))
+            end
         end
 
         % Sum of all frames
@@ -98,10 +105,10 @@ for d = 1:D
             frame_img = frames_img(:,:,g);
 
             % Extract pencil beam spot position
-            [col_ft, row_ft, mean_intensity_ft, mean_masked_intensity_ft, threshold_ft, framemask_ft, found_ft] = extract_pencil_position_from_frame(...
+            [col_ft, row_ft, mean_intensity_ft, mean_masked_intensity_ft, threshold_ft, framemask_ft, found_ft, num_pixels_at_edge_ft] = extract_pencil_position_from_frame(...
                 frame_ft, meanthreshfactor, bgcornersize, percentile, percentilefactor, medfiltsize);
             
-            [col_img, row_img, mean_intensity_img, mean_masked_intensity_img, threshold_img, framemask_img, found_img] = extract_pencil_position_from_frame(...
+            [col_img, row_img, mean_intensity_img, mean_masked_intensity_img, threshold_img, framemask_img, found_img, num_pixels_at_edge_img] = extract_pencil_position_from_frame(...
                 frame_img, meanthreshfactor, bgcornersize, percentile, percentilefactor, medfiltsize);
             
             % Count failed detections
@@ -114,24 +121,29 @@ for d = 1:D
                 % Plot original ft frame with position
                 subplot(2,2,1)
                 plotframe(frame_ft, row_ft, col_ft,...
-                    sprintf('Frame\ndir: %i/%i | col: %.1f, row: %.1f', d, D, col_ft, row_ft))
+                    sprintf('Fourier Cam\ndir: %i/%i | col: %.1f, row: %.1f', d, D, col_ft, row_ft))
                 
                 % Plot ft mask with position
                 subplot(2,2,2)
                 plotframe(framemask_ft, row_ft, col_ft,...
-                    sprintf('Mask\nthreshold: %.1f', threshold_ft));
+                    sprintf('Fourier Mask\nthreshold: %.1f', threshold_ft));
                 
                 % Plot original img frame with position
                 subplot(2,2,3)
                 plotframe(frame_img, row_img, col_img,...
-                    sprintf('Frame\ndir: %i/%i | col: %.1f, row: %.1f', d, D, col_ft, row_img))
+                    sprintf('Image Cam\ndir: %i/%i | col: %.1f, row: %.1f', d, D, col_ft, row_img))
                 
                 % Plot img mask with position
                 subplot(2,2,4)
                 plotframe(framemask_img, row_img, col_img,...
-                    sprintf('Mask\nthreshold: %.1f', threshold_img));
+                    sprintf('Image Mask\nthreshold: %.1f', threshold_img));
                 
                 drawnow
+                
+                if dosaveplot       % Save figures as PNG images
+                    figure_path = fullfile(filelist(f).folder, plotsubdir, sprintf('frame_f%i-g%i.png', f, g));
+                    saveas(fig, figure_path)
+                end
             end
             
             % Store found beam spot positions and intensities
@@ -145,7 +157,9 @@ for d = 1:D
             cam_img_mean_intensity(s, g) = mean_intensity_img;
             cam_img_mean_masked_intensity(s, g) = mean_masked_intensity_img;
             
-            found_spot(s, g) = found_ft & found_img;
+            found_spot(s, g) = found_ft & found_img ...
+                & (num_pixels_at_edge_ft  < max_num_pixels_at_edge) ...
+                & (num_pixels_at_edge_img < max_num_pixels_at_edge);
             
             num_processed = num_processed + 1;
         end
@@ -164,7 +178,7 @@ for d = 1:D
     
     
     % Save found beam spot positions
-    if dosave
+    if dosavedata
         disp('Saving file...')
         
         % Construct save path
@@ -178,7 +192,7 @@ for d = 1:D
         save(savepath, '-v7.3', 'copt_ft', 'copt_img', 'sopt', 'p',...
             'cam_ft_col', 'cam_ft_row', 'cam_ft_mean_intensity', 'cam_ft_mean_masked_intensity',...
             'cam_img_col', 'cam_img_row', 'cam_img_mean_intensity', 'cam_img_mean_masked_intensity',...
-            'found_spot')
+            'found_spot', 'found_ft', 'found_img', 'num_pixels_at_edge_ft', 'num_pixels_at_edge_img')
     end
 end
 
