@@ -15,12 +15,14 @@ if forcereset || ~exist('dirs', 'var')
     dirconfig_raylearn
 end
 
+dosave = 0;
+
 %%
 % BMPI/Projects/WAVEFRONTSHAPING/data/TPM/4th gen/calibration/calibration_values.mat
 %%%%% Automate: M matrix, pixels in frame / pixels per line, zoom
 
-% tifpath = "/home/dani/LocalData/raylearn-data/TPM/TPM-3D-scans/beads-0.5um-in-25uL-cyl-zoom30-zstep0.4um_00002.tif";
-tifpath = "D:\ScientificData\TPM-3D-scans\beads-0.5um-in-25uL-cyl-zoom30-zstep0.4um_00002.tif";
+tifpath = "/home/dani/LocalData/raylearn-data/TPM/TPM-3D-scans/beads-0.5um-in-25uL-cyl-zoom30-zstep0.4um_00002.tif";
+% tifpath = "D:\ScientificData\TPM-3D-scans\beads-0.5um-in-25uL-cyl-zoom30-zstep0.4um_00002.tif";
 zoom = 30;
 factor = 4;
 zstep_um = 0.4;
@@ -36,7 +38,9 @@ pixels_per_um = 0.2033 * factor * zoom;
 FOV_um = 1/pixels_per_um * 1024;
 
 %% Load frames
-framestack = [];
+tifinfo = imfinfo(tifpath);
+num_of_frames = length(tifinfo);
+framestack = zeros(tifinfo(1).Width, tifinfo(1).Height, num_of_frames);
 n = 1;
 disp('')
 numchars = 0;
@@ -64,8 +68,8 @@ stack_depth_um = zstep_um * size(framestack, 3);
 um = [' (' 181 'm)'];
 fig = figure;
 dimdata = {[-FOV_um/2 FOV_um/2], [-FOV_um/2 FOV_um/2], [-stack_depth_um/2 stack_depth_um/2]};
-% axesoptions = struct('xlim', [-4 8], 'ylim', [-8 4], 'fontsize', 14);
-axesoptions = struct('fontsize', 14);
+axesoptions = struct('xlim', [-4 8], 'ylim', [-8 4], 'fontsize', 16);
+% axesoptions = struct('fontsize', 14);
 
 % Plot with im3
 im3(framestack, ...
@@ -75,7 +79,8 @@ im3(framestack, ...
     'axesoptions', axesoptions)
 colormap inferno
 
-fig_resize(650, 1.05);
+fig_resize(550, 1.05);
+movegui('center')
 savename = ['../plots/0.5' 181 'm-beads-in-25' 181 'L-tube-cropped-slice%03i.png'];
 
 fig.UserData.slicenum = 5;
@@ -84,15 +89,16 @@ fig.UserData.slicenum = 5;
 fig.UserData.changeslice(fig, 0)
 ax = gca;
 
-for s = 1:6
-    zposition_um = zstep_um * fig.UserData.slicenum - stack_depth_um/2;
-    subtitle = ax.Title.String{2,1};
-    subtitle = sprintf(['%s, z=%.2f' 181 'm'], subtitle, zposition_um);
-    ax.Title.String{2,1} = subtitle;
-    
-    saveas(fig, sprintf(savename, fig.UserData.slicenum))
-    fig.UserData.changeslice(fig, 4)
+if dosave
+    for s = 1:6
+        zposition_um = zstep_um * fig.UserData.slicenum - stack_depth_um/2;
+        subtitle = ax.Title.String{2,1};
+        subtitle = sprintf(['%s, z=%.2f' 181 'm'], subtitle, zposition_um);
+        ax.Title.String{2,1} = subtitle;
+        
+        saveas(fig, sprintf(savename, fig.UserData.slicenum))
+        fig.UserData.changeslice(fig, 4)
+    end
 end
-
 
 
