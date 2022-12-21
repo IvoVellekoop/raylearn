@@ -59,10 +59,10 @@ class SampleTube(OpticalSystem):
         return rays
 
     def plot(self, ax, viewplane=default_viewplane(), plotkwargs={'color': 'black'}):
-        plot_scale = 4
-        plot_cylinder(ax, self.cyl_plane, self.inner_radius_m, 2*plot_scale*self.outer_radius_m, 0,
+        plot_scale = 2
+        plot_cylinder(ax, self.cyl_plane, self.inner_radius_m, 4*plot_scale*self.outer_radius_m, 0,
                       viewplane=viewplane, plotkwargs=plotkwargs)
-        plot_cylinder(ax, self.cyl_plane, self.outer_radius_m, 2*plot_scale*self.outer_radius_m, 0,
+        plot_cylinder(ax, self.cyl_plane, self.outer_radius_m, 4*plot_scale*self.outer_radius_m, 0,
                       viewplane=viewplane, plotkwargs=plotkwargs)
         plot_plane(ax, self.slide_top_plane, scale=plot_scale*self.outer_radius_m,
                    viewplane=viewplane, plotkwargs=plotkwargs)
