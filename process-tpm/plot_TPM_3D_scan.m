@@ -38,30 +38,16 @@ pixels_per_um = 0.2033 * factor * zoom;
 FOV_um = 1/pixels_per_um * 1024;
 
 %% Load frames
-tifinfo = imfinfo(tifpath);
-num_of_frames = length(tifinfo);
-framestack = zeros(tifinfo(1).Width, tifinfo(1).Height, num_of_frames);
-n = 1;
-disp('')
-numchars = 0;
-while true
-    try
-        framestack(:,:,n) = imread(tifpath, n);
-    catch err
-        if strcmp(err.identifier, 'MATLAB:imagesci:rtifc:invalidDirIndex')
-            break;
-        else
-            error(err.message)
-        end
-    end
-    fprintf(repmat('\b', [1 numchars]))
-    numchars = fprintf('Loading frame %i\n', n);
-    
-    n = n+1;
+tifinfo = imfinfo(tifpath);         % Get info about image
+num_of_frames = length(tifinfo);    % Number of frames
+framestack = zeros(tifinfo(1).Width, tifinfo(1).Height, num_of_frames); % Initialize
+
+for n = 1:num_of_frames
+    framestack(:,:,n) = imread(tifpath, n);
 end
 
-framestack(framestack<0) = 0;
 
+framestack(framestack<0) = 0;
 stack_depth_um = zstep_um * size(framestack, 3);
 
 %% Plot
