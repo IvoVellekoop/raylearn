@@ -14,7 +14,7 @@ from tqdm import tqdm
 from plot_functions import plot_coords, format_prefix, plot_rays, plot_lens, plot_plane, default_viewplane
 from testing import MSE
 from tpm import TPM
-from vector_functions import components
+from vector_functions import components, rejection
 from interpolate_shader import interpolate_shader
 from optical import Coverslip
 from sample_tube import SampleTube
@@ -31,7 +31,7 @@ torch.set_default_tensor_type('torch.DoubleTensor')
 
 do_plot_empty = False
 do_plot_pincushion = False
-do_plot_tube = False
+do_plot_tube = True
 do_plot_obj1_zshift = False
 do_plot_backtrace = True
 do_plot_phase_pattern = True
@@ -298,6 +298,10 @@ tpm.sample.inner_radius_m.requires_grad = True
 tpm.sample.outer_radius_m.requires_grad = True
 tpm.sample_zshift.requires_grad = True
 tpm.obj2_zshift.requires_grad = True
+
+tpm.backtrace_Nx = 21
+tpm.backtrace_Ny = 21
+
 tpm.update()
 
 # Parameter groups
@@ -352,14 +356,19 @@ if do_plot_tube:
 
 
 for t in trange:
-    # === Learn === #
+    # === Learn sample === #
     # Forward pass
     tpm.update()
     cam_ft_coords, cam_im_coords = tpm.raytrace()
+    slm_rays = tpm.backtrace()
+    slm_dir_rej = rejection(slm_rays.direction, tpm.slm_plane.normal)
 
     # Compute and print error
     error = MSE(cam_ft_coords_gt, cam_ft_coords) \
-        + MSE(cam_im_coords_gt, cam_im_coords)
+        + MSE(cam_im_coords_gt, cam_im_coords) \
+        + 1e9 * MSE(slm_dir_rej, slm_dir_rej.mean())
+
+    # print(MSE(slm_dir_rej, slm_dir_rej.mean()) / error)
 
     error_value = error.detach().item()
     errors[t] = error_value
@@ -377,7 +386,7 @@ for t in trange:
     optimizer.zero_grad()
 
     # Plot
-    if t % 100 == 0 and do_plot_tube:
+    if t % 500 == 0 and do_plot_tube:
         plt.figure(fig.number)
 
         # Fourier cam
@@ -435,7 +444,7 @@ for groupname in params_obj1_zshift:
             print(f'  {paramname}: {format_prefix(params_obj1_zshift[groupname][paramname], ".3f")}m')
 
 
-if do_plot_tube:
+if do_plot_tube and iterations > 0:
     fig, ax1 = plt.subplots(figsize=(7, 7))
     fig.dpi = 144
 
@@ -537,8 +546,10 @@ if do_plot_obj1_zshift:
 
 
 for t in trange:
-    # === Learn === #
+    # === Learn z-shift === #
     # Forward pass
+    tpm.backtrace_Nx = 300
+    tpm.backtrace_Ny = 300
     tpm.update()
     cam_ft_coords, cam_im_coords = tpm.raytrace()
 
@@ -638,11 +649,14 @@ if do_plot_backtrace:
     plot_lens(ax, tpm.L5, tpm.f5, scale, ' L5\n')
     plot_lens(ax, tpm.L7, tpm.f7, scale, ' L7\n')
     plot_lens(ax, tpm.OBJ1, tpm.fobj1, scale, ' OBJ1\n')
-    plot_plane(ax, tpm.sample_plane, scale*0.8, '', ' sample plane')
-    plot_plane(ax, tpm.desired_focus_plane, scale * 0.9, ' Desired\nFocus\nPlane')
+    # plot_plane(ax, tpm.sample_plane, scale*0.8, '', ' sample plane')
+    plot_plane(ax, tpm.desired_focus_plane, scale * 0.07, ' Desired\n Focus\n Plane')
 
-    tpm.sample.plot(ax)
     plot_rays(ax, tpm.backrays, fraction=0.0005)
+    tpm.sample.plot(ax, plotkwargs={'color': 'green'})
+
+    ax.set_xlabel('optical axis, z (m)')
+    ax.set_ylabel('y (m)')
 
     plt.show()
 
@@ -652,8 +666,8 @@ if do_plot_phase_pattern:
     plt.imshow(np.angle(field_SLM), extent=extent, cmap='twilight', interpolation='nearest')
     plt.title('SLM phase correction pattern, '
               + f'λ={format_prefix(wavelength_m, formatspec=".2f")}m'
-              + f'\ncoverslip={format_prefix(tpm.total_coverslip_thickness, formatspec=".2f")}m,'
-              + f' extra defocus={format_prefix(tpm.obj1_zshift, formatspec=".0f")}m')
+              + f'\ninner radius={format_prefix(tpm.sample.inner_radius_m, formatspec=".0f")}m,'
+              + f' outer radius={format_prefix(tpm.sample.outer_radius_m, formatspec=".0f")}m')
 
     # Draw a circle to indicate NA
     N_verts_NA_circle = 200
@@ -668,15 +682,16 @@ if do_plot_phase_pattern:
     plt.show()
 
 # Save file
-matpath_out = 'LocalData/raylearn-data/TPM/pattern-' \
-    + f'{format_prefix(tpm.total_coverslip_thickness, formatspec=".2f")}m-' \
-    + f'λ{format_prefix(wavelength_m, formatspec=".2f")}m.mat'
+matpath_out = '/home/dani/LocalData/raylearn-data/TPM/pattern-' \
+    + '25uL-tube-' \
+    + f'λ{format_prefix(wavelength_m, formatspec=".1f")}m.mat'
 mdict = {
-    'matpath_pencil_beam_positions': matpath,
+    'matpath_pencil_beam_positions': str(matpath),
     'field_SLM': field_SLM.detach().numpy(),
     'obj1_zshift': tpm.obj1_zshift.detach().numpy(),
-    'total_coverslip_thickness': tpm.total_coverslip_thickness.detach().numpy(),
+    'inner_radius_m': tpm.sample.inner_radius_m.detach().numpy(),
+    'outer_radius_m': tpm.sample.outer_radius_m.detach().numpy(), ########### add more properties
     'wavelength_m': wavelength_m,
 }
-# matfile_out = hdf5storage.savemat(matpath_out, mdict)
-# print(f'Saved to {matpath_out}')
+matfile_out = hdf5storage.savemat(matpath_out, mdict)
+print(f'Saved to {matpath_out}')
