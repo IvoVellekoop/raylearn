@@ -163,3 +163,6 @@ def copy_update(instance, **kwargs):
     copied_object = copy.copy(instance)
     copied_object.__dict__.update(**kwargs)
     return copied_object
+
+# Custom types
+PlaneType = Plane | CoordPlane

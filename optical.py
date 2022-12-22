@@ -11,9 +11,9 @@ import numpy as np
 
 from testing import checkunitvector, machine_epsilon_f64
 from vector_functions import unit, dot, norm_square, rejection, reflection, rotate, components, \
-    cartesian3d
+    cartesian3d, Scalar
 from math_functions import solve_quadratic
-from ray_plane import Ray, CoordPlane, Plane, translate, copy_update
+from ray_plane import Ray, CoordPlane, Plane, translate, copy_update, PlaneType
 from plot_functions import default_viewplane, plot_plane
 
 
@@ -133,7 +133,7 @@ def point_source(source_plane, Nx, Ny, **raykwargs):
     return Ray(source_plane.position_m, direction, **raykwargs)
 
 
-def thin_lens(in_ray, lens, f):
+def thin_lens(in_ray: Ray, lens: PlaneType, f: Scalar) -> Ray:
     """
     Thin lens
     Follows height = tan(angle). Pathlength is corrected for point sources at the front focal plane.
