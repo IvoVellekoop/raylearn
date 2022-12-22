@@ -22,47 +22,53 @@ For complete broadcasting semantics, see https://pytorch.org/docs/stable/notes/b
 """
 
 import torch
+from torch import Tensor
+from typing import Sequence
+
+
+# Custom types
+Scalar = float | Tensor
 
 
 # Vector operations
 
-def dot(v, w):
+def dot(v: Tensor, w: Tensor) -> Tensor:
     """Dot product for ...xMxD vectors, where D is vector dimension."""
     return torch.sum(v*w, dim=-1, keepdim=True)
 
 
-def norm(v):
+def norm(v: Tensor) -> torch.Tensor:
     """L2-norm for ...xMxD vectors, where D is vector dimension."""
     return torch.norm(v, dim=-1, keepdim=True)
 
 
-def norm_square(v):
+def norm_square(v: Tensor) -> Tensor:
     """L2-norm squared for ...xMxD vectors, where D is vector dimension."""
     return dot(v, v)
 
 
-def unit(v):
+def unit(v: Tensor) -> Tensor:
     """Compute unit vectors for ...xMxD vectors, where D is vector dimension."""
     return v / norm(v)
 
 
-def projection(v, w):
+def projection(v: Tensor, w: Tensor) -> Tensor:
     """Vector projection of vector v onto w for ...xMxD vectors, where D is vector dimension."""
     wunit = unit(w)
     return dot(v, wunit) * wunit
 
 
-def rejection(v, w):
+def rejection(v: Tensor, w: Tensor) -> Tensor:
     """Vector rejection of vector v onto w for ...xMxD vectors, where D is vector dimension."""
     return v - projection(v, w)
 
 
-def reflection(v, w):
+def reflection(v: Tensor, w: Tensor) -> Tensor:
     """Reflect vector v along vector w for ...xMxD vectors, where D is vector dimension."""
     return v - 2 * projection(v, w)
 
 
-def cross(v, w):
+def cross(v: Tensor, w: Tensor) -> Tensor:
     """Cross product of vector v and w for ...xMx3 vectors, where 3 is vector dimension."""
     vx, vy, vz = v.unbind(-1)
     wx, wy, wz = w.unbind(-1)
@@ -72,7 +78,7 @@ def cross(v, w):
     return torch.stack((ux, uy, uz), dim=-1)
 
 
-def rotate(v, u, theta):
+def rotate(v: Tensor, u: Tensor, theta: Scalar) -> Tensor:
     """
     Rotate vector v theta radians around unit vector u, using Rodriques' rotation formula.
 
@@ -91,14 +97,14 @@ def rotate(v, u, theta):
     return (1-C)*dot(v, u)*u + C*v + S*cross(u, v)
 
 
-def area_para(v, w):
+def area_para(v: Tensor, w: Tensor) -> Tensor:
     """Compute parallelogram area for ...xMx2 vectors, where 2 is vector dimension."""
     vx, vy = components(v)
     wx, wy = components(w)
     return vx*wy - vy*wx
 
 
-def components(v):
+def components(v: Tensor) -> Sequence[Tensor]:
     """
     Components
     Return spatial vector components vx,vy,vz... of ...xMxD vector v as tuple of ...xMx1 scalars.
@@ -109,7 +115,7 @@ def components(v):
     return v.unsqueeze(-2).unbind(-1)
 
 
-def cartesian3d():
+def cartesian3d() -> Sequence[Tensor]:
     """Return default tuple of an origin vector and 3 orthonormal 3D vectors."""
     origin = torch.tensor((0., 0., 0.))
     x = torch.tensor((1., 0., 0.))
