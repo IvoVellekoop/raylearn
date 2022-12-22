@@ -5,6 +5,7 @@ RayLearn is a sequential ray tracer written in PyTorch, capable of both forward 
 ## Installing the required Python packages from Anaconda
 
 1a: Install Anaconda or Miniconda either from the website www.anaconda.com,
+
 1b: or install using your package manager. On Windows, you can use winget to install it:
 `winget install Anaconda.Anaconda3`
 
@@ -45,24 +46,31 @@ Install the VS Code flavour of your choosing: VS Code (Microsoft's License, part
 **VS Codium and Code OSS:**
 
 1a: Download VS Codium from the website https://vscodium.com/
+
 1b: or install with a package manager,
     - On Windows, e.g.: `winget install VSCodium.VSCodium`
     - On Linux, if it's not available through your distribution's package manager, there is the option to use Flatpak or Snap.
 
-2: Install the extensions for debugging
+2: Install the extensions for debugging:
 
 - Go to View → Extensions, or Sidebar → Extensions
 - Install the *Anaconda Extension Pack* by ms-python
+- Optionally install *Pyright* by ms-pyright for static type checking,
+  or any type checker of your own choosing.
 
 **VS Code:**
 
 1a: Download from the website https://code.visualstudio.com/
+
 1b: or install with a package manager, e.g. on Windows: `winget install Microsoft.VisualStudioCode`
 
-2: Install the extensions for debugging
+2: Install the extensions for debugging:
 
 - Go to View → Extensions, or the sidebar → Extensions
 - Install the *Python* extension by Microsoft
+- Optionally check if the *Pylance* extension (for static type checking) is
+  automatically installed along with the *Python* extension. If not, you can
+  install it manually. Or use any type checker of your own choosing.
 
 ## Getting started
 
