@@ -259,7 +259,7 @@ def plot_cylinder(ax, cylinder_plane, radius_m, length_m, offset_m, num_verts_ci
         lines_3D = cylinder_plane.position_m + circle_centers \
             + x * radius_m * torch.Tensor((-1, 1)).view(-1, 1)
         lines_x, lines_y = viewplane.transform_points(lines_3D).detach().unbind(-1)  # Project 2D
-        lines += [ax.plot(lines_x, lines_y, **plotkwargs)]                  # Plot straight lines
+        lines += [ax.plot(lines_x.squeeze(), lines_y.squeeze(), **plotkwargs)]  # Straight lines
     else:
         # Cylinder is pointed at viewplane. Use cylinder vectors and skip drawing straight lines.
         x = cylinder_plane.x
@@ -271,5 +271,6 @@ def plot_cylinder(ax, cylinder_plane, radius_m, length_m, offset_m, num_verts_ci
     circles_3D = cylinder_plane.position_m + circle_centers + radius_m \
         * (torch.cos(theta_vert_circle) * x + torch.sin(theta_vert_circle) * y)
 
-    x_circles, y_circles = viewplane.transform_points(circles_3D).detach().unbind(-1)  # Viewplane projection
-    lines += [ax.plot(x_circles.T, y_circles.T, **plotkwargs)]              # Plot projected circles
+    # Project circles onto viewplane and plot
+    x_circles, y_circles = viewplane.transform_points(circles_3D).detach().unbind(-1)
+    lines += [ax.plot(x_circles.T.squeeze(), y_circles.T.squeeze(), **plotkwargs)]
