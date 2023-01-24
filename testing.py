@@ -21,8 +21,8 @@ def comparetensors(a, b, error=1000):
 
 
 def checkunitvector(a, error=1000):
-    """Check wether tensor is a unit vector."""
-    return comparetensors(norm(a), 1, error)
+    """Check wether tensor is a unit vector (or NaN)."""
+    return comparetensors(norm(a).nan_to_num(nan=1), 1, error)
 
 
 def MSE(a, b, dim=()):
