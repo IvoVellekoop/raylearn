@@ -23,7 +23,7 @@ do_plot_tube = True
 
 # Define 'measurement' Galvo and SLM settings
 matfile = {
-    'p/rects': 0.3 * torch.tensor(((0., 1, 0, 0), (-1, 0, 0, 0), (0, 0, 0, 0), (1, 0, 0, 0), (0, -1, 0, 0))).T,
+    'p/rects': 0.4 * torch.tensor(((0., 1, 0, 0), (-1, 0, 0, 0), (0, 0, 0, 0), (1, 0, 0, 0), (0, -1, 0, 0))).T,
     'p/galvoXs': ((0, -0.04, 0, 0.04, 0),),
     'p/galvoYs': ((0.04, 0, 0, 0, -0.04),),
     'p/GalvoXcenter': (0.,),
@@ -34,12 +34,23 @@ tpm = TPM()
 # Ground truth
 tpm.set_measurement(matfile)
 tpm.sample = SampleTube()
-tpm.sample_zshift = tensor((0.,))
 tpm.sample.tube_angle = tensor((np.radians(90.),))
-tpm.obj2_zshift = tensor((0e-6,))
+tpm.sample_zshift = tensor((150e-6,))
+tpm.obj2_zshift = tensor((310e-6,))
 
 tpm.update()
 cam_ft_coords_synth_gt, cam_im_coords_synth_gt = tpm.raytrace()
+
+
+# # Plot ground truth raytracing
+# ax_tpm = plt.gca()
+# tpm.plot(ax_tpm)
+# viewplane = default_viewplane()
+# x_sample, y_sample = viewplane.transform_points(tpm.sample.slide_top_plane.position_m)
+# ax_tpm.set_xlim((x_sample - 3 * tpm.sample.outer_radius_m).detach(), (x_sample + 1.5*tpm.sample.slide_thickness_m).detach())
+# ax_tpm.set_ylim((y_sample - 2 * tpm.sample.outer_radius_m).detach(), (y_sample + 2 * tpm.sample.outer_radius_m).detach())
+# ax_tpm.set_aspect(1)
+# plt.show()
 
 
 # noise = torch.linspace()
@@ -47,10 +58,12 @@ cam_ft_coords_synth_gt, cam_im_coords_synth_gt = tpm.raytrace()
 
 # for t in trange:
 # Initial conditions
-tpm.sample.inner_radius_m = tensor((400e-6,), requires_grad=True)
-tpm.sample.outer_radius_m = tensor((401e-6,), requires_grad=True)
-tpm.sample_zshift = tensor((0e-6,), requires_grad=True)
-tpm.obj2_zshift = tensor((0e-6,), requires_grad=True)
+tpm.sample.shell_thickness_m = tensor((100e-6,), requires_grad=True)
+tpm.sample.outer_radius_m = tensor((450e-6,), requires_grad=True)
+# tpm.sample_zshift = tensor((-50e-6,), requires_grad=True)
+# tpm.obj2_zshift = tensor((0e-6,), requires_grad=True)
+tpm.sample_zshift.requires_grad = True
+tpm.obj2_zshift.requires_grad = True
 
 tpm.backtrace_Nx = 21
 tpm.backtrace_Ny = 21
@@ -58,19 +71,19 @@ tpm.backtrace_Ny = 21
 tpm.update()
 
 # Parameter groups
-params_obj1_zshift = {}
-params_obj1_zshift['angle'] = {
+params = {}
+params['angle'] = {
     # 'Tube angle': tpm.sample.tube_angle
 }
-params_obj1_zshift['obj'] = {
+params['obj'] = {
     'Sample Plane z-shift': tpm.sample_zshift,
-    # 'OBJ2 z-shift': tpm.obj2_zshift,
+    'OBJ2 z-shift': tpm.obj2_zshift,
 }
-params_obj1_zshift['other'] = {
+params['other'] = {
     # 'Total Coverslip Thickness': tpm.total_coverslip_thickness,
     'cam im xshift': tpm.cam_im_xshift,
     'cam im yshift': tpm.cam_im_yshift,
-    'inner radius': tpm.sample.inner_radius_m,
+    'shell thickness': tpm.sample.shell_thickness_m,
     'outer radius': tpm.sample.outer_radius_m,
 }
 
@@ -79,20 +92,20 @@ params_obj1_zshift['other'] = {
 
 # Define optimizer
 optimizer = torch.optim.Adam([
-        {'lr': 2.0e-2, 'params': params_obj1_zshift['angle'].values()},
-        {'lr': 2.0e-4, 'params': params_obj1_zshift['obj'].values()},
-        {'lr': 6.0e-5, 'params': params_obj1_zshift['other'].values()},
+        {'lr': 2.0e-2, 'params': params['angle'].values()},
+        {'lr': 3.0e-5, 'params': params['obj'].values()},
+        {'lr': 3.0e-5, 'params': params['other'].values()},
     ], lr=1.0e-5)
 
-iterations = 1500
+iterations = 1200
 errors = torch.zeros(iterations)
 
 
 # Initialize logs for tracking each parameter
 params_obj1_zshift_logs = {}
-for groupname in params_obj1_zshift:
+for groupname in params:
     params_obj1_zshift_logs[groupname] = {}
-    for paramname in params_obj1_zshift[groupname]:
+    for paramname in params[groupname]:
         params_obj1_zshift_logs[groupname][paramname] = torch.zeros(iterations)
 
 trange = tqdm(range(iterations), desc='error: -')
@@ -124,9 +137,9 @@ for t in trange:
     error_value = error.detach().item()
     errors[t] = error_value
 
-    for groupname in params_obj1_zshift:
-        for paramname in params_obj1_zshift[groupname]:
-            params_obj1_zshift_logs[groupname][paramname][t] = params_obj1_zshift[groupname][paramname].detach().item()
+    for groupname in params:
+        for paramname in params[groupname]:
+            params_obj1_zshift_logs[groupname][paramname][t] = params[groupname][paramname].detach().item()
 
     trange.desc = f'error: {error_value:<8.3g}' \
         + f'coverslip thickness: {format_prefix(tpm.total_coverslip_thickness, "8.3f")}m'
@@ -186,13 +199,13 @@ for t in trange:
         plt.draw()
         plt.pause(1e-3)
 
-for groupname in params_obj1_zshift:
+for groupname in params:
     print('\n' + groupname + ':')
-    for paramname in params_obj1_zshift[groupname]:
+    for paramname in params[groupname]:
         if groupname == 'angle':
-            print(f'  {paramname}: {params_obj1_zshift[groupname][paramname].detach().item():.3f}rad')
+            print(f'  {paramname}: {params[groupname][paramname].detach().item():.3f}rad')
         else:
-            print(f'  {paramname}: {format_prefix(params_obj1_zshift[groupname][paramname], ".3f")}m')
+            print(f'  {paramname}: {format_prefix(params[groupname][paramname], ".3f")}m')
 
 
 if do_plot_tube and iterations > 0:
@@ -209,7 +222,7 @@ if do_plot_tube and iterations > 0:
     ax1.legend()
 
     ax2 = ax1.twinx()
-    for groupname in params_obj1_zshift:
+    for groupname in params:
         for paramname in params_obj1_zshift_logs[groupname]:
             ax2.plot(params_obj1_zshift_logs[groupname][paramname], label=paramname)
     ax2.set_ylabel('Parameter (m | rad)')

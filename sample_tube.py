@@ -18,7 +18,7 @@ class SampleTube(OpticalSystem):
     def __init__(self):
         super().__init__()
         origin, x, y, z = cartesian3d()
-        self.inner_radius_m = Tensor((350e-6,))
+        self.shell_thickness_m = Tensor((135e-6,))
         self.outer_radius_m = Tensor((485e-6,))
         self.slide_thickness_m = Tensor((1e-3,))
         self.tube_angle = Tensor((0.,))     # Angle of tube around slide normal vector
@@ -29,6 +29,7 @@ class SampleTube(OpticalSystem):
         self.sample_plane = CoordPlane(origin, x, y)
 
     def update(self):
+        self.inner_radius_m = self.outer_radius_m - self.shell_thickness_m
         self.slide_top_plane = copy_update(self.sample_plane, x=-self.sample_plane.x)
         self.slide_bottom_plane = translate(self.slide_top_plane,
                                             -self.slide_thickness_m*self.slide_top_plane.normal)
