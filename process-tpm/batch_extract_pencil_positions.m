@@ -13,17 +13,16 @@ if forcereset || ~exist('dirs', 'var')
 end
 
 % Settings
-dosavedata = 0;                     % Toggle saving data
-doshowplot = 1;                     % Toggle showing plot of each found position (for debugging)
-dosaveplot = 1;                     % Toggle saving plots
-plotsubdir = 'plot';               % Subdirectory for saving plot frames
+dosavedata = 1;                     % Toggle saving data
+doshowplot = 0;                     % Toggle showing plot of each found position (for debugging)
+dosaveplot = 0;                     % Toggle saving plots
+plotsubdir = 'plot';                % Subdirectory for saving plot frames
 fig_size_pix = 700;                 % Figure size in pixels
 
-meanthreshfactor = 5;               % This factor scales the threshold
-bgcornersize = 10;                  % Corner size in pixels. These will be used for noise level estimation.
-percentile = 97;                    % Percentile of the corner pixel values to use
-percentilefactor = 2;               % Multiply percentile pixel value with this
+percentile = 99.7;                  % Percentile of the frame values to use
+percentilefactor = 0.70;            % Multiply percentile pixel value with this
 medfiltsize = 5;                    % Size of the median filter
+erodestrel = strel('disk', 4);      % Erode filter structering element
 max_num_pixels_at_edge = 4;         % Maximum number of mask pixels at the edge before a measurement is considered as failed
 inputpattern = [dirs.localdata '/raylearn-data/TPM/pencil-beam-raw/*/raylearn_pencil_beam*'];
 % inputpattern = [dirs.localdata '\raylearn-data\TPM\pencil-beams-split\04-May-2021-grid\raylearn_pencil_beam*'];
@@ -105,15 +104,20 @@ for d = 1:D
         
         % Loop over frames
         for g=1:G
-            frame_ft = frames_ft(:,:,g);
-            frame_img = frames_img(:,:,g);
+            rawframe_ft = frames_ft(:,:,g);
+            frame_ft = rawframe_ft - single(darkframe_ft);        % Substract darkframe
+            frame_ft(frame_ft < 0) = 0;                           % Remove < noise
+            
+            rawframe_img = frames_img(:,:,g);
+            frame_img = rawframe_img - single(darkframe_img);     % Substract darkframe
+            frame_img(frame_img < 0) = 0;                         % Remove < noise
 
             % Extract pencil beam spot position
             [col_ft, row_ft, mean_intensity_ft, mean_masked_intensity_ft, threshold_ft, framemask_ft, found_ft, num_pixels_at_edge_ft] = extract_pencil_position_from_frame(...
-                frame_ft, meanthreshfactor, bgcornersize, percentile, percentilefactor, medfiltsize);
+                frame_ft, percentile, percentilefactor, medfiltsize, erodestrel);
             
             [col_img, row_img, mean_intensity_img, mean_masked_intensity_img, threshold_img, framemask_img, found_img, num_pixels_at_edge_img] = extract_pencil_position_from_frame(...
-                frame_img, meanthreshfactor, bgcornersize, percentile, percentilefactor, medfiltsize);
+                frame_img, percentile, percentilefactor, medfiltsize, erodestrel);
             
             % Count failed detections
             total_found = total_found + found_ft*found_img;

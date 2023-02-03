@@ -1,5 +1,5 @@
 function [col, row, mean_intensity, mean_masked_intensity, threshold, framemask, found, num_pixels_at_edge] =...
-    extract_pencil_position_from_frame(frame, meanthreshfactor, bgcornersize, percentile, percentilefactor, medfiltsize)
+    extract_pencil_position_from_frame(frame, percentile, percentilefactor, medfiltsize, erodestrel)
     % Extract Pencil Position Extract the column and row of the center of a pencil beam spot in an
     % image. A threshold is determined as the mean of the image multiplied by the meanthreshfactor
     % argument, or a factor times the percentile of the corner pixels, whichever is bigger. The
@@ -9,13 +9,10 @@ function [col, row, mean_intensity, mean_masked_intensity, threshold, framemask,
     %
     % Input:
     % frame             2D numeric array containing the image.
-    % meanthreshfactor  Positive scalar. This factor scales the threshold.
-    % bgcornersize      Positive int. Size in pixels of corner square regions, which will be used
-    %                   to determine background level.
-    % percentile        Non-negative scalar. Percentile of corner pixel values to determine
-    %                   background level.
-    % percentilefactor  
+    % percentile        Non-negative scalar. Percentile of pixel values to determine threshold.
+    % percentilefactor  Factor to multiply with percentile to determine threshold.
     % medfiltsize       Positive integer. Size of the median filter.
+    % erodestrel        Structering element for erode operation.
     %
     % Output:
     % col, row          Column and row of the center of the pencil beam spot in the frame.
@@ -29,16 +26,12 @@ function [col, row, mean_intensity, mean_masked_intensity, threshold, framemask,
     
     % Check input
     validateattributes(frame, {'numeric'}, {'2d'});
-    validateattributes(meanthreshfactor, {'numeric'}, {'scalar', 'positive'});
     validateattributes(medfiltsize, {'numeric'}, {'scalar', 'positive', 'integer'});
     
     % Compute threshold and frame mask
-    b = bgcornersize;
-    cornerpixels = [frame(1:b, 1:b) frame(1:b, end-b+1:end)...          % Collect corner pixels
-        frame(end-b+1:end, 1:b) frame(end-b+1:end, end-b+1:end)];
-    threshold = max(meanthreshfactor * mean(frame, 'all'),...
-        percentilefactor * prctile(cornerpixels, percentile, 'all'));
-    framemask = medfilt2(frame > threshold, [medfiltsize medfiltsize]);
+    threshold = percentilefactor * prctile(frame, percentile, 'all');           % Compute threshold
+    framemask_medfilt = medfilt2(frame > threshold, [medfiltsize medfiltsize]); % Median filter
+    framemask = imerode(framemask_medfilt, erodestrel);
     masked_frame = framemask .* frame;
     
     % Determine intensity
@@ -58,33 +51,4 @@ function [col, row, mean_intensity, mean_masked_intensity, threshold, framemask,
         found = false;
     end
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
