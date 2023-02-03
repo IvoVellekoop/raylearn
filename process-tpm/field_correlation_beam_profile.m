@@ -18,13 +18,15 @@ n_1 = 1.3290;           % Refractive index immersion water
 n_2 = 1.5171;           % Refractive index sample
 d_act = 1000e-6;        % Actual focus depth
 NA = 0.8;               % Numerical Aperture
+f_obj1 = 12.5e-3;       % Objective focal length
 
 [field_SLM, phase_SLM, kz_2] = defocusfree_spherical_aberrations(...
     n_1, n_2, d_act, wavelength, NA, num_pixels);
 
 % Compute gaussian field amplitude
-W_m = 10e-3;            % Beam profile gaussian width in m
-x_m = linspace(-10e-3, 10e-3, size(field_SLM, 1));
+W_m = 2*5.9e-3;         % Fit beam profile gaussian width in m
+x_max = f_obj1 * NA;
+x_m = linspace(-x_max, x_max, size(field_SLM, 1));
 y_m = x_m';
 r2_m2 = x_m.*x_m + y_m.*y_m;
 field_amplitude = exp(-r2_m2 ./ (W_m.^2));
