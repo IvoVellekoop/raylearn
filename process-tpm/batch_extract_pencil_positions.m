@@ -81,11 +81,13 @@ for d = 1:D
             cam_ft_row  = nan(F, G);
             cam_ft_mean_intensity = nan(F, G);
             cam_ft_mean_masked_intensity = nan(F, G);
+            cam_ft_mask_area = nan(F, G);
             
             cam_img_col = nan(F, G);
             cam_img_row = nan(F, G);
             cam_img_mean_intensity = nan(F, G);
             cam_img_mean_masked_intensity = nan(F, G);
+            cam_img_mask_area = nan(F, G);
             found_spot = false(F, G);
 
             frame_ft_sum = zeros(size(frames_ft(:,:,1)));
@@ -154,11 +156,13 @@ for d = 1:D
             cam_ft_row(s, g) = row_ft;
             cam_ft_mean_intensity(s, g) = mean_intensity_ft;
             cam_ft_mean_masked_intensity(s, g) = mean_masked_intensity_ft;
+            cam_ft_mask_area(s, g) = sum(framemask_ft, [1 2]);
             
             cam_img_col(s,g) = col_img;
             cam_img_row(s,g) = row_img;
             cam_img_mean_intensity(s, g) = mean_intensity_img;
             cam_img_mean_masked_intensity(s, g) = mean_masked_intensity_img;
+            cam_img_mask_area(s, g) = sum(framemask_ft, [1 2]);
             
             found_spot(s, g) = found_ft & found_img ...
                 & (num_pixels_at_edge_ft  < max_num_pixels_at_edge) ...
