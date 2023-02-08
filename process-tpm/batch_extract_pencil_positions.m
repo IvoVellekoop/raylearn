@@ -121,7 +121,25 @@ for d = 1:D
             
             % Count failed detections
             total_found = total_found + found_ft*found_img;
-            
+
+            % Store found beam spot positions and intensities
+            cam_ft_col(s, g) = col_ft;
+            cam_ft_row(s, g) = row_ft;
+            cam_ft_mean_intensity(s, g) = mean_intensity_ft;
+            cam_ft_mean_masked_intensity(s, g) = mean_masked_intensity_ft;
+            cam_ft_mask_area(s, g) = sum(framemask_ft, [1 2]);
+
+            cam_img_col(s,g) = col_img;
+            cam_img_row(s,g) = row_img;
+            cam_img_mean_intensity(s, g) = mean_intensity_img;
+            cam_img_mean_masked_intensity(s, g) = mean_masked_intensity_img;
+            cam_img_mask_area(s, g) = sum(framemask_img, [1 2]);
+
+            found_spot(s, g) = found_ft & found_img ...
+                & (num_pixels_at_edge_ft  < max_num_pixels_at_edge) ...
+                & (num_pixels_at_edge_img < max_num_pixels_at_edge);
+
+
             % Show plot of found pencil beam positions on frame
             if doshowplot
                 figure(fig);
@@ -154,23 +172,6 @@ for d = 1:D
                     saveas(fig, figure_path)
                 end
             end
-            
-            % Store found beam spot positions and intensities
-            cam_ft_col(s, g) = col_ft;
-            cam_ft_row(s, g) = row_ft;
-            cam_ft_mean_intensity(s, g) = mean_intensity_ft;
-            cam_ft_mean_masked_intensity(s, g) = mean_masked_intensity_ft;
-            cam_ft_mask_area(s, g) = sum(framemask_ft, [1 2]);
-            
-            cam_img_col(s,g) = col_img;
-            cam_img_row(s,g) = row_img;
-            cam_img_mean_intensity(s, g) = mean_intensity_img;
-            cam_img_mean_masked_intensity(s, g) = mean_masked_intensity_img;
-            cam_img_mask_area(s, g) = sum(framemask_img, [1 2]);
-            
-            found_spot(s, g) = found_ft & found_img ...
-                & (num_pixels_at_edge_ft  < max_num_pixels_at_edge) ...
-                & (num_pixels_at_edge_img < max_num_pixels_at_edge);
             
             num_processed = num_processed + 1;
         end
