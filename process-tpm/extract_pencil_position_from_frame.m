@@ -1,5 +1,5 @@
 function [col, row, mean_intensity, mean_masked_intensity, threshold, framemask, found, num_pixels_at_edge] =...
-    extract_pencil_position_from_frame(frame, percentile, percentilefactor, medfiltsize, erodestrel)
+    extract_pencil_position_from_frame(frame, percentile, percentilefactor, min_threshold, min_mask_size_pix, medfiltsize, erodestrel)
     % Extract Pencil Position Extract the column and row of the center of a pencil beam spot in an
     % image. A threshold is determined as the mean of the image multiplied by the meanthreshfactor
     % argument, or a factor times the percentile of the corner pixels, whichever is bigger. The
@@ -29,7 +29,8 @@ function [col, row, mean_intensity, mean_masked_intensity, threshold, framemask,
     validateattributes(medfiltsize, {'numeric'}, {'scalar', 'positive', 'integer'});
     
     % Compute threshold and frame mask
-    threshold = percentilefactor * prctile(frame, percentile, 'all');           % Compute threshold
+    threshold_prctile = percentilefactor * prctile(frame, percentile, 'all');   % Compute threshold
+    threshold = max(threshold_prctile, min_threshold);
     framemask_medfilt = medfilt2(frame > threshold, [medfiltsize medfiltsize]); % Median filter
     framemask = imerode(framemask_medfilt, erodestrel);
     masked_frame = framemask .* frame;

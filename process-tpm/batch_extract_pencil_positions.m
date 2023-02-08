@@ -17,10 +17,12 @@ dosavedata = 1;                     % Toggle saving data
 doshowplot = 0;                     % Toggle showing plot of each found position (for debugging)
 dosaveplot = 0;                     % Toggle saving plots
 plotsubdir = 'plot';                % Subdirectory for saving plot frames
-fig_size_pix = 700;                 % Figure size in pixels
+fig_size_pix = 800;                 % Figure size in pixels
 
 percentile = 99.7;                  % Percentile of the frame values to use
 percentilefactor = 0.70;            % Multiply percentile pixel value with this
+min_threshold = 300;                % Minimum threshold value
+min_mask_size_pix = 1000;           % Minimum mask size in pixels
 medfiltsize = 5;                    % Size of the median filter
 erodestrel = strel('disk', 4);      % Erode filter structering element
 max_num_pixels_at_edge = 4;         % Maximum number of mask pixels at the edge before a measurement is considered as failed
@@ -114,13 +116,10 @@ for d = 1:D
 
             % Extract pencil beam spot position
             [col_ft, row_ft, mean_intensity_ft, mean_masked_intensity_ft, threshold_ft, framemask_ft, found_ft, num_pixels_at_edge_ft] = extract_pencil_position_from_frame(...
-                frame_ft, percentile, percentilefactor, medfiltsize, erodestrel);
+                frame_ft, percentile, percentilefactor, min_threshold, min_mask_size_pix, medfiltsize, erodestrel);
             
             [col_img, row_img, mean_intensity_img, mean_masked_intensity_img, threshold_img, framemask_img, found_img, num_pixels_at_edge_img] = extract_pencil_position_from_frame(...
-                frame_img, percentile, percentilefactor, medfiltsize, erodestrel);
-            
-            % Count failed detections
-            total_found = total_found + found_ft*found_img;
+                frame_img, percentile, percentilefactor, min_threshold, min_mask_size_pix, medfiltsize, erodestrel);
 
             % Store found beam spot positions and intensities
             cam_ft_col(s, g) = col_ft;
@@ -137,7 +136,12 @@ for d = 1:D
 
             found_spot(s, g) = found_ft & found_img ...
                 & (num_pixels_at_edge_ft  < max_num_pixels_at_edge) ...
-                & (num_pixels_at_edge_img < max_num_pixels_at_edge);
+                & (num_pixels_at_edge_img < max_num_pixels_at_edge) ...
+                & cam_ft_mask_area(s, g) > min_mask_size_pix ...
+                & cam_img_mask_area(s, g) > min_mask_size_pix;
+            
+            % Count failed detections
+            total_found = total_found + found_spot(s, g);
 
 
             % Show plot of found pencil beam positions on frame
@@ -152,7 +156,7 @@ for d = 1:D
                 % Plot ft mask with position
                 subplot(2,2,2)
                 plotframe(framemask_ft, row_ft, col_ft,...
-                    sprintf('Fourier Mask\nthreshold: %.1f', threshold_ft));
+                    sprintf('Fourier Mask\nthreshold: %.1f\nMask area: %ipix', threshold_ft, cam_ft_mask_area(s, g)));
                 
                 % Plot original img frame with position
                 subplot(2,2,3)
@@ -162,7 +166,7 @@ for d = 1:D
                 % Plot img mask with position
                 subplot(2,2,4)
                 plotframe(framemask_img, row_img, col_img,...
-                    sprintf('Image Mask\nthreshold: %.1f', threshold_img));
+                    sprintf('Image Mask\nthreshold: %.1f\nMask area: %ipix', threshold_img, cam_img_mask_area(s, g)));
                 
                 drawnow
                 
@@ -204,8 +208,7 @@ for d = 1:D
         save(savepath, '-v7.3', 'copt_ft', 'copt_img', 'sopt', 'p',...
             'cam_ft_col', 'cam_ft_row', 'cam_ft_mean_intensity', 'cam_ft_mean_masked_intensity',...
             'cam_img_col', 'cam_img_row', 'cam_img_mean_intensity', 'cam_img_mean_masked_intensity',...
-            'cam_ft_mask_area', 'cam_img_mask_area', ...
-            'found_spot', 'found_ft', 'found_img', 'num_pixels_at_edge_ft', 'num_pixels_at_edge_img')
+            'cam_ft_mask_area', 'cam_img_mask_area', 'found_spot')
     end
 end
 
