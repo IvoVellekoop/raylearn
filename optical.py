@@ -12,7 +12,7 @@ import numpy as np
 from testing import checkunitvector, machine_epsilon_f64
 from vector_functions import unit, dot, norm_square, rejection, reflection, rotate, components, \
     cartesian3d, Scalar
-from math_functions import solve_quadratic
+from math_functions import solve_quadratic, sign
 from ray_plane import Ray, CoordPlane, Plane, translate, copy_update, PlaneType
 from plot_functions import default_viewplane, plot_plane
 
@@ -155,7 +155,7 @@ def thin_lens(in_ray: Ray, lens: PlaneType, f: Scalar) -> Ray:
     """
 
     # Flip lens normal if in_ray is coming from opposite direction (required for backpropagation)
-    propagation_sign = torch.sign(dot(lens.normal, lens.position_m - in_ray.position_m))
+    propagation_sign = sign(dot(lens.normal, lens.position_m - in_ray.position_m))
     normal = -lens.normal * propagation_sign
 
     # Define useful points for lens
@@ -201,11 +201,11 @@ def abbe_lens(in_ray, lens, f, n_out=1.0):
     """
 
     # Determine propagation direction (forward or backward)
-    propagation_sign = torch.sign(dot(lens.normal, lens.position_m - in_ray.position_m)
+    propagation_sign = sign(dot(lens.normal, lens.position_m - in_ray.position_m)
                                   * dot(lens.normal, in_ray.direction))
 
     # Flip lens normal if in_ray is coming from opposite direction
-    normal = -lens.normal * torch.sign(dot(lens.normal, lens.position_m - in_ray.position_m))
+    normal = -lens.normal * sign(dot(lens.normal, lens.position_m - in_ray.position_m))
 
     # Define useful points for lens
     L = lens.position_m                                     # Lens position
@@ -266,7 +266,7 @@ def coverslip_correction(in_ray, normal, coverslip_thickness_m, n_coverslip, n_o
     assert checkunitvector(normal)
 
     # Get a Plane normal in opposite direction of propagation
-    N = -normal * propagation_sign * torch.sign(dot(normal, in_ray.direction))
+    N = -normal * propagation_sign * sign(dot(normal, in_ray.direction))
 
     # Create a coverslip plane located 1 coverslip thickness behind the ray
     coverslip_front_plane = Plane(in_ray.position_m, N)
@@ -338,7 +338,7 @@ def snells(ray_in, normal, n_out):
     assert checkunitvector(normal)
 
     # Flip normal if ray_in is coming from opposite direction (required for backpropagation)
-    N = -normal * torch.sign(dot(normal, ray_in.direction))
+    N = -normal * sign(dot(normal, ray_in.direction))
 
     dir_in = ray_in.direction
     n_in = ray_in.refractive_index

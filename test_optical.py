@@ -7,6 +7,7 @@ import numpy as np
 from testing import comparetensors
 from vector_functions import dot, unit, norm, cross, rejection, rotate,\
                              reflection, components, cartesian3d
+from math_functions import sign
 from ray_plane import Ray, Plane, CoordPlane
 from optical import point_source, collimated_source, thin_lens, abbe_lens, snells, flat_interface, \
                     propagate_to_cylinder, cylinder_interface, mirror, galvo_mirror, slm_segment
@@ -207,7 +208,7 @@ def test_snells1():
     # Plane is aligned with coordinate system, so we can simply take the vector components
     assert comparetensors(sin_out, ray_out.direction[0])
     assert comparetensors(np.cos(angle_out_rad), ray_out.direction[2])
-    assert torch.sign(ray_out.direction[2]) == torch.sign(ray_in.direction[2])
+    assert sign(ray_out.direction[2]) == sign(ray_in.direction[2])
 
 
 def test_snells2():
@@ -242,7 +243,7 @@ def test_snells2():
     # Plane is aligned with coordinate system, so we can simply take the vector components
     assert comparetensors(sin_out, ray_out.direction[0])
     assert comparetensors(np.cos(angle_out_rad), ray_out.direction[2])
-    assert torch.sign(ray_out.direction[2]) == torch.sign(ray_in.direction[2])
+    assert sign(ray_out.direction[2]) == sign(ray_in.direction[2])
 
 
 def test_snells3():
