@@ -32,7 +32,7 @@ and then activate it:
 
 4b: Or perform a fresh install by running these commands
 
-```bash
+```
 conda create -n raylearn -c pytorch pytorch
 conda activate raylearn
 conda install scipy numpy matplotlib h5py sympy tqdm imageio pytest flake8 autopep8 pyopengl
