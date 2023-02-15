@@ -58,12 +58,19 @@ cam_ft_coords_synth_gt, cam_im_coords_synth_gt = tpm.raytrace()
 
 # for t in trange:
 # Initial conditions
-tpm.sample.shell_thickness_m = tensor((100e-6,), requires_grad=True)
-tpm.sample.outer_radius_m = tensor((450e-6,), requires_grad=True)
-# tpm.sample_zshift = tensor((-50e-6,), requires_grad=True)
-# tpm.obj2_zshift = tensor((0e-6,), requires_grad=True)
-tpm.sample_zshift.requires_grad = True
-tpm.obj2_zshift.requires_grad = True
+shell_thickness_m_init = 100e-6
+shell_thickness_m_init_certainty = 100
+outer_radius_m_init = 450e-6
+outer_radius_m_init_certainty = 100
+sample_zshift_init = 130e-6                 ########### Base these on value optimized for initial guess? Only at first? Or dynamically?
+sample_zshift_init_certainty = 2
+obj2_zshift_init = 300e-6
+obj2_zshift_init_certainty = 2
+
+tpm.sample.shell_thickness_m = tensor((shell_thickness_m_init), requires_grad=True)
+tpm.sample.outer_radius_m = tensor((outer_radius_m_init,), requires_grad=True)
+tpm.sample_zshift = tensor((sample_zshift_init,), requires_grad=True)
+tpm.obj2_zshift = tensor((obj2_zshift_init,), requires_grad=True)
 
 tpm.backtrace_Nx = 21
 tpm.backtrace_Ny = 21
@@ -127,12 +134,16 @@ for t in trange:
     slm_rays = tpm.backtrace()
     slm_dir_rej = rejection(slm_rays.direction, tpm.slm_plane.normal)
 
-    # Compute and print error
-    error = MSE(cam_ft_coords_synth_gt, cam_ft_coords) \
-        + MSE(cam_im_coords_synth_gt, cam_im_coords) \
-        # + 1e9 * MSE(slm_dir_rej, slm_dir_rej.mean())
-
-    # print(MSE(slm_dir_rej, slm_dir_rej.mean()) / error)
+    # Compute error
+    alpha = 20
+    beta = 10
+    obj2_zshift_init = 450e-6
+    error = alpha * (MSE(cam_ft_coords_synth_gt, cam_ft_coords)
+                     + MSE(cam_im_coords_synth_gt, cam_im_coords)) \
+        + beta * (shell_thickness_m_init_certainty * MSE(tpm.sample.shell_thickness_m, shell_thickness_m_init)
+        + outer_radius_m_init_certainty * MSE(tpm.sample.outer_radius_m, outer_radius_m_init)
+        + sample_zshift_init_certainty * MSE(tpm.sample_zshift, sample_zshift_init)
+        + obj2_zshift_init_certainty * MSE(tpm.obj2_zshift, obj2_zshift_init))
 
     error_value = error.detach().item()
     errors[t] = error_value
@@ -150,7 +161,7 @@ for t in trange:
     optimizer.zero_grad()
 
     # Plot
-    if t % 250 == 0 and do_plot_tube:
+    if t % 200 == 0 and do_plot_tube:
         plt.figure(fig.number)
 
         # Fourier cam
@@ -190,14 +201,17 @@ for t in trange:
         ax_tpm.clear()
         tpm.plot(ax_tpm, fraction=1)
         # tpm.sample.plot(ax_tpm)
-        viewplane = default_viewplane()
-        x_sample, y_sample = viewplane.transform_points(tpm.sample.slide_top_plane.position_m)
-        ax_tpm.set_xlim((x_sample - 3 * tpm.sample.outer_radius_m).detach(), (x_sample + 1.5*tpm.sample.slide_thickness_m).detach())
-        ax_tpm.set_ylim((y_sample - 2 * tpm.sample.outer_radius_m).detach(), (y_sample + 2 * tpm.sample.outer_radius_m).detach())
-        ax_tpm.set_aspect(1)
+
+        # # Uncomment to only show sample
+        # viewplane = default_viewplane()
+        # x_sample, y_sample = viewplane.transform_points(tpm.sample.slide_top_plane.position_m)
+        # ax_tpm.set_xlim((x_sample - 3 * tpm.sample.outer_radius_m).detach(), (x_sample + 1.5*tpm.sample.slide_thickness_m).detach())
+        # ax_tpm.set_ylim((y_sample - 2 * tpm.sample.outer_radius_m).detach(), (y_sample + 2 * tpm.sample.outer_radius_m).detach())
+        # ax_tpm.set_aspect(1)
 
         plt.draw()
         plt.pause(1e-3)
+
 
 for groupname in params:
     print('\n' + groupname + ':')
