@@ -140,6 +140,8 @@ class TPM(OpticalSystem):
         self.backtrace_Nx = 300
         self.backtrace_Ny = 300
 
+        self.sample = OpticalSystem()
+
     def set_measurement(self, matfile):
         # SLM coords and Galvo rotations
         self.slm_coords = tensor(matfile['p/rects'])[0:2, :].T.view(-1, 2)
