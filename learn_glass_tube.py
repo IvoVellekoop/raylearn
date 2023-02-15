@@ -78,7 +78,6 @@ tpm.sample_zshift = tensor((0.,), requires_grad=True)
 tpm.obj2_zshift = tensor((0.,), requires_grad=True)
 tpm.L9_zshift = tensor((0.,), requires_grad=True)
 tpm.L10_zshift = tensor((0.,), requires_grad=True)
-tpm.total_coverslip_thickness = tensor((170e-6,), requires_grad=True)
 
 # Parameter groups
 params = {}
@@ -287,17 +286,28 @@ cam_ft_coords_gt = (tensor((matfile['cam_ft_col'], matfile['cam_ft_row']))
 cam_im_coords_gt = (tensor((matfile['cam_img_col'], matfile['cam_img_row']))
     - tensor((matfile['copt_img/Width'], matfile['copt_img/Height'])) / 2).permute(1, 2, 0)
 
+
+# Initial conditions
+shell_thickness_m_init = 100e-6
+shell_thickness_m_init_certainty = 100
+outer_radius_m_init = 450e-6
+outer_radius_m_init_certainty = 100
+sample_zshift_init = 130e-6                 ########### Base these on value optimized for initial guess? Only at first? Or dynamically?
+sample_zshift_init_certainty = 2
+obj2_zshift_init = 300e-6
+obj2_zshift_init_certainty = 2
+
 # Parameters
 # tpm.total_coverslip_thickness = tensor((1170e-6,), requires_grad=True)
-tpm.sample_zshift = tensor((0.,), requires_grad=True)
 
 tpm.set_measurement(matfile)
 tpm.sample = SampleTube()
 tpm.sample.tube_angle = tensor((np.radians(90.),), requires_grad=True)
-tpm.sample.inner_radius_m.requires_grad = True
-tpm.sample.outer_radius_m.requires_grad = True
-tpm.sample_zshift.requires_grad = True
-tpm.obj2_zshift.requires_grad = True
+
+tpm.sample.shell_thickness_m = tensor((shell_thickness_m_init), requires_grad=True)
+tpm.sample.outer_radius_m = tensor((outer_radius_m_init,), requires_grad=True)
+tpm.sample_zshift = tensor((sample_zshift_init,), requires_grad=True)
+tpm.obj2_zshift = tensor((obj2_zshift_init,), requires_grad=True)
 
 tpm.backtrace_Nx = 21
 tpm.backtrace_Ny = 21
@@ -319,7 +329,7 @@ params_obj1_zshift['other'] = {
     # 'Total Coverslip Thickness': tpm.total_coverslip_thickness,
     'cam im xshift': tpm.cam_im_xshift,
     'cam im yshift': tpm.cam_im_yshift,
-    'inner radius': tpm.sample.inner_radius_m,
+    'shell thickness': tpm.sample.shell_thickness_m,
     'outer radius': tpm.sample.outer_radius_m,
 }
 
@@ -333,7 +343,7 @@ optimizer = torch.optim.Adam([
         {'lr': 2.0e-5, 'params': params_obj1_zshift['other'].values()},
     ], lr=1.0e-5)
 
-iterations = 0
+iterations = 1400
 errors = torch.zeros(iterations)
 
 
@@ -364,9 +374,20 @@ for t in trange:
     slm_dir_rej = rejection(slm_rays.direction, tpm.slm_plane.normal)
 
     # Compute and print error
-    error = MSE(cam_ft_coords_gt, cam_ft_coords) \
-        + MSE(cam_im_coords_gt, cam_im_coords) \
-        + 1e9 * MSE(slm_dir_rej, slm_dir_rej.mean())
+
+    # error = MSE(cam_ft_coords_gt, cam_ft_coords) \
+    #     + MSE(cam_im_coords_gt, cam_im_coords) \
+    #     + 1e9 * MSE(slm_dir_rej, slm_dir_rej.mean())
+
+    alpha = 20
+    beta = 10
+    obj2_zshift_init = 450e-6
+    error = alpha * (MSE(cam_ft_coords_gt, cam_ft_coords)
+                     + MSE(cam_im_coords_gt, cam_im_coords)) \
+        + beta * (shell_thickness_m_init_certainty * MSE(tpm.sample.shell_thickness_m, shell_thickness_m_init)
+        + outer_radius_m_init_certainty * MSE(tpm.sample.outer_radius_m, outer_radius_m_init)
+        + sample_zshift_init_certainty * MSE(tpm.sample_zshift, sample_zshift_init)
+        + obj2_zshift_init_certainty * MSE(tpm.obj2_zshift, obj2_zshift_init))
 
     # print(MSE(slm_dir_rej, slm_dir_rej.mean()) / error)
 
