@@ -7,8 +7,14 @@ Functions for plotting Rays, Planes, stuff to draw your defined optical elements
 import torch
 from torch import stack, Tensor
 import numpy as np
+import matplotlib.pyplot as plt
+
 from vector_functions import norm, norm_square, unit, rejection, cartesian3d, cross
 from ray_plane import Plane, CoordPlane
+
+
+# Vectorized text plot
+vtext = np.vectorize(plt.text)
 
 
 def default_viewplane():
@@ -71,7 +77,7 @@ def ray_positions(raylist):
     return positions_expanded
 
 
-def plot_rays(ax, rays, viewplane=default_viewplane(), plotkwargs={}, fraction=1):
+def plot_rays(ax, rays, viewplane=default_viewplane(), plotkwargs={}, fraction=1, raypath_index=-1):
     """
     Plot rays
 
@@ -83,6 +89,7 @@ def plot_rays(ax, rays, viewplane=default_viewplane(), plotkwargs={}, fraction=1
         plotkwargs  Dictionary. Keyword arguments to be passed onto the plot function.
         fraction    Float. This fraction of randomly picked rays from the rays list will
                     be plotted. Can be useful when dealing with many rays, as this can be slow.
+        raypath_index  Integer. Index of ray path for displaying the ray index. -1 = turn off.
     """
 
     # Prepare variables
@@ -98,6 +105,12 @@ def plot_rays(ax, rays, viewplane=default_viewplane(), plotkwargs={}, fraction=1
 
     # Plot
     ln = ax.plot(positions_hori_select, positions_vert_select, '.-', **plotkwargs)
+
+    # Display ray indices as text
+    if raypath_index > -1:
+        vtext(positions_hori_select[:, raypath_index],
+              positions_vert_select[:, raypath_index], range(positions_hori_select.shape[0]))
+
     return ln
 
 

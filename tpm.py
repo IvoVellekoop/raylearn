@@ -308,6 +308,6 @@ class TPM(OpticalSystem):
         plot_plane(ax, self.cam_im_plane, 1000, ' Image Cam', plotkwargs={'color': 'red'})
 
         # Plot rays
-        plot_rays(ax, self.rays, fraction=fraction)
+        plot_rays(ax, self.rays, fraction=fraction, raypath_index=1)
         plt.xlabel('optical axis, z (m)')
         plt.ylabel('x (m)')
