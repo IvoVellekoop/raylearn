@@ -286,6 +286,11 @@ cam_ft_coords_gt = (tensor((matfile['cam_ft_col'], matfile['cam_ft_row']))
 cam_im_coords_gt = (tensor((matfile['cam_img_col'], matfile['cam_img_row']))
     - tensor((matfile['copt_img/Width'], matfile['copt_img/Height'])) / 2).permute(1, 2, 0)
 
+# Discard coords marked as spot not found
+found_spot = tensor(matfile['found_spot'])
+not_found_spot_coords = torch.stack((found_spot, found_spot), dim=2).logical_not()
+cam_ft_coords_gt[not_found_spot_coords] = torch.nan
+cam_im_coords_gt[not_found_spot_coords] = torch.nan
 
 # Initial conditions
 shell_thickness_m_init = 100e-6
@@ -339,11 +344,11 @@ params_obj1_zshift['other'] = {
 # Define optimizer
 optimizer = torch.optim.Adam([
         {'lr': 2.0e-2, 'params': params_obj1_zshift['angle'].values()},
-        {'lr': 1.0e-4, 'params': params_obj1_zshift['obj'].values()},
+        {'lr': 2.0e-5, 'params': params_obj1_zshift['obj'].values()},
         {'lr': 2.0e-5, 'params': params_obj1_zshift['other'].values()},
     ], lr=1.0e-5)
 
-iterations = 1400
+iterations = 1000
 errors = torch.zeros(iterations)
 
 
@@ -379,17 +384,19 @@ for t in trange:
     #     + MSE(cam_im_coords_gt, cam_im_coords) \
     #     + 1e9 * MSE(slm_dir_rej, slm_dir_rej.mean())
 
-    alpha = 20
-    beta = 10
-    obj2_zshift_init = 450e-6
-    error = alpha * (MSE(cam_ft_coords_gt, cam_ft_coords)
-                     + MSE(cam_im_coords_gt, cam_im_coords)) \
-        + beta * (shell_thickness_m_init_certainty * MSE(tpm.sample.shell_thickness_m, shell_thickness_m_init)
+    alpha = 1e-6
+    beta = 1e5
+    error_alpha = alpha * (MSE(cam_ft_coords_gt, cam_ft_coords) +
+                           MSE(cam_im_coords_gt, cam_im_coords))
+    error_beta = beta * (
+        shell_thickness_m_init_certainty * MSE(tpm.sample.shell_thickness_m, shell_thickness_m_init)
         + outer_radius_m_init_certainty * MSE(tpm.sample.outer_radius_m, outer_radius_m_init)
         + sample_zshift_init_certainty * MSE(tpm.sample_zshift, sample_zshift_init)
         + obj2_zshift_init_certainty * MSE(tpm.obj2_zshift, obj2_zshift_init))
+    error = error_alpha + error_beta
 
     # print(MSE(slm_dir_rej, slm_dir_rej.mean()) / error)
+    beta_fraction = (error_beta / error).detach().item()
 
     error_value = error.detach().item()
     errors[t] = error_value
@@ -399,7 +406,7 @@ for t in trange:
             params_obj1_zshift_logs[groupname][paramname][t] = params_obj1_zshift[groupname][paramname].detach().item()
 
     trange.desc = f'error: {error_value:<8.3g}' \
-        + f'coverslip thickness: {format_prefix(tpm.total_coverslip_thickness, "8.3f")}m'
+        + f' beta fraction: {beta_fraction:.3f}'
 
     # error.backward(retain_graph=True)
     error.backward()
@@ -407,7 +414,7 @@ for t in trange:
     optimizer.zero_grad()
 
     # Plot
-    if t % 500 == 0 and do_plot_tube:
+    if t % 100 == 0 and do_plot_tube:
         plt.figure(fig.number)
 
         # Fourier cam
