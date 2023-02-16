@@ -19,8 +19,8 @@ p.GalvoXcenter = single(0.00);      % Galvo center x
 p.GalvoYcenter = single(0.00);      % Galvo center y
 p.GalvoXmax    = single(0.70);      % Galvo center to outer, x
 p.GalvoYmax    = single(0.20);      % Galvo center to outer, y
-p.GalvoNX      = single(80);        % Number of Galvo steps, x
-p.GalvoNY      = single(25);        % Number of Galvo steps, y
+p.GalvoNX      = single(90);        % Number of Galvo steps, x
+p.GalvoNY      = single(30);        % Number of Galvo steps, y
 
 %% Initialization
 % Set background grating

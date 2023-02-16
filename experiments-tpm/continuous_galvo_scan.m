@@ -13,8 +13,8 @@ p.GalvoXcenter = single(0.00);      % Galvo center x
 p.GalvoYcenter = single(0.00);      % Galvo center y
 p.GalvoXmax    = single(0.00);      % Galvo center to outer, x
 p.GalvoYmax    = single(0.30);      % Galvo center to outer, y
-p.GalvoNX      = single(10);        % Number of Galvo steps, x
-p.GalvoNY      = single(10);        % Number of Galvo steps, y
+p.GalvoNX      = single(30);        % Number of Galvo steps, x
+p.GalvoNY      = single(30);        % Number of Galvo steps, y
 
 %% Initialization
 % Create set of Galvo tilts
@@ -36,6 +36,7 @@ while true
             console_text = sprintf('Galvo tilt: (%.2fV, %.2fV)', p.galvoXs1d(gx), p.galvoYs1d(gy));
             eta(g, G, starttime, 'console', console_text, 1);
             g = g+1;
+            pause(0.03)
         end
     end
 end
