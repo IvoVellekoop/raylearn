@@ -299,7 +299,7 @@ outer_radius_m_init = 450e-6
 outer_radius_m_init_certainty = 100
 sample_zshift_init = 130e-6                 ########### Base these on value optimized for initial guess? Only at first? Or dynamically?
 sample_zshift_init_certainty = 2
-obj2_zshift_init = 300e-6
+obj2_zshift_init = 250e-6
 obj2_zshift_init_certainty = 2
 
 # Parameters
@@ -348,7 +348,7 @@ optimizer = torch.optim.Adam([
         {'lr': 2.0e-5, 'params': params_obj1_zshift['other'].values()},
     ], lr=1.0e-5)
 
-iterations = 1000
+iterations = 150
 errors = torch.zeros(iterations)
 
 
@@ -417,38 +417,51 @@ for t in trange:
     if t % 100 == 0 and do_plot_tube:
         plt.figure(fig.number)
 
-        # Fourier cam
-        cam_ft_coord_pairs_x, cam_ft_coord_pairs_y = \
-            torch.stack((cam_ft_coords_gt, cam_ft_coords)).detach().unbind(-1)
+        for n in range(52):
 
-        ax[0].clear()
-        ax[0].plot(cam_ft_coord_pairs_x.view(2, -1), cam_ft_coord_pairs_y.view(2, -1),
-                   color='lightgrey')
-        plot_coords(ax[0], cam_ft_coords_gt[:, :, :], {'label': 'measured'})
-        plot_coords(ax[0], cam_ft_coords[:, :, :], {'label': 'sim'})
+            # Fourier cam
+            cam_ft_coord_pairs_x, cam_ft_coord_pairs_y = \
+                torch.stack((cam_ft_coords_gt, cam_ft_coords)).detach().unbind(-1)
 
-        ax[0].set_ylabel('y (pix)')
-        ax[0].set_xlabel('x (pix)')
-        ax[0].legend(loc=1)
-        ax[0].set_title(f'Fourier Cam | coverslip={format_prefix(tpm.total_coverslip_thickness)}m | iter: {t}')
+            ax[0].clear()
+            # ax[0].plot(cam_ft_coord_pairs_x.view(2, -1), cam_ft_coord_pairs_y.view(2, -1),
+            #         color='lightgrey')
+            plot_coords(ax[0], cam_ft_coords_gt[:, :, :], {'label': 'measured'})
+            plot_coords(ax[0], cam_ft_coords[:, :, :], {'label': 'sim'})
+            x_ft, y_ft = cam_ft_coords[15, n, :].detach().unbind(-1)
+            ax[0].plot(x_ft, y_ft, 'ok', markersize=22, fillstyle='none', label=f'angle #{n}')
 
-        # Image cam
-        cam_im_coord_pairs_x, cam_im_coord_pairs_y = \
-            torch.stack((cam_im_coords_gt, cam_im_coords)).detach().unbind(-1)
+            ax[0].set_ylabel('y (pix)')
+            ax[0].set_xlabel('x (pix)')
+            ax[0].legend(loc=1)
+            ax[0].set_title(f'Fourier Cam | iter: {t}')
 
-        ax[1].clear()
-        ax[1].plot(cam_im_coord_pairs_x.view(2, -1), cam_im_coord_pairs_y.view(2, -1),
-                   color='lightgrey')
-        plot_coords(ax[1], cam_im_coords_gt[:, :, :], {'label': 'measured'})
-        plot_coords(ax[1], cam_im_coords[:, :, :], {'label': 'sim'})
+            # Image cam
+            cam_im_coord_pairs_x, cam_im_coord_pairs_y = \
+                torch.stack((cam_im_coords_gt, cam_im_coords)).detach().unbind(-1)
 
-        ax[1].set_ylabel('y (pix)')
-        ax[1].set_xlabel('x (pix)')
-        ax[1].legend(loc=1)
-        ax[1].set_title(f'Image Cam | iter: {t}')
+            ax[1].clear()
+            ax[1].plot(544 * tensor((1, 1, -1, -1, 1.)), 544 * tensor((1, -1, -1, 1, 1.)), '-k', label='cam edge')
+            # ax[1].plot(cam_im_coord_pairs_x.view(2, -1), cam_im_coord_pairs_y.view(2, -1),
+            #            color='lightgrey')
+            plot_coords(ax[1], cam_im_coords_gt[:, n, :], {'label': 'measured'})
+            plot_coords(ax[1], cam_im_coords[:, n, :], {'label': 'sim', 'markersize': 1.5})
 
-        plt.draw()
-        plt.pause(1e-3)
+            ax[1].set_ylabel('y (pix)')
+            ax[1].set_xlabel('x (pix)')
+            ax[1].legend(loc=1)
+            ax[1].set_title(f'Image Cam | iter: {t} | angle #{n}')
+
+            ######
+            ax[1].set_xlim((-600, 600))
+            ax[1].set_ylim((-600, 600))
+            ######
+
+            plt.draw()
+            plt.savefig(f'/home/dani/raylearn/plots/tube_spot_positions/cam_spots_angle{n:02}.png', bbox_inches='tight')
+            plt.pause(1e-3)
+
+        pass
 
         plt.figure(fig_tpm.number)
         ax_tpm.clear()
