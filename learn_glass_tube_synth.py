@@ -24,12 +24,24 @@ do_plot_tube = True
 # Define 'measurement' Galvo and SLM settings
 matfile = {
     'p/rects': 0.4 * torch.tensor(((0., 1, 0, 0), (-1, 0, 0, 0), (0, 0, 0, 0), (1, 0, 0, 0), (0, -1, 0, 0))).T,
-    'p/galvoXs': ((0, -0.04, 0, 0.04, 0),),
-    'p/galvoYs': ((0.04, 0, 0, 0, -0.04),),
     'p/GalvoXcenter': (0.,),
-    'p/GalvoYcenter': (0.,)}
+    'p/GalvoYcenter': (0.,),
 
+#     'p/galvoXs': ((0, -0.05, 0, 0.05, 0),),
+#     'p/galvoYs': ((0.05, 0, 0, 0, -0.05),),}
+# tpm = TPM()
+
+#     'p/galvoXs': ((0, -0.25, 0, 0.25, 0),),
+#     'p/galvoYs': ((0.25, 0, 0, 0, -0.25),),}
+# tpm = TPM()
+# tpm.fobj2 = 165e-3 / 20
+# tpm.f10 = 40e-3
+
+    'p/galvoXs': ((0, -0.4, 0, 0.4, 0),),
+    'p/galvoYs': ((0.4, 0, 0, 0, -0.4),),}
 tpm = TPM()
+tpm.fobj2 = 165e-3 / 20
+tpm.f10 = 40e-3
 
 # Ground truth
 tpm.set_measurement(matfile)
@@ -71,6 +83,7 @@ tpm.sample.shell_thickness_m = tensor((shell_thickness_m_init), requires_grad=Tr
 tpm.sample.outer_radius_m = tensor((outer_radius_m_init,), requires_grad=True)
 tpm.sample_zshift = tensor((sample_zshift_init,), requires_grad=True)
 tpm.obj2_zshift = tensor((obj2_zshift_init,), requires_grad=True)
+# tpm.sample.tube_angle = tensor((np.radians(60.),), requires_grad=True)
 
 tpm.backtrace_Nx = 21
 tpm.backtrace_Ny = 21
@@ -100,11 +113,11 @@ params['other'] = {
 # Define optimizer
 optimizer = torch.optim.Adam([
         {'lr': 2.0e-2, 'params': params['angle'].values()},
-        {'lr': 3.0e-5, 'params': params['obj'].values()},
-        {'lr': 3.0e-5, 'params': params['other'].values()},
+        {'lr': 2.0e-5, 'params': params['obj'].values()},
+        {'lr': 2.0e-5, 'params': params['other'].values()},
     ], lr=1.0e-5)
 
-iterations = 1200
+iterations = 500
 errors = torch.zeros(iterations)
 
 
@@ -122,7 +135,7 @@ trange = tqdm(range(iterations), desc='error: -')
 if do_plot_tube:
     fig, ax = plt.subplots(nrows=2, figsize=(5, 10), dpi=110)
 
-    fig_tpm = plt.figure(figsize=(5, 5), dpi=110)
+    fig_tpm = plt.figure(figsize=(8.2, 5), dpi=110)
     ax_tpm = plt.gca()
 
 
@@ -202,12 +215,12 @@ for t in trange:
         tpm.plot(ax_tpm, fraction=1)
         # tpm.sample.plot(ax_tpm)
 
-        # # Uncomment to only show sample
-        # viewplane = default_viewplane()
-        # x_sample, y_sample = viewplane.transform_points(tpm.sample.slide_top_plane.position_m)
-        # ax_tpm.set_xlim((x_sample - 3 * tpm.sample.outer_radius_m).detach(), (x_sample + 1.5*tpm.sample.slide_thickness_m).detach())
-        # ax_tpm.set_ylim((y_sample - 2 * tpm.sample.outer_radius_m).detach(), (y_sample + 2 * tpm.sample.outer_radius_m).detach())
-        # ax_tpm.set_aspect(1)
+        # Uncomment to only show sample
+        viewplane = default_viewplane()
+        x_sample, y_sample = viewplane.transform_points(tpm.sample.slide_top_plane.position_m)
+        ax_tpm.set_xlim((x_sample - 3 * tpm.sample.outer_radius_m).detach(), (x_sample + 1.5*tpm.sample.slide_thickness_m).detach())
+        ax_tpm.set_ylim((y_sample - 2 * tpm.sample.outer_radius_m).detach(), (y_sample + 2 * tpm.sample.outer_radius_m).detach())
+        ax_tpm.set_aspect(1)
 
         plt.draw()
         plt.pause(1e-3)
