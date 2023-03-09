@@ -1,5 +1,7 @@
 %% Calibrate aperture Galvos field of view
 
+% Note: you can increase exposure time of fourier cam for better signal
+
 doreset = 0;
 
 if doreset || ~exist('slm', 'var') || ~exist('daqs', 'var')  || ~exist('cam_ft', 'var')  || ~exist('cam_img', 'var')
@@ -11,14 +13,15 @@ end
 doshowcams = 1;                     % Toggle show what the cameras see
 
 % SLM Settings
+use_grating = 1;                    % Toggle to use the SLM grating
 ppp = 2;                            % Pixels per period on SLM grating
 bg_patch_id = 2;                    % Background grating Patch ID
 
 % Galvo Mirror settings
 p.GalvoXcenter = single(0.00);      % Galvo center x
-p.GalvoYcenter = single(0.00);      % Galvo center y
-p.GalvoXmax    = single(0.70);      % Galvo center to outer, x
-p.GalvoYmax    = single(0.20);      % Galvo center to outer, y
+p.GalvoYcenter = single(0.15);      % Galvo center y
+p.GalvoXmax    = single(0.90);      % Galvo center to outer, x
+p.GalvoYmax    = single(0.30);      % Galvo center to outer, y
 p.GalvoNX      = single(90);        % Number of Galvo steps, x
 p.GalvoNY      = single(30);        % Number of Galvo steps, y
 
@@ -27,7 +30,8 @@ p.GalvoNY      = single(30);        % Number of Galvo steps, y
 [NxSLM, NySLM] = size(slm.getPixels);
 slm_pattern = bg_grating('blaze', ppp, 0, 255, NySLM);
 slm.setRect(bg_patch_id, [0 0 1 1]);
-slm.setData(bg_patch_id, slm_pattern);
+slm.setData(bg_patch_id, slm_pattern .* use_grating);
+
 slm.update
 
 % Create set of Galvo tilts
@@ -80,7 +84,6 @@ for gx = 1:p.GalvoNX                        % Loop over Galvo tilts
             saturation_img = 100 * max(frame_img, [], 'all') / 65520;   % 12bit -> 2^16 - 2^4 = 65520
             title(sprintf('Red=img cam, Cyan=Fourier cam | Tilt %i/%i\nsaturation = %.0f%%', g, G, saturation_img))
             axis image
-            colorbar
 
             subplot(1,2,2)
             galvoscan_ft_normalized  = galvoscan_ft  ./ max(galvoscan_ft,  [], [1 2]);
@@ -96,7 +99,6 @@ for gx = 1:p.GalvoNX                        % Loop over Galvo tilts
             ylabel('Galvo voltage Y')
             axis image
             grid on
-            colorbar
             drawnow
         end
         
@@ -119,4 +121,3 @@ xlabel('Galvo voltage X')
 ylabel('Galvo voltage Y')
 axis image
 grid on
-colorbar
