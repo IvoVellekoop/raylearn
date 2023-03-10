@@ -24,14 +24,14 @@ def default_viewplane():
     return viewplane
 
 
-def format_prefix(number, formatspec='.2f'):
+def format_prefix(number, formatspec='.3g'):
     """
     Converts a number to a string with a metric unit prefix, e.g. 2550 -> '2.55K'.
     Optional rounding.
 
     Input:
     number        Numeric. Value of number to convert to string.
-    formatspec    Format specification string. Default: '.2f'.
+    formatspec    Format specification string. Default: '.3g' (i.e. 3 significant digits).
 
     Output:       String of formatted value with unit prefix.
 

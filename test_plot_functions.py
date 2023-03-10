@@ -23,6 +23,12 @@ def test_format_prefix():
     assert(format_prefix(3.1426, '.3f') == '3.143')
     assert(format_prefix(23e-6, '.1f') == '23.0µ')
     assert(format_prefix(-7e3, '4.0f') == '  -7k')
+    assert(format_prefix(7.1583, '.3g') == '7.16')
+    assert(format_prefix(.071983, '.3g') == '72m')
+    assert(format_prefix(.71983, '.3g') == '720m')
+    assert(format_prefix(7.1983, '.3g') == '7.2')
+    assert(format_prefix(71.983, '.3g') == '72')
+    assert(format_prefix(7198.3, '.3g') == '7.2k')
     assert(format_prefix(tensor((23e-9,), requires_grad=True), '.2f') == '23.00n')
 
 
