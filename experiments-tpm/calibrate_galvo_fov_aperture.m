@@ -122,5 +122,19 @@ ylabel('Galvo voltage Y')
 axis image
 grid on
 
-fig_resize(600, 0.6);
+fig_resize(800, 0.6);
 movegui('center')
+
+%% Get FOV rectangle
+title('Select FOV...')
+rect = getrect;     % Let user select FOV from scan
+rect_xcenter = rect(1) + rect(3)/2;
+rect_ycenter = rect(2) + rect(4)/2;
+
+hold on;
+plot(rect_xcenter, rect_ycenter, '+k')
+text(rect_xcenter, rect_ycenter, sprintf('  x: %.3f\n  y: %.3f\n  w/2: %.3f\n  h/2: %.3f', ...
+    rect_xcenter, rect_ycenter, rect(3)/2, rect(4)/2))
+rectangle('Position', rect)
+hold off
+title(sprintf('Galvo Scan FOV | ppp=%.2f', ppp))
