@@ -19,16 +19,16 @@ bg_patch_id = 2;                    % Background grating Patch ID
 
 % Galvo Mirror settings
 p.GalvoXcenter = single(0.00);      % Galvo center x
-p.GalvoYcenter = single(0.15);      % Galvo center y
-p.GalvoXmax    = single(0.90);      % Galvo center to outer, x
-p.GalvoYmax    = single(0.30);      % Galvo center to outer, y
-p.GalvoNX      = single(90);        % Number of Galvo steps, x
-p.GalvoNY      = single(30);        % Number of Galvo steps, y
+p.GalvoYcenter = single(0.00);      % Galvo center y
+p.GalvoXmax    = single(0.50);      % Galvo center to outer, x
+p.GalvoYmax    = single(1.00);      % Galvo center to outer, y
+p.GalvoNX      = single(40);        % Number of Galvo steps, x
+p.GalvoNY      = single(80);        % Number of Galvo steps, y
 
 %% Initialization
 % Set background grating
 [NxSLM, NySLM] = size(slm.getPixels);
-slm_pattern = bg_grating('blaze', ppp, 0, 255, NySLM);
+slm_pattern = bg_grating('blaze', ppp, 0, 255, NySLM)';
 slm.setRect(bg_patch_id, [0 0 1 1]);
 slm.setData(bg_patch_id, slm_pattern .* use_grating);
 
@@ -52,7 +52,7 @@ update_plot_every = 35;
 
 if doshowcams
     fig_galvoscan = figure;
-    fig_resize(350,3)
+    fig_resize(600, 1.4)
     movegui('center')
 end
 
@@ -110,7 +110,7 @@ end
 outputSingleScan(daqs, [0, 0]);   % Set Galvo Mirror
 
 %% Plot end result
-figure(2)
+figure;
             galvoscan_ft_normalized  = galvoscan_ft  ./ max(galvoscan_ft,  [], [1 2]);
             galvoscan_img_normalized = galvoscan_img ./ max(galvoscan_img, [], [1 2]);
             galvoscan_color_coded_normalized = cat(3, galvoscan_img_normalized, ...
@@ -121,3 +121,6 @@ xlabel('Galvo voltage X')
 ylabel('Galvo voltage Y')
 axis image
 grid on
+
+fig_resize(600, 0.6);
+movegui('center')
