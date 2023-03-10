@@ -25,14 +25,13 @@ p.slm_offset_x = 0.00;              % Horizontal offset of rectangle SLM geometr
 p.slm_offset_y = 0.00;              % Vertical offset of rectangle SLM geometry (relative coords)
 p.N_diameter =  8;                  % Number of segments across SLM diameter
 
-% Galvo Mirror settings
-p.GalvoNX =  7;                     % Number of Galvo steps, x
-p.GalvoNY =  7;                     % Number of Galvo steps, y
-p.GalvoXcenter = -0.558;            % Galvo center x
-p.GalvoYcenter =  0.050;            % Galvo center y
-p.GalvoRadius  =  0.060;            % Galvo scan radius: from center to outer
-% Note: the actual number of galvo steps is smaller, as the corners from the square grid
-% will be cut to make a circle
+% Galvo Mirror scan settings
+p.GalvoNX =  5;                     % Number of Galvo steps, x
+p.GalvoNY =  8;                     % Number of Galvo steps, y
+p.GalvoXcenter =  0.000;            % Galvo center x
+p.GalvoYcenter =  0.000;            % Galvo center y
+p.GalvoXsize   =  0.180;            % Galvo scan radius: from center to outer x
+p.GalvoYsize   =  0.300;            % Galvo scan radius: from center to outer y
 
 % Ask if samplename is correct
 if dochecksamplename
@@ -51,7 +50,7 @@ p.segmentheight = p.segmentwidth;                           % Segment height in 
 
 % Create blaze grated segment, masked with circle
 xblaze = linspace(-1,1,p.segmentsize_pix);                  % Create x coords for segment pixels
-yblaze = xblaze';                                           % Create x coords for segment pixels
+yblaze = xblaze';                                           % Create y coords for segment pixels
 blazeradius = (p.segmentsize_pix+1) / p.segmentsize_pix;    % Radius from center to borderpixel edge
 mask_outside_circle = (xblaze.^2+yblaze.^2) > blazeradius;  % Mask for pixels outside circle
 p.blaze = single(bg_grating('blaze', p.ppp, 0, 255, p.segmentsize_pix) .* ones(p.segmentsize_pix,1));
@@ -63,13 +62,15 @@ p.blaze(mask_outside_circle) = 0;                           % Set pixels outside
 
 % Create set of Galvo tilts
 % (Make a grid that's 5% smaller than the defined radius, to make it fit)
-p.galvoXs1d = linspace(p.GalvoXcenter-p.GalvoRadius*0.95, p.GalvoXcenter+p.GalvoRadius*0.95, p.GalvoNX);
-p.galvoYs1d = linspace(p.GalvoYcenter-p.GalvoRadius*0.95, p.GalvoYcenter+p.GalvoRadius*0.95, p.GalvoNY);
+p.galvoXs1d = linspace(p.GalvoXcenter-p.GalvoXsize*0.95, p.GalvoXcenter+p.GalvoXsize*0.95, p.GalvoNX);
+p.galvoYs1d = linspace(p.GalvoYcenter-p.GalvoYsize*0.95, p.GalvoYcenter+p.GalvoYsize*0.95, p.GalvoNY);
 [galvoXsq, galvoYsq] = meshgrid(p.galvoXs1d, p.galvoYs1d);
-% Create circular mask to pick grid points
-p.galvo_scan_mask = ((galvoXsq-p.GalvoXcenter).^2 + (galvoYsq-p.GalvoYcenter).^2 <= p.GalvoRadius.^2);
-p.galvoXs = single(galvoXsq(p.galvo_scan_mask));
-p.galvoYs = single(galvoYsq(p.galvo_scan_mask));
+
+% % Create eliptical mask to pick grid points
+% p.galvo_scan_mask = ((galvoXsq-p.GalvoXcenter).^2 ./ p.GalvoXsize.^2 ...
+%     + (galvoYsq-p.GalvoYcenter).^2 ./ p.GalvoYsize.^2 <= 1);
+p.galvoXs = single(galvoXsq(:));
+p.galvoYs = single(galvoYsq(:));
 G = numel(p.galvoXs);
 
 % 
@@ -78,6 +79,7 @@ G = numel(p.galvoXs);
 % G = 1;
 % %%%%%%%%%%%%%%%%%%
 
+%% Initialize frames
 frame_ft_max  = zeros(copt_ft.Width,  copt_ft.Height);
 frame_img_max = zeros(copt_img.Width, copt_img.Height);
 
