@@ -31,9 +31,9 @@ torch.set_default_tensor_type('torch.DoubleTensor')
 
 do_plot_empty = False
 do_plot_pincushion = False
-do_plot_tube = True
-do_plot_obj1_zshift = False
-do_plot_backtrace = True
+do_plot_tube = False
+do_plot_obj1_zshift = True
+do_plot_backtrace = False
 do_plot_phase_pattern = True
 
 plt.rc('font', size=12)
@@ -293,11 +293,11 @@ cam_ft_coords_gt[not_found_spot_coords] = torch.nan
 cam_im_coords_gt[not_found_spot_coords] = torch.nan
 
 # Initial conditions
-shell_thickness_m_init = 100e-6
+shell_thickness_m_init = (610e-6 - 143e-6) / 2
 shell_thickness_m_init_certainty = 100
-outer_radius_m_init = 450e-6
+outer_radius_m_init = 610e-6 / 2
 outer_radius_m_init_certainty = 100
-sample_zshift_init = 130e-6                 ########### Base these on value optimized for initial guess? Only at first? Or dynamically?
+sample_zshift_init = 230e-6                 ########### Base these on value optimized for initial guess? Only at first? Or dynamically?
 sample_zshift_init_certainty = 2
 obj2_zshift_init = 250e-6
 obj2_zshift_init_certainty = 2
@@ -348,7 +348,7 @@ optimizer = torch.optim.Adam([
         {'lr': 2.0e-5, 'params': params_obj1_zshift['other'].values()},
     ], lr=1.0e-5)
 
-iterations = 150
+iterations = 0
 errors = torch.zeros(iterations)
 
 
@@ -460,8 +460,6 @@ for t in trange:
             plt.draw()
             plt.savefig(f'/home/dani/raylearn/plots/tube_spot_positions/cam_spots_angle{n:02}.png', bbox_inches='tight')
             plt.pause(1e-3)
-
-        pass
 
         plt.figure(fig_tpm.number)
         ax_tpm.clear()
@@ -658,6 +656,10 @@ if do_plot_obj1_zshift:
 ################# Use inference mode
 # Place point source at focal position
 # Choose the opening angle such that the NA is overfilled
+tpm.sample.n_tube = 1.5106          # Schott N-BK7 @808nm
+tpm.sample.n_slide = 1.5170         # Soda Lime Glass @808nm
+tpm.sample.n_inside = 1.3290        # Water inside the tube @808nm
+tpm.sample.n_outside = 1.3290       # Water between tube and slide @808nm
 tpm.backtrace_source_opening_tan_angle = 1.2 * np.tan(np.arcsin(tpm.obj1_NA / tpm.n_water))
 tpm.update()
 backrays_at_slm = tpm.backtrace()
@@ -665,7 +667,7 @@ backrays_at_slm = tpm.backtrace()
 # Propagate to screen and compute screen coordinates
 coords = tpm.slm_plane.transform_rays(backrays_at_slm).detach()
 
-wavelength_m = 804e-9
+wavelength_m = 808e-9
 
 # Compute field with interpolate_shader
 pathlength_to_slm = backrays_at_slm.pathlength_m.detach()
@@ -706,9 +708,9 @@ if do_plot_phase_pattern:
     # Plot SLM phase correction pattern
     plt.imshow(np.angle(field_SLM), extent=extent, cmap='twilight', interpolation='nearest')
     plt.title('SLM phase correction pattern, '
-              + f'λ={format_prefix(wavelength_m, formatspec=".2f")}m'
-              + f'\ninner radius={format_prefix(tpm.sample.inner_radius_m, formatspec=".0f")}m,'
-              + f' outer radius={format_prefix(tpm.sample.outer_radius_m, formatspec=".0f")}m')
+              + f'λ={format_prefix(wavelength_m)}m'
+              + f'\ninner radius={format_prefix(tpm.sample.inner_radius_m)}m,'
+              + f' outer radius={format_prefix(tpm.sample.outer_radius_m)}m')
 
     # Draw a circle to indicate NA
     N_verts_NA_circle = 200
@@ -724,7 +726,7 @@ if do_plot_phase_pattern:
 
 # Save file
 matpath_out = '/home/dani/LocalData/raylearn-data/TPM/pattern-' \
-    + '25uL-tube-' \
+    + '0.5uL-tube-' \
     + f'λ{format_prefix(wavelength_m, formatspec=".1f")}m.mat'
 mdict = {
     'matpath_pencil_beam_positions': str(matpath),
