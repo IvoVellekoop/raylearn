@@ -13,16 +13,17 @@ if forcereset || ~exist('dirs', 'var')
 end
 
 % Settings
-dosavedata = 1;                     % Toggle saving data
-doshowplot = 0;                     % Toggle showing plot of each found position (for debugging)
+dosavedata = 0;                     % Toggle saving data
+doshowplot = 1;                     % Toggle showing plot of each found position (for debugging)
 dosaveplot = 0;                     % Toggle saving plots
 plotsubdir = 'plot';                % Subdirectory for saving plot frames
-fig_size_pix = 800;                 % Figure size in pixels
+fig_size_pix = 850;                 % Figure size in pixels
 
 percentile = 99.7;                  % Percentile of the frame values to use
 percentilefactor = 0.70;            % Multiply percentile pixel value with this
 min_threshold = 300;                % Minimum threshold value
 min_mask_size_pix = 1000;           % Minimum mask size in pixels
+max_std_pix = 30;                  % Maximum standard deviation of spot
 medfiltsize = 5;                    % Size of the median filter
 erodestrel = strel('disk', 4);      % Erode filter structering element
 max_num_pixels_at_edge = 4;         % Maximum number of mask pixels at the edge before a measurement is considered as failed
@@ -73,19 +74,23 @@ for d = 1:D
         filepath = fullfile(filelist(f).folder, filelist(f).name);      % Construct file path
         load(filepath)
         
-        [~,~,G] = size(frames_ft);
+        [Nx, Ny, G] = size(frames_ft);
         
         if f==1
             % Initialize list of camera coordinates and intensities
             % Note: this code is inside the for loop as it relies on the loaded data
-            cam_ft_col  = nan(F, G);
-            cam_ft_row  = nan(F, G);
+            cam_ft_col = nan(F, G);
+            cam_ft_row = nan(F, G);
+            cam_ft_col_std = nan(F, G);
+            cam_ft_row_std = nan(F, G);
             cam_ft_mean_intensity = nan(F, G);
             cam_ft_mean_masked_intensity = nan(F, G);
             cam_ft_mask_area = nan(F, G);
             
             cam_img_col = nan(F, G);
             cam_img_row = nan(F, G);
+            cam_img_col_std = nan(F, G);
+            cam_img_row_std = nan(F, G);
             cam_img_mean_intensity = nan(F, G);
             cam_img_mean_masked_intensity = nan(F, G);
             cam_img_mask_area = nan(F, G);
@@ -115,30 +120,47 @@ for d = 1:D
             frame_img(frame_img < 0) = 0;                         % Remove < noise
 
             % Extract pencil beam spot position
-            [col_ft, row_ft, mean_intensity_ft, mean_masked_intensity_ft, threshold_ft, framemask_ft, found_ft, num_pixels_at_edge_ft] = extract_pencil_position_from_frame(...
+            [col_ft, row_ft, col_ft_std, row_ft_std, mean_intensity_ft, mean_masked_intensity_ft, threshold_ft, framemask_ft, found_ft, num_pixels_at_edge_ft] = extract_pencil_position_from_frame(...
                 frame_ft, percentile, percentilefactor, min_threshold, min_mask_size_pix, medfiltsize, erodestrel);
             
-            [col_img, row_img, mean_intensity_img, mean_masked_intensity_img, threshold_img, framemask_img, found_img, num_pixels_at_edge_img] = extract_pencil_position_from_frame(...
+            [col_img, row_img, col_img_std, row_img_std, mean_intensity_img, mean_masked_intensity_img, threshold_img, framemask_img, found_img, num_pixels_at_edge_img] = extract_pencil_position_from_frame(...
                 frame_img, percentile, percentilefactor, min_threshold, min_mask_size_pix, medfiltsize, erodestrel);
 
             % Store found beam spot positions and intensities
             cam_ft_col(s, g) = col_ft;
             cam_ft_row(s, g) = row_ft;
+            cam_ft_col_std(s, g) = col_ft_std;
+            cam_ft_row_std(s, g) = row_ft_std;
             cam_ft_mean_intensity(s, g) = mean_intensity_ft;
             cam_ft_mean_masked_intensity(s, g) = mean_masked_intensity_ft;
             cam_ft_mask_area(s, g) = sum(framemask_ft, [1 2]);
 
             cam_img_col(s,g) = col_img;
             cam_img_row(s,g) = row_img;
+            cam_img_col_std(s, g) = col_img_std;
+            cam_img_row_std(s, g) = row_img_std;
             cam_img_mean_intensity(s, g) = mean_intensity_img;
             cam_img_mean_masked_intensity(s, g) = mean_masked_intensity_img;
             cam_img_mask_area(s, g) = sum(framemask_img, [1 2]);
 
+            % Mark spot as found or not found, depending on a range of criteria
             found_spot(s, g) = found_ft & found_img ...
-                & (num_pixels_at_edge_ft  < max_num_pixels_at_edge) ...
-                & (num_pixels_at_edge_img < max_num_pixels_at_edge) ...
-                & cam_ft_mask_area(s, g) > min_mask_size_pix ...
-                & cam_img_mask_area(s, g) > min_mask_size_pix;
+                & (num_pixels_at_edge_ft  < max_num_pixels_at_edge) ... % Spot mask near edge
+                & (num_pixels_at_edge_img < max_num_pixels_at_edge) ... % Spot mask near edge
+                & cam_ft_mask_area(s, g) > min_mask_size_pix ...        % Spot mask minimum area
+                & cam_img_mask_area(s, g) > min_mask_size_pix ...       % Spot mask minimum area
+                & cam_ft_col_std(s, g) < max_std_pix ...                % Spot maximum size (std)
+                & cam_ft_row_std(s, g) < max_std_pix ...                % Spot maximum size (std)
+                & cam_img_col_std(s, g) < max_std_pix ...               % Spot maximum size (std)
+                & cam_img_row_std(s, g) < max_std_pix ...               % Spot maximum size (std)
+                & cam_ft_col(s, g) > 3*cam_ft_col_std(s, g) ...         % Spot position near edge
+                & cam_ft_row(s, g) > 3*cam_ft_row_std(s, g) ...         % Spot position near edge
+                & cam_ft_col(s, g) < Nx - 3*cam_ft_col_std(s, g) ...    % Spot position near edge
+                & cam_ft_row(s, g) < Ny - 3*cam_ft_row_std(s, g) ...    % Spot position near edge
+                & cam_img_col(s, g) > 3*cam_img_col_std(s, g) ...       % Spot position near edge
+                & cam_img_row(s, g) > 3*cam_img_row_std(s, g) ...       % Spot position near edge
+                & cam_img_col(s, g) < Nx - 3*cam_img_col_std(s, g) ...  % Spot position near edge
+                & cam_img_row(s, g) < Ny - 3*cam_img_row_std(s, g);     % Spot position near edge
             
             % Count failed detections
             total_found = total_found + found_spot(s, g);
@@ -150,23 +172,27 @@ for d = 1:D
                 
                 % Plot original ft frame with position
                 subplot(2,2,1)
-                plotframe(frame_ft, row_ft, col_ft,...
-                    sprintf('Fourier Cam\ndir: %i/%i | col: %.1f, row: %.1f', d, D, col_ft, row_ft))
+                plotframe(frame_ft, row_ft, col_ft, row_ft_std, col_ft_std,...
+                    sprintf('Fourier Cam\ndir: %i/%i | col: %.1f, row: %.1f\nstd: %.1f, %.1f', ...
+                    d, D, col_ft, row_ft, col_ft_std, row_ft_std))
                 
                 % Plot ft mask with position
                 subplot(2,2,2)
-                plotframe(framemask_ft, row_ft, col_ft,...
-                    sprintf('Fourier Mask\nthreshold: %.1f\nMask area: %ipix', threshold_ft, cam_ft_mask_area(s, g)));
+                plotframe(framemask_ft, row_ft, col_ft, row_ft_std, col_ft_std,...
+                    sprintf('Fourier Mask\nthreshold: %.1f\nMask area: %ipix', ...
+                    threshold_ft, cam_ft_mask_area(s, g)));
                 
                 % Plot original img frame with position
                 subplot(2,2,3)
-                plotframe(frame_img, row_img, col_img,...
-                    sprintf('Image Cam\ndir: %i/%i | col: %.1f, row: %.1f', d, D, col_ft, row_img))
+                plotframe(frame_img, row_img, col_img, row_img_std, col_img_std,...
+                    sprintf('Image Cam\ndir: %i/%i | col: %.1f, row: %.1f\nstd: %.1f, %.1f', ...
+                    d, D, col_img, row_img, col_img_std, row_img_std))
                 
                 % Plot img mask with position
                 subplot(2,2,4)
-                plotframe(framemask_img, row_img, col_img,...
-                    sprintf('Image Mask\nthreshold: %.1f\nMask area: %ipix', threshold_img, cam_img_mask_area(s, g)));
+                plotframe(framemask_img, row_img, col_img, row_img_std, col_img_std,...
+                    sprintf('Image Mask\nthreshold: %.1f\nMask area: %ipix', ...
+                    threshold_img, cam_img_mask_area(s, g)));
                 
                 drawnow
                 
@@ -214,7 +240,7 @@ end
 
 
 
-function plotframe(frame, row, col, titlestr)
+function plotframe(frame, row, col, row_std, col_std, titlestr)
     % Plot camera frame or framemask along with found beam spot coordinate
     %
     % Input:
@@ -232,13 +258,17 @@ function plotframe(frame, row, col, titlestr)
     
     x = pix_size_mm * (row - size(frame, 2)/2);
     y = pix_size_mm * (col - size(frame, 1)/2);
+    x_std = pix_size_mm * row_std;
+    y_std = pix_size_mm * col_std;
     
     % Plot
     imagesc(xdata, ydata, frame);
     colorbar;
     axis image
     hold on
-    plot(x, y, '+k')
+    quiver(x, y, x_std, 0, 'r', 'AutoScale', 'off', 'LineWidth', 2)
+    quiver(x, y, 0, y_std, 'r', 'AutoScale', 'off', 'LineWidth', 2)
+    plot(x, y, '+k', 'MarkerSize', 14)
     hold off
     
     % Text

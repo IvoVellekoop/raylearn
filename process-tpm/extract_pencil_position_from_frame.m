@@ -1,4 +1,4 @@
-function [col, row, mean_intensity, mean_masked_intensity, threshold, framemask, found, num_pixels_at_edge] =...
+function [col, row, col_std, row_std, mean_intensity, mean_masked_intensity, threshold, framemask, found, num_pixels_at_edge] =...
     extract_pencil_position_from_frame(frame, percentile, percentilefactor, min_threshold, min_mask_size_pix, medfiltsize, erodestrel)
     % Extract Pencil Position Extract the column and row of the center of a pencil beam spot in an
     % image. A threshold is determined as the mean of the image multiplied by the meanthreshfactor
@@ -44,11 +44,13 @@ function [col, row, mean_intensity, mean_masked_intensity, threshold, framemask,
     
     if any(framemask, 'all')        % Check if anything > threshold
         % Determine center of mass of masked image
-        [col, row] = img_center_of_mass(masked_frame);
+        [col, row, col_std, row_std] = img_center_of_mass(masked_frame);
         found = true;
     else
         col = NaN;
         row = NaN;
+        col_std = NaN;
+        row_std = NaN;
         found = false;
     end
 end
