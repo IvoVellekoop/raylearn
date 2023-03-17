@@ -8,7 +8,7 @@ see vector_functions.py.
 """
 
 import torch
-from vector_functions import dot, cross, unit, norm_square
+from vector_functions import dot, cross, unit, norm_square, nancheck
 from testing import comparetensors, checkunitvector
 import copy
 
@@ -34,6 +34,7 @@ class Ray:
 
     """
 
+    @nancheck
     def __init__(self, position_m, direction, refractive_index=1, pathlength_m=0, intensity=1, weight=1):
         self.position_m = position_m                # Vector. Position in m
         assert checkunitvector(direction)
@@ -43,6 +44,7 @@ class Ray:
         self.intensity = intensity                  # Scalar. Intensity of ray.
         self.weight = weight                        # Scalar. Total weight in loss function.
 
+    @nancheck
     def propagate(self, distance_m):
         """Propagate ray a defined distance and return as new Ray."""
         destination = self.position_m + self.direction * distance_m
@@ -79,6 +81,7 @@ class Plane:
 
     """
 
+    @nancheck
     def __init__(self, position_m, normal):
         self.position_m = position_m                # Vector array. Position in m
         self.normal = normal                        # Vector array. Plane normal as unit vector
@@ -103,6 +106,7 @@ class CoordPlane():
                             this attribute is calculated on the fly.
     """
 
+    @nancheck
     def __init__(self, position_m, x, y):
         self.position_m = position_m
         self.x = x
@@ -114,6 +118,7 @@ class CoordPlane():
         """Compute normal vector of the plane. Computed from the x & y component vectors."""
         return unit(cross(self.x, self.y))
 
+    @nancheck
     def transform_points(self, points_m):
         """Transform vector array to coordinates of the CoordPlane x & y."""
         p = points_m - self.position_m
@@ -126,6 +131,7 @@ class CoordPlane():
         ##### Away with ya!
         return self.transform_points(rays.position_m)
 
+    @nancheck
     def transform_direction(self, direction):
         """
         Transform vector array to coordinates of the CoordPlane x & y
@@ -136,6 +142,7 @@ class CoordPlane():
         return torch.cat((x, y), -1)
 
 
+@nancheck
 def translate(instance, v):
     """
     Translate object with position_m property. Returns a new instance.
@@ -163,6 +170,7 @@ def copy_update(instance, **kwargs):
     copied_object = copy.copy(instance)
     copied_object.__dict__.update(**kwargs)
     return copied_object
+
 
 # Custom types
 PlaneType = Plane | CoordPlane

@@ -1,7 +1,6 @@
 """Functions for unit tests."""
 
 import torch
-from torch import Tensor
 from vector_functions import norm
 
 

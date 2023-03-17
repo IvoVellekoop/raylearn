@@ -407,14 +407,14 @@ for t in trange:
         + obj2_zshift_init_certainty * MSE(tpm.obj2_zshift, obj2_zshift_init))
     error = error_alpha + error_beta
 
-    def walk_graph(node):
-        print(node)
-        if not(node is None):
-            for next_func in node.next_functions:
-                walk_graph(next_func[0])
+    # def walk_graph(node):
+    #     print(node)
+    #     if not(node is None):
+    #         for next_func in node.next_functions:
+    #             walk_graph(next_func[0])
 
-    walk_graph(error.grad_fn)
-    pass
+    # walk_graph(error.grad_fn)
+    # pass
 
     # print(MSE(slm_dir_rej, slm_dir_rej.mean()) / error)
     beta_fraction = (error_beta / error).detach().item()

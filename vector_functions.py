@@ -24,50 +24,82 @@ For complete broadcasting semantics, see https://pytorch.org/docs/stable/notes/b
 import torch
 from torch import Tensor
 from typing import Sequence
+from functools import wraps
 
 
 # Custom types
 Scalar = float | Tensor
 
 
+def nancheck(func):
+    """
+    Decorator that checks all torch Tensor inputs for NaNs and Infs,
+    and raises a ValueError if one is found.
+    """
+    def check_arg(arg):
+        if isinstance(arg, torch.Tensor):               # Only check torch Tensors
+            if arg.isnan().any():
+                raise ValueError('NaN detected!')
+            if arg.isinf().any():
+                raise ValueError('Infinity detected!')
+
+    @wraps(func)
+    def nanchecked_function(*args, **kwargs):
+        for arg in args:                                # Loop over positional arguments
+            check_arg(arg)
+        for kw, arg in kwargs.items():                  # Loop over keyword arguments
+            check_arg(arg)
+        return func(*args, **kwargs)
+
+    return nanchecked_function
+
+
 # Vector operations
 
+@nancheck
 def dot(v: Tensor, w: Tensor) -> Tensor:
     """Dot product for ...xMxD vectors, where D is vector dimension."""
     return torch.sum(v*w, dim=-1, keepdim=True)
 
 
+@nancheck
 def norm(v: Tensor) -> torch.Tensor:
     """L2-norm for ...xMxD vectors, where D is vector dimension."""
     return torch.norm(v, dim=-1, keepdim=True)
 
 
+@nancheck
 def norm_square(v: Tensor) -> Tensor:
     """L2-norm squared for ...xMxD vectors, where D is vector dimension."""
     return dot(v, v)
 
 
+@nancheck
 def unit(v: Tensor) -> Tensor:
     """Compute unit vectors for ...xMxD vectors, where D is vector dimension."""
     return v / norm(v)
 
 
+@nancheck
 def projection(v: Tensor, w: Tensor) -> Tensor:
     """Vector projection of vector v onto w for ...xMxD vectors, where D is vector dimension."""
     wunit = unit(w)
     return dot(v, wunit) * wunit
 
 
+@nancheck
 def rejection(v: Tensor, w: Tensor) -> Tensor:
     """Vector rejection of vector v onto w for ...xMxD vectors, where D is vector dimension."""
     return v - projection(v, w)
 
 
+@nancheck
 def reflection(v: Tensor, w: Tensor) -> Tensor:
     """Reflect vector v along vector w for ...xMxD vectors, where D is vector dimension."""
     return v - 2 * projection(v, w)
 
 
+@nancheck
 def cross(v: Tensor, w: Tensor) -> Tensor:
     """Cross product of vector v and w for ...xMx3 vectors, where 3 is vector dimension."""
     vx, vy, vz = v.unbind(-1)
@@ -78,6 +110,7 @@ def cross(v: Tensor, w: Tensor) -> Tensor:
     return torch.stack((ux, uy, uz), dim=-1)
 
 
+@nancheck
 def rotate(v: Tensor, u: Tensor, theta: Scalar) -> Tensor:
     """
     Rotate vector v theta radians around unit vector u, using Rodriques' rotation formula.
@@ -97,6 +130,7 @@ def rotate(v: Tensor, u: Tensor, theta: Scalar) -> Tensor:
     return (1-C)*dot(v, u)*u + C*v + S*cross(u, v)
 
 
+@nancheck
 def area_para(v: Tensor, w: Tensor) -> Tensor:
     """Compute parallelogram area for ...xMx2 vectors, where 2 is vector dimension."""
     vx, vy = components(v)
@@ -104,6 +138,7 @@ def area_para(v: Tensor, w: Tensor) -> Tensor:
     return vx*wy - vy*wx
 
 
+@nancheck
 def components(v: Tensor) -> Sequence[Tensor]:
     """
     Components
