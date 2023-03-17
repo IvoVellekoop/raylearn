@@ -68,7 +68,8 @@ class TPM(OpticalSystem):
         # Optical scan angle = 2x mechanical angle
         # https://docs.scanimage.org/Configuration/Scanners/Resonant%2BScanner.html
         # https://bmpi.wiki.utwente.nl/lib/exe/fetch.php?media=instrumentation:galvo:gvs111_m-manual.pdf
-        self.galvo_volts_per_optical_degree = 0.5 / 1.81    # Factor of 1.81 measured on 11-05-2022
+        # self.galvo_volts_per_optical_degree = 0.5 / 1.81    # Factor of 1.81 measured on 11-05-2022
+        self.galvo_volts_per_optical_degree = tensor(0.5) / 2   #############  # Factor of 1.81 measured on 11-05-2022. Now it's 2..?
         # Galvo mirror rotation in mechanical radians per volt
         # conversion from optical scan angle -> factor of 2
         self.galvo_mech_rad_per_V = (np.pi/180) / 2 / self.galvo_volts_per_optical_degree
@@ -99,14 +100,14 @@ class TPM(OpticalSystem):
         self.f6b = 200e-3
         self.f7 = 300e-3
         self.f9 = 150e-3
-        self.f10 = 200e-3
+        self.f10 = 40e-3
         # Objective 1: Nikon CFI75 LWD 16X W
         self.obj1_tubelength = 200e-3           # Objective standard tubelength
         self.obj1_magnification = 16            # Objective magnification
         self.fobj1 = self.obj1_tubelength / self.obj1_magnification
         # Objective 2: Zeiss A-Plan 100x/0.8 421090-9800
         self.obj2_tubelength = 165e-3           # Objective standard tubelength
-        self.obj2_magnification = 100           # Objective magnification
+        self.obj2_magnification = 20            # Objective magnification
         self.fobj2 = self.obj2_tubelength / self.obj2_magnification
         self.obj1_NA = 0.8
         self.obj2_NA = 0.8
@@ -196,7 +197,7 @@ class TPM(OpticalSystem):
                                        self.cam_im_xshift*x + self.cam_im_yshift*y +
                                        self.cam_im_zshift*z,
                                        self.cam_pixel_size * -x,
-                                       self.cam_pixel_size * y)
+                                       self.cam_pixel_size * -y)
         self.cam_ft_plane = CoordPlane(self.L10.position_m + self.f10*z +
                                        self.cam_ft_xshift*x + self.cam_ft_yshift*y,
                                        self.cam_pixel_size * -x,
@@ -256,15 +257,15 @@ class TPM(OpticalSystem):
         self.rays.append(thin_lens(self.rays[-1], self.L9, self.f9))
 
         # Propagation onto cameras
-        cam_im_ray = self.rays[-1].intersect_plane(self.cam_im_plane)
-        self.rays.append(cam_im_ray)
+        self.cam_im_ray = self.rays[-1].intersect_plane(self.cam_im_plane)
+        self.rays.append(self.cam_im_ray)
         self.rays.append(thin_lens(self.rays[-1], self.L10, self.f10))
-        cam_ft_ray = self.rays[-1].intersect_plane(self.cam_ft_plane)
-        self.rays.append(cam_ft_ray)
+        self.cam_ft_ray = self.rays[-1].intersect_plane(self.cam_ft_plane)
+        self.rays.append(self.cam_ft_ray)
 
         # Cameras
-        self.cam_ft_coords = self.cam_ft_plane.transform_rays(cam_ft_ray)
-        self.cam_im_coords = self.cam_im_plane.transform_rays(cam_im_ray)
+        self.cam_ft_coords = self.cam_ft_plane.transform_rays(self.cam_ft_ray)
+        self.cam_im_coords = self.cam_im_plane.transform_rays(self.cam_im_ray)
 
         return self.cam_ft_coords, self.cam_im_coords
 

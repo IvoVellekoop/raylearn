@@ -347,7 +347,17 @@ def snells(ray_in, normal, n_out):
     dir_outrej = n_in/n_out * dir_inrej     # Perpendicular component (i.e. along plane) of dir_out
     dir_outproj = - N * torch.sqrt(1 - norm_square(dir_outrej))     # Parallel component of dir_out
     dir_out = dir_outrej + dir_outproj      # Combine components
+
+    mask_TIR = (norm_square(dir_outrej) > 1)        # Scalar mask Total Internal Reflection occurs
+    mask_TIR_vec = mask_TIR.expand_as(dir_out)      # Vector mask Total Internal Reflection occurs
+    dir_out[mask_TIR_vec] = dir_in.expand_as(dir_out)[mask_TIR_vec]    # These dir_outs are useless due to TIR
+
     ray_out = copy_update(ray_in, direction=dir_out, refractive_index=n_out)
+    ray_out.weight = ray_out.weight * mask_TIR.logical_not()    # Set weight to zero when TIR occurs
+
+    if mask_TIR.sum() > 0:
+        pass
+
     return ray_out
 
 
@@ -408,6 +418,9 @@ def propagate_to_cylinder(in_ray, cylinder_plane, radius_m, propagation_sign=1):
 
     # Compute distances to intersections (with sign in propagation direction)
     distances_m = torch.cat(solve_quadratic(a, b, c), -1) * propagation_sign
+
+    if distances_m.isnan().any():
+        pass
 
     # Nearest intersection distance (in propagation direction)
     distances_m[distances_m < 100*machine_epsilon_f64] = torch.inf      # Interface at or behind ray

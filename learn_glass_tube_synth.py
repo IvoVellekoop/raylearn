@@ -23,32 +23,22 @@ do_plot_tube = True
 
 # Define 'measurement' Galvo and SLM settings
 matfile = {
-    'p/rects': 0.4 * torch.tensor(((0., 1, 0, 0), (-1, 0, 0, 0), (0, 0, 0, 0), (1, 0, 0, 0), (0, -1, 0, 0))).T,
+    'p/rects': 0.265 * torch.tensor(((0., 1, 0, 0), (-1, 0, 0, 0), (0, 0, 0, 0), (1, 0, 0, 0), (0, -1, 0, 0))).T,
     'p/GalvoXcenter': (0.,),
     'p/GalvoYcenter': (0.,),
 
-#     'p/galvoXs': ((0, -0.05, 0, 0.05, 0),),
-#     'p/galvoYs': ((0.05, 0, 0, 0, -0.05),),}
-# tpm = TPM()
-
-#     'p/galvoXs': ((0, -0.25, 0, 0.25, 0),),
-#     'p/galvoYs': ((0.25, 0, 0, 0, -0.25),),}
-# tpm = TPM()
-# tpm.fobj2 = 165e-3 / 20
-# tpm.f10 = 40e-3
-
-    'p/galvoXs': ((0, -0.4, 0, 0.4, 0),),
-    'p/galvoYs': ((0.4, 0, 0, 0, -0.4),),}
+    'p/galvoXs': ((0, -0.125, 0, 0.125, 0),),
+    'p/galvoYs': ((0.125, 0, 0, 0, -0.125),), }
 tpm = TPM()
-tpm.fobj2 = 165e-3 / 20
-tpm.f10 = 40e-3
 
 # Ground truth
 tpm.set_measurement(matfile)
 tpm.sample = SampleTube()
+tpm.sample.shell_thickness_m = (610e-6 - 143e-6) / 2
+tpm.sample.outer_radius_m = 610e-6 / 2
 tpm.sample.tube_angle = tensor((np.radians(90.),))
-tpm.sample_zshift = tensor((150e-6,))
-tpm.obj2_zshift = tensor((310e-6,))
+tpm.sample_zshift = tensor((260e-6,))
+tpm.obj2_zshift = tensor((250e-6,))
 
 tpm.update()
 cam_ft_coords_synth_gt, cam_im_coords_synth_gt = tpm.raytrace()
@@ -70,13 +60,13 @@ cam_ft_coords_synth_gt, cam_im_coords_synth_gt = tpm.raytrace()
 
 # for t in trange:
 # Initial conditions
-shell_thickness_m_init = 100e-6
+shell_thickness_m_init = (610e-6 - 143e-6) / 2
 shell_thickness_m_init_certainty = 100
-outer_radius_m_init = 450e-6
+outer_radius_m_init = 610e-6 / 2
 outer_radius_m_init_certainty = 100
-sample_zshift_init = 130e-6                 ########### Base these on value optimized for initial guess? Only at first? Or dynamically?
+sample_zshift_init = 252e-6                 ########### Base these on value optimized for initial guess? Only at first? Or dynamically?
 sample_zshift_init_certainty = 2
-obj2_zshift_init = 300e-6
+obj2_zshift_init = 250e-6
 obj2_zshift_init_certainty = 2
 
 tpm.sample.shell_thickness_m = tensor((shell_thickness_m_init), requires_grad=True)
@@ -112,12 +102,12 @@ params['other'] = {
 
 # Define optimizer
 optimizer = torch.optim.Adam([
-        {'lr': 2.0e-2, 'params': params['angle'].values()},
-        {'lr': 2.0e-5, 'params': params['obj'].values()},
-        {'lr': 2.0e-5, 'params': params['other'].values()},
+        {'lr': 1.0e-2, 'params': params['angle'].values()},
+        {'lr': 1.0e-5, 'params': params['obj'].values()},
+        {'lr': 5.0e-6, 'params': params['other'].values()},
     ], lr=1.0e-5)
 
-iterations = 500
+iterations = 150
 errors = torch.zeros(iterations)
 
 
@@ -168,13 +158,8 @@ for t in trange:
     trange.desc = f'error: {error_value:<8.3g}' \
         + f'coverslip thickness: {format_prefix(tpm.total_coverslip_thickness, "8.3f")}m'
 
-    # error.backward(retain_graph=True)
-    error.backward()
-    optimizer.step()
-    optimizer.zero_grad()
-
     # Plot
-    if t % 200 == 0 and do_plot_tube:
+    if t % 25 == 0 and do_plot_tube:
         plt.figure(fig.number)
 
         # Fourier cam
@@ -224,6 +209,11 @@ for t in trange:
 
         plt.draw()
         plt.pause(1e-3)
+
+    # error.backward(retain_graph=True)
+    error.backward()
+    optimizer.step()
+    optimizer.zero_grad()
 
 
 for groupname in params:

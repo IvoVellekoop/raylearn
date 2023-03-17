@@ -12,7 +12,7 @@ from tqdm import tqdm
 # from torchviz import make_dot
 
 from plot_functions import plot_coords, format_prefix, plot_rays, plot_lens, plot_plane, default_viewplane
-from testing import MSE
+from testing import MSE, weighted_MSE
 from tpm import TPM
 from vector_functions import components, rejection
 from interpolate_shader import interpolate_shader
@@ -31,9 +31,9 @@ torch.set_default_tensor_type('torch.DoubleTensor')
 
 do_plot_empty = False
 do_plot_pincushion = False
-do_plot_tube = False
+do_plot_tube = True
 do_plot_obj1_zshift = True
-do_plot_backtrace = False
+do_plot_backtrace = True
 do_plot_phase_pattern = True
 
 plt.rc('font', size=12)
@@ -46,8 +46,11 @@ plt.rc('font', size=12)
 # matpath = "F:/ScientificData/pencil-beam-positions/01-Jun-2022-170um_aligned_to_galvos/raylearn_pencil_beam_738673.606682_170um_aligned_to_galvos.mat"
 
 # matpath = "LocalData/raylearn-data/TPM/pencil-beam-positions/12-Jul-2022-1x170um/raylearn_pencil_beam_738714.642102_1x170um.mat"
-matpath = dirs['localdata'].joinpath("raylearn-data/TPM/pencil-beam-positions/30-Sep-2022-1x170um/raylearn_pencil_beam_738794.634384_1x170um.mat")
 
+
+# matpath = dirs['localdata'].joinpath("raylearn-data/TPM/pencil-beam-positions/30-Sep-2022-1x170um/raylearn_pencil_beam_738794.634384_1x170um.mat")
+
+matpath = dirs['localdata'].joinpath("raylearn-data/TPM/pencil-beam-positions/10-Mar-2023-coverslip170um/raylearn_pencil_beam_738955.694554_coverslip170um.mat")
 
 matfile = h5py.File(matpath, 'r')
 
@@ -78,6 +81,7 @@ tpm.sample_zshift = tensor((0.,), requires_grad=True)
 tpm.obj2_zshift = tensor((0.,), requires_grad=True)
 tpm.L9_zshift = tensor((0.,), requires_grad=True)
 tpm.L10_zshift = tensor((0.,), requires_grad=True)
+tpm.galvo_volts_per_optical_degree.requires_grad=True
 
 # Parameter groups
 params = {}
@@ -86,7 +90,7 @@ params['angle'] = {
     'Galvo angle': tpm.galvo_roll,
 }
 params['objective'] = {
-    # 'OBJ2 zshift': tpm.obj2_zshift,
+    'OBJ2 zshift': tpm.obj2_zshift,
     # 'sample zshift': tpm.sample_zshift,
 }
 params['other'] = {
@@ -97,6 +101,7 @@ params['other'] = {
     'cam im xshift': tpm.cam_im_xshift,
     'cam im yshift': tpm.cam_im_yshift,
     # 'cam im zshift': tpm.cam_im_zshift,
+    'Galvo response': tpm.galvo_volts_per_optical_degree,
 }
 
 tpm.update()
@@ -277,7 +282,7 @@ if do_plot_pincushion:
 # === Sample === #
 
 # Import measurement
-matpath = dirs["localdata"].joinpath("raylearn-data/TPM/pencil-beam-positions/21-Oct-2022-tube25uL-beads0/raylearn_pencil_beam_738815.579205_tube25uL-beads0.5um.mat")
+matpath = dirs["localdata"].joinpath("/home/dani/LocalData/raylearn-data/TPM/pencil-beam-positions/11-Mar-2023-tube-0/raylearn_pencil_beam_738956.722609_tube-0.5uL.mat")
 
 matfile = h5py.File(matpath, 'r')
 
@@ -297,7 +302,7 @@ shell_thickness_m_init = (610e-6 - 143e-6) / 2
 shell_thickness_m_init_certainty = 100
 outer_radius_m_init = 610e-6 / 2
 outer_radius_m_init_certainty = 100
-sample_zshift_init = 230e-6                 ########### Base these on value optimized for initial guess? Only at first? Or dynamically?
+sample_zshift_init = 260e-6                 ########### Base these on value optimized for initial guess? Only at first? Or dynamically?
 sample_zshift_init_certainty = 2
 obj2_zshift_init = 250e-6
 obj2_zshift_init_certainty = 2
@@ -343,12 +348,12 @@ params_obj1_zshift['other'] = {
 
 # Define optimizer
 optimizer = torch.optim.Adam([
-        {'lr': 2.0e-2, 'params': params_obj1_zshift['angle'].values()},
-        {'lr': 2.0e-5, 'params': params_obj1_zshift['obj'].values()},
-        {'lr': 2.0e-5, 'params': params_obj1_zshift['other'].values()},
+        {'lr': 1.0e-2, 'params': params_obj1_zshift['angle'].values()},
+        {'lr': 1.0e-5, 'params': params_obj1_zshift['obj'].values()},
+        {'lr': 1.0e-6, 'params': params_obj1_zshift['other'].values()},
     ], lr=1.0e-5)
 
-iterations = 0
+iterations = 1000
 errors = torch.zeros(iterations)
 
 
@@ -370,6 +375,9 @@ if do_plot_tube:
     ax_tpm = plt.gca()
 
 
+# torch.autograd.set_detect_anomaly(True)         ##############
+
+
 for t in trange:
     # === Learn sample === #
     # Forward pass
@@ -385,15 +393,28 @@ for t in trange:
     #     + 1e9 * MSE(slm_dir_rej, slm_dir_rej.mean())
 
     alpha = 1e-6
-    beta = 1e5
-    error_alpha = alpha * (MSE(cam_ft_coords_gt, cam_ft_coords) +
-                           MSE(cam_im_coords_gt, cam_im_coords))
+    beta = 1
+    error_alpha = alpha * (weighted_MSE(cam_ft_coords_gt, cam_ft_coords,
+                           tpm.cam_ft_ray.weight.expand_as(cam_ft_coords)) +
+                           weighted_MSE(cam_im_coords_gt, cam_im_coords,
+                           tpm.cam_im_ray.weight.expand_as(cam_im_coords)))
+    # error_alpha = alpha * (MSE(cam_ft_coords_gt, cam_ft_coords) +
+    #                        MSE(cam_im_coords_gt, cam_im_coords))
     error_beta = beta * (
         shell_thickness_m_init_certainty * MSE(tpm.sample.shell_thickness_m, shell_thickness_m_init)
         + outer_radius_m_init_certainty * MSE(tpm.sample.outer_radius_m, outer_radius_m_init)
         + sample_zshift_init_certainty * MSE(tpm.sample_zshift, sample_zshift_init)
         + obj2_zshift_init_certainty * MSE(tpm.obj2_zshift, obj2_zshift_init))
     error = error_alpha + error_beta
+
+    def walk_graph(node):
+        print(node)
+        if not(node is None):
+            for next_func in node.next_functions:
+                walk_graph(next_func[0])
+
+    walk_graph(error.grad_fn)
+    pass
 
     # print(MSE(slm_dir_rej, slm_dir_rej.mean()) / error)
     beta_fraction = (error_beta / error).detach().item()
@@ -408,16 +429,12 @@ for t in trange:
     trange.desc = f'error: {error_value:<8.3g}' \
         + f' beta fraction: {beta_fraction:.3f}'
 
-    # error.backward(retain_graph=True)
-    error.backward()
-    optimizer.step()
-    optimizer.zero_grad()
-
     # Plot
-    if t % 100 == 0 and do_plot_tube:
+    if t % 1 == 0 and do_plot_tube:
         plt.figure(fig.number)
 
-        for n in range(52):
+        # for n in range(52):
+        for n in [35]:
 
             # Fourier cam
             cam_ft_coord_pairs_x, cam_ft_coord_pairs_y = \
@@ -473,6 +490,12 @@ for t in trange:
 
         plt.draw()
         plt.pause(1e-3)
+
+
+    # error.backward(retain_graph=True)
+    error.backward()
+    optimizer.step()
+    optimizer.zero_grad()
 
 for groupname in params_obj1_zshift:
     print('\n' + groupname + ':')

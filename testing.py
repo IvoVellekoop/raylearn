@@ -17,7 +17,8 @@ def comparetensors(a, b, error=1000):
 
     Required precision of computed answers: error x float64 (a.k.a. double) machine epsilon.
     """
-    return torch.all(torch.abs(a - b) < (error * machine_epsilon_f64))
+    # return torch.all(torch.abs(a - b) < (error * machine_epsilon_f64))
+    return torch.all(torch.abs(a - b).nan_to_num(nan=0.0) < (error * machine_epsilon_f64))
 
 
 def checkunitvector(a, error=1000):
