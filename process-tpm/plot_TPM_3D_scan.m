@@ -1,5 +1,3 @@
-clear; close all; clc
-
 % Plot TPM 3D scan
 
 % Note: combine plots with imagemagick:
@@ -21,11 +19,12 @@ dosave = 0;
 % BMPI/Projects/WAVEFRONTSHAPING/data/TPM/4th gen/calibration/calibration_values.mat
 %%%%% Automate: M matrix, pixels in frame / pixels per line, zoom
 
-tifpath = "/home/dani/LocalData/raylearn-data/TPM/TPM-3D-scans/beads-0.5um-in-25uL-cyl-zoom30-zstep0.4um_00002.tif";
+tifpath = '/mnt/bmpi/Data/Daniel Cox/ExperimentalData/raylearn-data/TPM/TPM-3D-scans/tube-0.5uL-zoom10-with-correction_00001.tif';
+% tifpath = "/home/dani/LocalData/raylearn-data/TPM/TPM-3D-scans/beads-0.5um-in-25uL-cyl-zoom30-zstep0.4um_00002.tif";
 % tifpath = "D:\ScientificData\TPM-3D-scans\beads-0.5um-in-25uL-cyl-zoom30-zstep0.4um_00002.tif";
-zoom = 30;
+zoom = 10;
 factor = 4;
-zstep_um = 0.4;
+zstep_um = 2;
 
 % % tifpath = "/home/dani/LocalData/raylearn-data/TPM/TPM-3D-scans/beads-0.5um-in-25uL-cyl-zoom15-zstep0.5_00001.tif";
 % tifpath = "D:\ScientificData\TPM-3D-scans\beads-0.5um-in-25uL-cyl-zoom15-zstep0.5_00001.tif";
@@ -47,6 +46,7 @@ for n = 1:num_of_frames
 end
 
 
+framestack_raw = framestack;
 framestack(framestack<0) = 0;
 stack_depth_um = zstep_um * size(framestack, 3);
 
@@ -54,8 +54,8 @@ stack_depth_um = zstep_um * size(framestack, 3);
 um = [' (' 181 'm)'];
 fig = figure;
 dimdata = {[-FOV_um/2 FOV_um/2], [-FOV_um/2 FOV_um/2], [-stack_depth_um/2 stack_depth_um/2]};
-axesoptions = struct('xlim', [-4 8], 'ylim', [-8 4], 'fontsize', 16);
-% axesoptions = struct('fontsize', 14);
+% axesoptions = struct('xlim', [-4 8], 'ylim', [-8 4], 'fontsize', 16);
+axesoptions = struct('fontsize', 14);
 
 % Plot with im3
 im3(framestack, ...
