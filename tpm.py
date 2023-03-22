@@ -116,6 +116,8 @@ class TPM(OpticalSystem):
         # Initial z-shifts of lens planes
         self.obj1_zshift = tensor((0.,))
         self.sample_zshift = tensor((0.,))
+        self.obj2_xshift = tensor((0.,))
+        self.obj2_yshift = tensor((0.,))
         self.obj2_zshift = tensor((0.,))
         self.L9_zshift = tensor((0.,))
         self.L10_zshift = tensor((0.,))
@@ -188,7 +190,7 @@ class TPM(OpticalSystem):
                                        self.sample_zshift) * z, x, y)
 
         # Objective
-        self.OBJ2 = Plane(self.sample_plane.position_m + self.fobj2*z + self.obj2_zshift*z, -z)
+        self.OBJ2 = Plane(self.sample_plane.position_m + self.fobj2*z + self.obj2_zshift*z + self.obj2_xshift*x + self.obj2_yshift*y, -z)
         self.L9 = Plane(self.OBJ2.position_m + (self.fobj2 + self.f9 + self.L9_zshift)*z, -z)
         self.L10 = Plane(self.L9.position_m + (self.f9 + self.f10)*z + self.L10_zshift*z, -z)
 

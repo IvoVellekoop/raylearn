@@ -22,7 +22,8 @@ def comparetensors(a, b, error=1000):
 
 def checkunitvector(a, error=1000):
     """Check wether tensor is a unit vector (or NaN)."""
-    return comparetensors(norm(a).nan_to_num(nan=1), 1, error)
+    # return comparetensors(norm(a).nan_to_num(nan=1), 1, error)
+    return comparetensors(norm(a), 1, error)
 
 
 def MSE(a, b, dim=()):
@@ -38,4 +39,5 @@ def weighted_MSE(a, b, w, dim=()):
 def weighted_mean(a, w, dim=()):
     """Weighted Mean (without NaNs)."""
     assert a.shape == w.shape
-    return torch.sum(a.nan_to_num(nan=0.0) * w, dim=dim) / torch.sum(w, dim=dim)
+    # return torch.sum(a.nan_to_num(nan=0.0) * w, dim=dim) / torch.sum(w, dim=dim)
+    return torch.sum(a * w, dim=dim) / torch.sum(w, dim=dim)

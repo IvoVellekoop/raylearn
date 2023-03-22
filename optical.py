@@ -226,6 +226,10 @@ def abbe_lens(in_ray, lens, f, n_out=1.0):
     # Outgoing direction (forward) at Back focal plane
     out_dir_rej = -SF1 / (n_out * f)                        # Perpendicular component
     out_dir_proj = - normal * torch.sqrt(1 - norm_square(out_dir_rej))  # Parallel component
+
+    if out_dir_proj.isnan().any():
+        pass
+
     out_dir = out_dir_rej + out_dir_proj                    # Outgoing direction (forward)
 
     # Outgoing Ray at Back focal plane
@@ -235,6 +239,12 @@ def abbe_lens(in_ray, lens, f, n_out=1.0):
     # Rays at principal spheres
     P1_ray = S_ray.propagate(f*propagation_sign)
     P2_ray = Q_ray.propagate(-f*propagation_sign)
+
+    if P1_ray.position_m.isnan().any():
+        pass
+
+    if P2_ray.position_m.isnan().any():
+        pass
 
     return (P1_ray, P2_ray)
 
@@ -346,17 +356,18 @@ def snells(ray_in, normal, n_out):
     dir_inrej = rejection(dir_in, N)        # Perpendicular component (i.e. along plane) of dir_in
     dir_outrej = n_in/n_out * dir_inrej     # Perpendicular component (i.e. along plane) of dir_out
     dir_outproj = - N * torch.sqrt(1 - norm_square(dir_outrej))     # Parallel component of dir_out
+
+    if dir_outproj.isnan().any():
+        pass
+
     dir_out = dir_outrej + dir_outproj      # Combine components
 
-    mask_TIR = (norm_square(dir_outrej) > 1)        # Scalar mask Total Internal Reflection occurs
-    mask_TIR_vec = mask_TIR.expand_as(dir_out)      # Vector mask Total Internal Reflection occurs
-    dir_out[mask_TIR_vec] = dir_in.expand_as(dir_out)[mask_TIR_vec]    # These dir_outs are useless due to TIR
+    # mask_TIR = (norm_square(dir_outrej) > 1)        # Scalar mask Total Internal Reflection occurs
+    # mask_TIR_vec = mask_TIR.expand_as(dir_out)      # Vector mask Total Internal Reflection occurs
+    # dir_out[mask_TIR_vec] = dir_in.expand_as(dir_out)[mask_TIR_vec]    # These dir_outs are useless due to TIR
 
     ray_out = copy_update(ray_in, direction=dir_out, refractive_index=n_out)
-    ray_out.weight = ray_out.weight * mask_TIR.logical_not()    # Set weight to zero when TIR occurs
-
-    if mask_TIR.sum() > 0:
-        pass
+    # ray_out.weight = ray_out.weight * mask_TIR.logical_not()    # Set weight to zero when TIR occurs
 
     return ray_out
 

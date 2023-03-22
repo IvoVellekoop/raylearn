@@ -296,9 +296,12 @@ found_spot = tensor(matfile['found_spot'])
 not_found_spot_coords = torch.stack((found_spot, found_spot), dim=2).logical_not()
 cam_ft_coords_gt[not_found_spot_coords] = torch.nan
 cam_im_coords_gt[not_found_spot_coords] = torch.nan
+# cam_ft_coords_gt.nan_to_num_(nan=0.0)
+# cam_im_coords_gt.nan_to_num_(nan=0.0)   ###############
+
 
 # Initial conditions
-shell_thickness_m_init = (610e-6 - 143e-6) / 2
+shell_thickness_m_init = (610e-6 - 143e-6) / 2  /1.05
 shell_thickness_m_init_certainty = 100
 outer_radius_m_init = 610e-6 / 2
 outer_radius_m_init_certainty = 100
@@ -317,6 +320,8 @@ tpm.sample.tube_angle = tensor((np.radians(90.),), requires_grad=True)
 tpm.sample.shell_thickness_m = tensor((shell_thickness_m_init), requires_grad=True)
 tpm.sample.outer_radius_m = tensor((outer_radius_m_init,), requires_grad=True)
 tpm.sample_zshift = tensor((sample_zshift_init,), requires_grad=True)
+tpm.obj2_xshift = tensor((0.,), requires_grad=True)
+tpm.obj2_yshift = tensor((0.,), requires_grad=True)
 tpm.obj2_zshift = tensor((obj2_zshift_init,), requires_grad=True)
 
 tpm.backtrace_Nx = 21
@@ -333,7 +338,10 @@ params_obj1_zshift['angle'] = {
 }
 params_obj1_zshift['obj'] = {
     'Sample Plane z-shift': tpm.sample_zshift,
+    'OBJ2 x-shift': tpm.obj2_xshift,
+    'OBJ2 y-shift': tpm.obj2_yshift,
     'OBJ2 z-shift': tpm.obj2_zshift,
+
 }
 params_obj1_zshift['other'] = {
     # 'Total Coverslip Thickness': tpm.total_coverslip_thickness,
@@ -394,10 +402,15 @@ for t in trange:
 
     alpha = 1e-6
     beta = 1
-    error_alpha = alpha * (weighted_MSE(cam_ft_coords_gt, cam_ft_coords,
-                           tpm.cam_ft_ray.weight.expand_as(cam_ft_coords)) +
-                           weighted_MSE(cam_im_coords_gt, cam_im_coords,
-                           tpm.cam_im_ray.weight.expand_as(cam_im_coords)))
+    # error_alpha = alpha * (weighted_MSE(cam_ft_coords_gt, cam_ft_coords,
+    #                        not_found_spot_coords.logical_not() * tpm.cam_ft_ray.weight.expand_as(cam_ft_coords)) +
+    #                        weighted_MSE(cam_im_coords_gt, cam_im_coords,
+    #                        not_found_spot_coords.logical_not() * tpm.cam_im_ray.weight.expand_as(cam_im_coords)))
+
+    mask_nanless = torch.logical_or(torch.logical_or(cam_ft_coords_gt.isnan(), cam_ft_coords.isnan()), torch.logical_or(cam_im_coords_gt.isnan(), cam_ft_coords.isnan())).logical_not()
+
+    error_alpha = alpha * (MSE(cam_ft_coords_gt[mask_nanless], cam_ft_coords[mask_nanless])
+                         + MSE(cam_im_coords_gt[mask_nanless], cam_im_coords[mask_nanless]))
     # error_alpha = alpha * (MSE(cam_ft_coords_gt, cam_ft_coords) +
     #                        MSE(cam_im_coords_gt, cam_im_coords))
     error_beta = beta * (
@@ -407,14 +420,16 @@ for t in trange:
         + obj2_zshift_init_certainty * MSE(tpm.obj2_zshift, obj2_zshift_init))
     error = error_alpha + error_beta
 
-    # def walk_graph(node):
-    #     print(node)
-    #     if not(node is None):
-    #         for next_func in node.next_functions:
-    #             walk_graph(next_func[0])
-
-    # walk_graph(error.grad_fn)
-    # pass
+    # import gc
+    # for obj in gc.get_objects():
+    #     try:
+    #         if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
+    #             # print(type(obj), obj.size())
+    #             if obj.isnan().any():
+    #                 print(type(obj), obj.size())
+    #                 pass
+    #     except:
+    #         pass
 
     # print(MSE(slm_dir_rej, slm_dir_rej.mean()) / error)
     beta_fraction = (error_beta / error).detach().item()
@@ -430,7 +445,7 @@ for t in trange:
         + f' beta fraction: {beta_fraction:.3f}'
 
     # Plot
-    if t % 1 == 0 and do_plot_tube:
+    if t % 25 == 0 and do_plot_tube and t>10:
         plt.figure(fig.number)
 
         # for n in range(52):
@@ -480,7 +495,7 @@ for t in trange:
 
         plt.figure(fig_tpm.number)
         ax_tpm.clear()
-        tpm.plot(ax_tpm, fraction=0.01)
+        tpm.plot(ax_tpm, fraction=0.05)
         # tpm.sample.plot(ax_tpm)
         viewplane = default_viewplane()
         x_sample, y_sample = viewplane.transform_points(tpm.sample.slide_top_plane.position_m)
@@ -492,8 +507,20 @@ for t in trange:
         plt.pause(1e-3)
 
 
-    # error.backward(retain_graph=True)
-    error.backward()
+    # error.backward(create_graph=True)
+    error.backward(retain_graph=True)
+    # error.backward()
+
+    # def walk_graph(node, depth):
+    #     # print(depth)
+    #     if not(node is None):
+    #         if node.name() == 'PowBackward0':
+    #             print(depth, node._saved_self)
+    #         for next_func in node.next_functions:
+    #             walk_graph(next_func[0], depth+1)
+
+    # walk_graph(error.grad_fn, 0)
+
     optimizer.step()
     optimizer.zero_grad()
 

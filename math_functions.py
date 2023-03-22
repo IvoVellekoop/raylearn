@@ -22,6 +22,10 @@ def solve_quadratic(a, b, c):
 
     discriminant = b*b - 4*a*c
     sqrt_discr = sqrt(discriminant)
+
+    if sqrt_discr.isnan().any():
+        pass
+
     x1 = (-b - sqrt_discr) / (2*a)
     x2 = (-b + sqrt_discr) / (2*a)
     return (x1, x2)
