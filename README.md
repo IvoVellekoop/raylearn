@@ -105,7 +105,7 @@ Unit tests are run using the pytest package. To run all tests either:
      - Or execute *Test: Run All Tests* from the command palette.
   3. Expand >items in the list to view all of its test results.
 
-  Note: If this doesn't work, pytest might not be set up properly with VS Code. Go to settings and search for *pytest*.
+  Note: If this doesn't work, pytest might not be set up properly with VS Code. Go to settings (gear icon lower left or Ctrl+,) search for *pytest* and make sure 'Enable testing using pytest' is enabled.
 
 - Run pytest directly from the terminal:
   

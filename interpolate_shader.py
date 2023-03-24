@@ -90,6 +90,7 @@ class ShaderInterpolator:
         glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 4)
         glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 4)
         glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
+        glfw.window_hint(glfw.DECORATED, glfw.FALSE)
         self.window = glfw.create_window(resolution[0], resolution[1], "A Window", None, None)
         glfw.make_context_current(self.window)
 
