@@ -35,7 +35,7 @@ class Ray:
     """
 
     @nancheck
-    def __init__(self, position_m, direction, refractive_index=1, pathlength_m=0, intensity=1, weight=1):
+    def __init__(self, position_m, direction, refractive_index=1, pathlength_m=0, intensity=1, weight=1, do_plot=1):
         self.position_m = position_m                # Vector. Position in m
         assert checkunitvector(direction)
         self.direction = direction                  # Vector. Direction unit vector
@@ -43,6 +43,7 @@ class Ray:
         self.pathlength_m = pathlength_m            # Scalar. Total optical pathlength in m
         self.intensity = intensity                  # Scalar. Intensity of ray.
         self.weight = weight                        # Scalar. Total weight in loss function.
+        self.do_plot = do_plot                      # Scalar. Toggle to plot specific rays or not.
 
     @nancheck
     def propagate(self, distance_m):
@@ -140,7 +141,7 @@ class CoordPlane():
         x = dot(direction, self.x) / norm_square(self.x)
         y = dot(direction, self.y) / norm_square(self.y)
         return torch.cat((x, y), -1)
-
+    
 
 @nancheck
 def translate(instance, v):
@@ -170,6 +171,18 @@ def copy_update(instance, **kwargs):
     copied_object = copy.copy(instance)
     copied_object.__dict__.update(**kwargs)
     return copied_object
+
+
+def detach(instance):
+    """
+    Create copy of this object, with all Tensor properties detached from the computational graph.
+    """
+    dict_detached = {}
+    for kw, arg in instance.__dict__.items():           # Loop over keyword arguments
+        if isinstance(arg, torch.Tensor):               # Only check torch Tensors
+            dict_detached[kw] = arg.detach()            # Add detached copy of each Tensor property
+
+    return copy_update(instance, **dict_detached)
 
 
 # Custom types

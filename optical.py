@@ -12,7 +12,7 @@ import numpy as np
 from testing import checkunitvector, machine_epsilon_f64
 from vector_functions import unit, dot, norm_square, rejection, reflection, rotate, components, \
     cartesian3d, Scalar
-from math_functions import solve_quadratic, sign
+from math_functions import solve_quadratic, sign, sqrt_zero
 from ray_plane import Ray, CoordPlane, Plane, translate, copy_update, PlaneType
 from plot_functions import default_viewplane, plot_plane
 
@@ -355,10 +355,7 @@ def snells(ray_in, normal, n_out):
 
     dir_inrej = rejection(dir_in, N)        # Perpendicular component (i.e. along plane) of dir_in
     dir_outrej = n_in/n_out * dir_inrej     # Perpendicular component (i.e. along plane) of dir_out
-    dir_outproj = - N * torch.sqrt(1 - norm_square(dir_outrej))     # Parallel component of dir_out
-
-    if dir_outproj.isnan().any():
-        pass
+    dir_outproj = - N * sqrt_zero(1 - norm_square(dir_outrej))     # Parallel component of dir_out
 
     dir_out = dir_outrej + dir_outproj      # Combine components
 
@@ -368,6 +365,9 @@ def snells(ray_in, normal, n_out):
 
     ray_out = copy_update(ray_in, direction=dir_out, refractive_index=n_out)
     # ray_out.weight = ray_out.weight * mask_TIR.logical_not()    # Set weight to zero when TIR occurs
+
+    if (norm_square(dir_outproj) == 0).any():
+        pass
 
     return ray_out
 

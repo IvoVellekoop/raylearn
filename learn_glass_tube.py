@@ -18,7 +18,7 @@ from vector_functions import components, rejection
 from interpolate_shader import interpolate_shader
 from optical import Coverslip
 from sample_tube import SampleTube
-from ray_plane import CoordPlane
+from ray_plane import CoordPlane, detach
 from dirconfig_raylearn import dirs
 
 
@@ -379,7 +379,7 @@ trange = tqdm(range(iterations), desc='error: -')
 if do_plot_tube:
     fig, ax = plt.subplots(nrows=2, figsize=(5, 10), dpi=110)
 
-    fig_tpm = plt.figure(figsize=(5, 5), dpi=110)
+    fig_tpm = plt.figure(figsize=(7, 7), dpi=110)
     ax_tpm = plt.gca()
 
 
@@ -392,8 +392,11 @@ for t in trange:
     # Forward pass
     tpm.update()
     cam_ft_coords, cam_im_coords = tpm.raytrace()
-    slm_rays = tpm.backtrace()
-    slm_dir_rej = rejection(slm_rays.direction, tpm.slm_plane.normal)
+    # slm_rays = tpm.backtrace()
+    # slm_dir_rej = rejection(slm_rays.direction, tpm.slm_plane.normal)
+
+    if cam_ft_coords.isnan().any():
+        pass
 
     # Compute and print error
 
@@ -448,7 +451,7 @@ for t in trange:
         + f' beta fraction: {beta_fraction:.3f}'
 
     # Plot
-    if t % 25 == 0 and do_plot_tube and t>10:
+    if t % 1 == 0 and do_plot_tube and t>30:
         plt.figure(fig.number)
 
         # for n in range(52):
@@ -493,17 +496,21 @@ for t in trange:
             ######
 
             plt.draw()
-            plt.savefig(f'/home/dani/raylearn/plots/tube_spot_positions/cam_spots_angle{n:02}.png', bbox_inches='tight')
+            # plt.savefig(f'/home/dani/raylearn/plots/tube_spot_positions/cam_spots_angle{n:02}.png', bbox_inches='tight')
             plt.pause(1e-3)
 
         plt.figure(fig_tpm.number)
         ax_tpm.clear()
-        tpm.plot(ax_tpm, fraction=0.05)
+        # viewplane = default_viewplane()
+        viewplane = detach(tpm.sample.cyl_plane)
+
+        tpm.plot(ax_tpm, fraction=1.0, viewplane=viewplane)
         # tpm.sample.plot(ax_tpm)
-        viewplane = default_viewplane()
-        x_sample, y_sample = viewplane.transform_points(tpm.sample.slide_top_plane.position_m)
-        ax_tpm.set_xlim((x_sample - 3 * tpm.sample.outer_radius_m).detach(), (x_sample + 1.5*tpm.sample.slide_thickness_m).detach())
-        ax_tpm.set_ylim((y_sample - 2 * tpm.sample.outer_radius_m).detach(), (y_sample + 2 * tpm.sample.outer_radius_m).detach())
+        # x_sample, y_sample = viewplane.transform_points(tpm.sample.slide_top_plane.position_m)
+        # ax_tpm.set_xlim((x_sample - 3 * tpm.sample.outer_radius_m).detach(), (x_sample + 1.5*tpm.sample.slide_thickness_m).detach())
+        # ax_tpm.set_ylim((y_sample - 2 * tpm.sample.outer_radius_m).detach(), (y_sample + 2 * tpm.sample.outer_radius_m).detach())
+        ax_tpm.set_xlim((-0.6e-3, 0.6e-3))
+        ax_tpm.set_ylim((-700e-6, 500e-6))
         ax_tpm.set_aspect(1)
 
         plt.draw()
@@ -537,7 +544,7 @@ for groupname in params_obj1_zshift:
 
 
 if do_plot_tube and iterations > 0:
-    fig, ax1 = plt.subplots(figsize=(7, 7))
+    fig, ax1 = plt.subplots(figsize=(8, 8))
     fig.dpi = 144
 
     # Plot error

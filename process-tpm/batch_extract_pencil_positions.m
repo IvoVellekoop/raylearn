@@ -15,8 +15,8 @@ end
 % Settings
 dosavedata = 0;                     % Toggle saving data
 doshowplot = 1;                     % Toggle showing plot of each found position (for debugging)
-dosaveplot = 0;                     % Toggle saving plots
-plotsubdir = 'plot';                % Subdirectory for saving plot frames
+dosaveplot = 1;                     % Toggle saving plots
+plotsubdir = 'plot_failed';                % Subdirectory for saving plot frames
 fig_size_pix = 850;                 % Figure size in pixels
 
 percentile = 99.7;                  % Percentile of the frame values to use
@@ -167,7 +167,9 @@ for d = 1:D
 
 
             % Show plot of found pencil beam positions on frame
-            if doshowplot
+%             if doshowplot
+            if doshowplot && ~found_spot(s, g)  % Uncomment to only show detections marked failed
+%             if doshowplot && found_spot(s, g)   % Uncomment to only show detections marked good
                 figure(fig);
                 
                 % Plot original ft frame with position
