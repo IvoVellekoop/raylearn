@@ -282,7 +282,7 @@ if do_plot_pincushion:
 # === Sample === #
 
 # Import measurement
-matpath = dirs["localdata"].joinpath("/home/dani/LocalData/raylearn-data/TPM/pencil-beam-positions/11-Mar-2023-tube-0/raylearn_pencil_beam_738956.722609_tube-0.5uL.mat")
+matpath = dirs["localdata"].joinpath("raylearn-data/TPM/pencil-beam-positions/11-Mar-2023-tube-0/raylearn_pencil_beam_738956.722609_tube-0.5uL.mat")
 
 matfile = h5py.File(matpath, 'r')
 
@@ -385,6 +385,7 @@ if do_plot_tube:
 
 # torch.autograd.set_detect_anomaly(True)         ##############
 
+nans = []
 
 for t in trange:
     # === Learn sample === #
@@ -419,6 +420,8 @@ for t in trange:
         + sample_zshift_init_certainty * MSE(tpm.sample_zshift, sample_zshift_init)
         + obj2_zshift_init_certainty * MSE(tpm.obj2_zshift, obj2_zshift_init))
     error = error_alpha + error_beta
+
+    nans += [cam_ft_coords.isnan().sum()]
 
     # import gc
     # for obj in gc.get_objects():

@@ -56,6 +56,16 @@ def nancheck(func):
     return nanchecked_function
 
 
+def ensure_tensor(x):
+    """
+    Convert input to a torch Tensor if it's not a torch Tensor.
+    """
+    if isinstance(x, Tensor):
+        return x
+    else:
+        return torch.tensor(x)
+
+
 # Vector operations
 
 @nancheck
@@ -123,11 +133,7 @@ def rotate(v: Tensor, u: Tensor, theta: Scalar) -> Tensor:
     - http://ksuweb.kennesaw.edu/~plaval/math4490/rotgen.pdf
     - https://en.wikipedia.org/w/index.php?title=Rodrigues%27_rotation_formula
     """
-    if isinstance(theta, torch.Tensor):
-        tensor_theta = theta                    # Already a Tensor
-    else:
-        # Turn into Tensor (only works for Python scalars or single number Tensors)
-        tensor_theta = torch.Tensor((theta,))
+    tensor_theta = ensure_tensor(theta)
 
     C = torch.cos(tensor_theta)
     S = torch.sin(tensor_theta)
