@@ -8,6 +8,7 @@ import numpy as np
 import h5py
 import hdf5storage
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from tqdm import tqdm
 # from torchviz import make_dot
 
@@ -32,8 +33,8 @@ torch.set_default_tensor_type('torch.DoubleTensor')
 do_plot_empty = False
 do_plot_pincushion = False
 do_plot_tube = True
-do_plot_obj1_zshift = True
-do_plot_backtrace = True
+do_plot_obj1_zshift = False
+do_plot_backtrace = False
 do_plot_phase_pattern = True
 
 plt.rc('font', size=12)
@@ -294,20 +295,26 @@ cam_im_coords_gt = (tensor((matfile['cam_img_col'], matfile['cam_img_row']))
 # Discard coords marked as spot not found
 found_spot = tensor(matfile['found_spot'])
 not_found_spot_coords = torch.stack((found_spot, found_spot), dim=2).logical_not()
+
 cam_ft_coords_gt[not_found_spot_coords] = torch.nan
 cam_im_coords_gt[not_found_spot_coords] = torch.nan
 # cam_ft_coords_gt.nan_to_num_(nan=0.0)
 # cam_im_coords_gt.nan_to_num_(nan=0.0)   ###############
 
+SLM_coord_limit = 0.2
+mask_limit_angle = (tensor(matfile['p/rects'])[0:2, :].T.view(-1, 2).pow(2).sum(dim=1, keepdim=True).sqrt() > SLM_coord_limit).expand_as(not_found_spot_coords)
+cam_ft_coords_gt[mask_limit_angle] = torch.nan
+cam_im_coords_gt[mask_limit_angle] = torch.nan
+
 
 # Initial conditions
-shell_thickness_m_init = (610e-6 - 143e-6) / 2  /1.05
+shell_thickness_m_init = (610e-6 - 143e-6) / 2
 shell_thickness_m_init_certainty = 100
 outer_radius_m_init = 610e-6 / 2
 outer_radius_m_init_certainty = 100
-sample_zshift_init = 260e-6                 ########### Base these on value optimized for initial guess? Only at first? Or dynamically?
+sample_zshift_init = 330e-6                 ########### Base these on value optimized for initial guess? Only at first? Or dynamically?
 sample_zshift_init_certainty = 2
-obj2_zshift_init = 250e-6
+obj2_zshift_init = 240e-6
 obj2_zshift_init_certainty = 2
 
 # Parameters
@@ -315,7 +322,7 @@ obj2_zshift_init_certainty = 2
 
 tpm.set_measurement(matfile)
 tpm.sample = SampleTube()
-tpm.sample.tube_angle = tensor((np.radians(90.),), requires_grad=True)
+tpm.sample.tube_angle = tensor((np.radians(97.),), requires_grad=True)
 
 tpm.sample.shell_thickness_m = tensor((shell_thickness_m_init), requires_grad=True)
 tpm.sample.outer_radius_m = tensor((outer_radius_m_init,), requires_grad=True)
@@ -348,7 +355,7 @@ params_obj1_zshift['other'] = {
     'cam im xshift': tpm.cam_im_xshift,
     'cam im yshift': tpm.cam_im_yshift,
     'shell thickness': tpm.sample.shell_thickness_m,
-    'outer radius': tpm.sample.outer_radius_m,
+    # 'outer radius': tpm.sample.outer_radius_m,
 }
 
 # Trace computational graph
@@ -356,12 +363,12 @@ params_obj1_zshift['other'] = {
 
 # Define optimizer
 optimizer = torch.optim.Adam([
-        {'lr': 1.0e-2, 'params': params_obj1_zshift['angle'].values()},
+        {'lr': 2.0e-2, 'params': params_obj1_zshift['angle'].values()},
         {'lr': 1.0e-5, 'params': params_obj1_zshift['obj'].values()},
         {'lr': 1.0e-6, 'params': params_obj1_zshift['other'].values()},
     ], lr=1.0e-5)
 
-iterations = 1000
+iterations = 0
 errors = torch.zeros(iterations)
 
 
@@ -413,7 +420,7 @@ for t in trange:
 
     mask_nanless = torch.logical_or(torch.logical_or(cam_ft_coords_gt.isnan(), cam_ft_coords.isnan()), torch.logical_or(cam_im_coords_gt.isnan(), cam_ft_coords.isnan())).logical_not()
 
-    error_alpha = alpha * (MSE(cam_ft_coords_gt[mask_nanless], cam_ft_coords[mask_nanless])
+    error_alpha = alpha * (1 * MSE(cam_ft_coords_gt[mask_nanless], cam_ft_coords[mask_nanless])
                          + MSE(cam_im_coords_gt[mask_nanless], cam_im_coords[mask_nanless]))
     # error_alpha = alpha * (MSE(cam_ft_coords_gt, cam_ft_coords) +
     #                        MSE(cam_im_coords_gt, cam_im_coords))
@@ -451,7 +458,7 @@ for t in trange:
         + f' beta fraction: {beta_fraction:.3f}'
 
     # Plot
-    if t % 1 == 0 and do_plot_tube and t>30:
+    if t % 100 == 0 and do_plot_tube and t>=0:
         plt.figure(fig.number)
 
         # for n in range(52):
@@ -504,7 +511,7 @@ for t in trange:
         # viewplane = default_viewplane()
         viewplane = detach(tpm.sample.cyl_plane)
 
-        tpm.plot(ax_tpm, fraction=1.0, viewplane=viewplane)
+        tpm.plot(ax_tpm, fraction=0.1, viewplane=viewplane)
         # tpm.sample.plot(ax_tpm)
         # x_sample, y_sample = viewplane.transform_points(tpm.sample.slide_top_plane.position_m)
         # ax_tpm.set_xlim((x_sample - 3 * tpm.sample.outer_radius_m).detach(), (x_sample + 1.5*tpm.sample.slide_thickness_m).detach())
@@ -766,10 +773,11 @@ if do_plot_backtrace:
 
 if do_plot_phase_pattern:
     # Plot SLM phase correction pattern
-    plt.imshow(np.angle(field_SLM), extent=extent, cmap='twilight', interpolation='nearest')
-    plt.title('SLM phase correction pattern, '
+    fig_phase_pattern = plt.figure(dpi=200, figsize=(6, 5.5))
+    plt.imshow(np.angle(field_SLM), extent=extent, vmin=-np.pi, vmax=np.pi, cmap='twilight', interpolation='nearest')
+    plt.title(f'Phase correction pattern, '
               + f'λ={format_prefix(wavelength_m)}m'
-              + f'\ninner radius={format_prefix(tpm.sample.inner_radius_m)}m,'
+              + f'\nshell thickness={format_prefix(tpm.sample.shell_thickness_m)}m,'
               + f' outer radius={format_prefix(tpm.sample.outer_radius_m)}m')
 
     # Draw a circle to indicate NA
@@ -777,23 +785,29 @@ if do_plot_phase_pattern:
     theta_vert_NA_circle = np.linspace(0, 2*np.pi, N_verts_NA_circle)
     x_NA_circle = NA_radius_SLM * np.cos(theta_vert_NA_circle)
     y_NA_circle = NA_radius_SLM * np.sin(theta_vert_NA_circle)
-    plt.plot(x_NA_circle, y_NA_circle, '--g', linewidth=2)
+    plt.plot(x_NA_circle, y_NA_circle, '--g', linewidth=2.5, label=f'NA={tpm.obj1_NA}')
+    plt.legend(loc='upper right')
 
-    plt.xlabel('x (SLM heights)')
-    plt.ylabel('y (SLM heights)')
-    plt.colorbar()
+    plt.xticks(())
+    plt.yticks(())
+
+    divider = make_axes_locatable(plt.gca())
+    cax = divider.append_axes("right", size="5%", pad=0.1)      # Colobar Axes
+    colorbar = plt.colorbar(ticks=[-np.pi, 0, np.pi], label='Phase', cax=cax)
+    colorbar.ax.set_yticklabels(['−π', '0', '+π'])
     plt.show()
 
 # Save file
-matpath_out = '/home/dani/LocalData/raylearn-data/TPM/pattern-' \
+matpath_out = str(dirs['localdata'].joinpath('raylearn-data/TPM/pattern-' \
     + '0.5uL-tube-' \
-    + f'λ{format_prefix(wavelength_m, formatspec=".1f")}m.mat'
+    + f'λ{format_prefix(wavelength_m, formatspec=".1f")}m.mat'))
 mdict = {
     'matpath_pencil_beam_positions': str(matpath),
     'field_SLM': field_SLM.detach().numpy(),
     'obj1_zshift': tpm.obj1_zshift.detach().numpy(),
     'inner_radius_m': tpm.sample.inner_radius_m.detach().numpy(),
     'outer_radius_m': tpm.sample.outer_radius_m.detach().numpy(), ########### add more properties
+    'shell_thickness_m': tpm.sample.shell_thickness_m.detach().numpy(),
     'wavelength_m': wavelength_m,
 }
 matfile_out = hdf5storage.savemat(matpath_out, mdict)

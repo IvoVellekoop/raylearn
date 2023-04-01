@@ -6,19 +6,14 @@ from vector_functions import ensure_tensor
 from torch import Tensor, sqrt, isnan, nan, zeros_like, nn
 
 
-def sqrt_zero(x_in, beta=5):
+def sqrt_zero(x_in, epsilon=1e-4):
     """
     Square Root or Zero
     Returns the sqrt of x if x>0. Returns 0 otherwise. Works on torch Tensors of any shape.
     """
     x = ensure_tensor(x_in)
-    # z = zeros_like(x)
-    # mask = (x > 0)
-    softplus = nn.Softplus(beta=beta)
     relu = nn.ReLU()
-    # z[mask] = softplus(x).sqrt()[mask]
-    z = relu(x).sqrt() + 1e-4
-    # z = softplus(x).sqrt()
+    z = relu(x).sqrt() + epsilon
     return z
 
 
