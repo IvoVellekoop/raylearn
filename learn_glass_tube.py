@@ -31,6 +31,7 @@ from dirconfig_raylearn import dirs
 torch.set_default_tensor_type('torch.DoubleTensor')
 
 do_plot_empty = False
+do_save_frames_empty = True
 do_plot_pincushion = False
 do_plot_tube = True
 do_plot_obj1_zshift = False
@@ -102,7 +103,7 @@ params['other'] = {
     'cam im xshift': tpm.cam_im_xshift,
     'cam im yshift': tpm.cam_im_yshift,
     # 'cam im zshift': tpm.cam_im_zshift,
-    'Galvo response': tpm.galvo_volts_per_optical_degree,
+    # 'Galvo response': tpm.galvo_volts_per_optical_degree,
 }
 
 tpm.update()
@@ -118,7 +119,7 @@ optimizer = torch.optim.Adam([
     ], lr=1.0e-5)
 
 iterations = 150
-errors = torch.zeros(iterations)
+errors = torch.zeros(iterations) * torch.nan
 
 
 # Initialize logs for tracking each parameter
@@ -126,7 +127,7 @@ params_logs = {}
 for groupname in params:
     params_logs[groupname] = {}
     for paramname in params[groupname]:
-        params_logs[groupname][paramname] = torch.zeros(iterations)
+        params_logs[groupname][paramname] = torch.nan * torch.zeros(iterations)
 
 
 trange = tqdm(range(iterations), desc='error: -')
@@ -144,6 +145,15 @@ if do_plot_empty:
 
     fig_tpm = plt.figure(figsize=(15, 4), dpi=110)
     ax_tpm = plt.gca()
+
+if do_save_frames_empty:
+    fig_save_frames_empty = plt.figure(dpi=90, figsize=(11, 7))
+
+    gs = fig_save_frames_empty.add_gridspec(2, 3)
+    ax_ray = fig_save_frames_empty.add_subplot(gs[0, :-1])
+    ax_ft = fig_save_frames_empty.add_subplot(gs[1, 0])
+    ax_im = fig_save_frames_empty.add_subplot(gs[1, 1])
+    ax_err = fig_save_frames_empty.add_subplot(gs[:, 2])
 
 
 for t in trange:
@@ -172,7 +182,7 @@ for t in trange:
     optimizer.step()
     optimizer.zero_grad()
 
-    if t % 50 == 0 and do_plot_empty:
+    if t % 10 == 0 and do_plot_empty:
         plt.figure(fig.number)
 
         # Fourier cam
@@ -212,7 +222,69 @@ for t in trange:
         ax_tpm.clear()
         tpm.plot(ax_tpm)
         plt.draw()
+        plt.pause(1e-1)
+
+    if do_save_frames_empty and t % 15 == 0:
+        plt.figure(fig_save_frames_empty.number)
+
+        # Fourier cam
+        ax_ft.clear()
+        cam_ft_coord_pairs_x, cam_ft_coord_pairs_y = \
+            torch.stack((cam_ft_coords_gt, cam_ft_coords)).detach().unbind(-1)
+
+        ax_ft.plot(cam_ft_coord_pairs_x.view(2, -1), cam_ft_coord_pairs_y.view(2, -1),
+                   color='lightgrey')
+        plot_coords(ax_ft, cam_ft_coords_gt[:, :, :], {'label': 'measured'})
+        plot_coords(ax_ft, cam_ft_coords[:, :, :], {'label': 'simulated'})
+
+        ax_ft.set_ylabel('y (pix)')
+        ax_ft.set_xlabel('x (pix)')
+        ax_ft.legend(loc=1)
+        ax_ft.set_title('Fourier Cam')
+        ax_ft.set_xlim((-370, 250))
+        ax_ft.set_ylim((-250, 370))
+        ax_ft.set_aspect(1)
+
+        # Image cam
+        cam_im_coord_pairs_x, cam_im_coord_pairs_y = \
+            torch.stack((cam_im_coords_gt, cam_im_coords)).detach().unbind(-1)
+
+        ax_im.clear()
+        ax_im.plot(cam_im_coord_pairs_x.view(2, -1), cam_im_coord_pairs_y.view(2, -1),
+                   color='lightgrey')
+        plot_coords(ax_im, cam_im_coords_gt[:, :, :], {'label': 'measured'})
+        plot_coords(ax_im, cam_im_coords[:, :, :], {'label': 'simulated'})
+
+        ax_im.set_ylabel('y (pix)')
+        ax_im.set_xlabel('x (pix)')
+        ax_im.legend(loc=1)
+        ax_im.set_title('Image Cam')
+        ax_im.set_xlim((-500, 500))
+        ax_im.set_ylim((-600, 600))
+        ax_im.set_aspect(1)
+
+        # Plot error and parameters
+        ax_err.clear()
+        errorcolor = 'darkred'
+        MSEs = errors.detach().cpu() * 5e-8
+        ax_err.plot(MSEs, label='error (a.u.)', color=errorcolor, linewidth=2)
+        ax_err.set_ylim((-6e-3, 6e-3))
+        ax_err.set_xlim((0, iterations))
+
+        for groupname in params:
+            for paramname in params_logs[groupname]:
+                ax_err.plot(params_logs[groupname][paramname], label=paramname)
+        ax_err.legend(loc=1)
+        ax_err.ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
+
+        ax_ray.clear()
+        tpm.plot(ax_ray)
+
+        plt.draw()
         plt.pause(1e-3)
+
+
+exit()
 
 
 for groupname in params:
