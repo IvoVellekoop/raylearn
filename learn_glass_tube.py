@@ -284,8 +284,6 @@ for t in trange:
         plt.pause(1e-3)
 
 
-exit()
-
 
 for groupname in params:
     print('\n' + groupname + ':')
@@ -427,7 +425,7 @@ params_obj1_zshift['other'] = {
     'cam im xshift': tpm.cam_im_xshift,
     'cam im yshift': tpm.cam_im_yshift,
     'shell thickness': tpm.sample.shell_thickness_m,
-    # 'outer radius': tpm.sample.outer_radius_m,
+    'outer radius': tpm.sample.outer_radius_m,
 }
 
 # Trace computational graph
@@ -440,7 +438,7 @@ optimizer = torch.optim.Adam([
         {'lr': 1.0e-6, 'params': params_obj1_zshift['other'].values()},
     ], lr=1.0e-5)
 
-iterations = 0
+iterations = 1000
 errors = torch.zeros(iterations)
 
 
@@ -462,7 +460,7 @@ if do_plot_tube:
     ax_tpm = plt.gca()
 
 
-# torch.autograd.set_detect_anomaly(True)         ##############
+torch.autograd.set_detect_anomaly(True)         ##############
 
 nans = []
 
@@ -530,7 +528,7 @@ for t in trange:
         + f' beta fraction: {beta_fraction:.3f}'
 
     # Plot
-    if t % 100 == 0 and do_plot_tube and t>=0:
+    if t % 5 == 0 and do_plot_tube and t>=0:
         plt.figure(fig.number)
 
         # for n in range(52):
