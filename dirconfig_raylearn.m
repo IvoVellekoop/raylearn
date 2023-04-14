@@ -23,8 +23,8 @@
 % Directory variables
 dirs.repo = fileparts(mfilename('fullpath'));                 % repo directory
 dirs.main = fileparts(dirs.repo);                             % Allprojects dir
-dirs.simdata = '\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\SimulationData';  % Simulation Data
-dirs.expdata = '\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData';% Experimental Data
+dirs.simdata = replace('\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\SimulationData', '\', filesep);  % Simulation Data
+dirs.expdata = replace('\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData', '\', filesep);  % Experimental Data
 dirs.localdata = 'C:\LocalData';      % Local Data
 
 

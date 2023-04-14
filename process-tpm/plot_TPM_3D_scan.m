@@ -19,8 +19,8 @@ dosave = 0;
 % BMPI/Projects/WAVEFRONTSHAPING/data/TPM/4th gen/calibration/calibration_values.mat
 %%%%% Automate: M matrix, pixels in frame / pixels per line, zoom
 
-% tifpath = '/mnt/bmpi/Data/Daniel Cox/ExperimentalData/raylearn-data/TPM/TPM-3D-scans/2023-03-24_tube-0.5uL-zoom10-no-correction_00003.tif';
-tifpath = '/mnt/bmpi/Data/Daniel Cox/ExperimentalData/raylearn-data/TPM/TPM-3D-scans/2023-03-24_tube-0.5uL-zoom10-with-correction_00001.tif';
+% tifpath = fullfile(dirs.expdata, 'raylearn-data/TPM/TPM-3D-scans/2023-03-24_tube-0.5uL-zoom10-no-correction_00003.tif');
+tifpath = fullfile(dirs.expdata, 'raylearn-data/TPM/TPM-3D-scans/2023-03-24_tube-0.5uL-zoom10-with-correction_00001.tif');
 zoom = 10;
 factor = 4;
 zstep_um = 1;
@@ -40,8 +40,10 @@ tifinfo = imfinfo(tifpath);         % Get info about image
 num_of_frames = length(tifinfo);    % Number of frames
 framestack = zeros(tifinfo(1).Width, tifinfo(1).Height, num_of_frames); % Initialize
 
+starttime = now;
 for n = 1:num_of_frames
     framestack(:,:,n) = imread(tifpath, n);
+    eta(n, num_of_frames, starttime, 'console', 'Loading tif...', 5);
 end
 
 
@@ -109,6 +111,7 @@ imagesc(framestack(310:370,487:492,164));
 caxis([0 5e3]);
 axis image
 
+figure;
 frameline = mean(framestack_raw(310:370,487:492,164), 2);
 x = (1:length(frameline))/pixels_per_um;
 f = fit(x',frameline,'gauss1');
