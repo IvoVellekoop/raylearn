@@ -31,7 +31,7 @@ from dirconfig_raylearn import dirs
 torch.set_default_tensor_type('torch.DoubleTensor')
 
 do_plot_empty = False
-do_save_frames_empty = True
+do_save_frames_empty = False
 do_plot_pincushion = False
 do_plot_tube = True
 do_plot_obj1_zshift = False
@@ -371,20 +371,15 @@ cam_im_coords_gt[not_found_spot_coords] = torch.nan
 # cam_ft_coords_gt.nan_to_num_(nan=0.0)
 # cam_im_coords_gt.nan_to_num_(nan=0.0)   ###############
 
-SLM_coord_limit = 0.2
-mask_limit_angle = (tensor(matfile['p/rects'])[0:2, :].T.view(-1, 2).pow(2).sum(dim=1, keepdim=True).sqrt() > SLM_coord_limit).expand_as(not_found_spot_coords)
-cam_ft_coords_gt[mask_limit_angle] = torch.nan
-cam_im_coords_gt[mask_limit_angle] = torch.nan
-
 
 # Initial conditions
 shell_thickness_m_init = (610e-6 - 143e-6) / 2
 shell_thickness_m_init_certainty = 100
 outer_radius_m_init = 610e-6 / 2
 outer_radius_m_init_certainty = 100
-sample_zshift_init = 330e-6                 ########### Base these on value optimized for initial guess? Only at first? Or dynamically?
+sample_zshift_init = 260e-6                 ########### Base these on value optimized for initial guess? Only at first? Or dynamically?
 sample_zshift_init_certainty = 2
-obj2_zshift_init = 240e-6
+obj2_zshift_init = 250e-6
 obj2_zshift_init_certainty = 2
 
 # Parameters
@@ -392,7 +387,7 @@ obj2_zshift_init_certainty = 2
 
 tpm.set_measurement(matfile)
 tpm.sample = SampleTube()
-tpm.sample.tube_angle = tensor((np.radians(97.),), requires_grad=True)
+tpm.sample.tube_angle = tensor((np.radians(90.),), requires_grad=True)
 
 tpm.sample.shell_thickness_m = tensor((shell_thickness_m_init), requires_grad=True)
 tpm.sample.outer_radius_m = tensor((outer_radius_m_init,), requires_grad=True)
@@ -528,7 +523,7 @@ for t in trange:
         + f' beta fraction: {beta_fraction:.3f}'
 
     # Plot
-    if t % 5 == 0 and do_plot_tube and t>=0:
+    if t % 1 == 0 and do_plot_tube and t>=0:
         plt.figure(fig.number)
 
         # for n in range(52):
