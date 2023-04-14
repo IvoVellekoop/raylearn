@@ -19,12 +19,11 @@ dosave = 0;
 % BMPI/Projects/WAVEFRONTSHAPING/data/TPM/4th gen/calibration/calibration_values.mat
 %%%%% Automate: M matrix, pixels in frame / pixels per line, zoom
 
-tifpath = '/mnt/bmpi/Data/Daniel Cox/ExperimentalData/raylearn-data/TPM/TPM-3D-scans/tube-0.5uL-zoom10-no-correction_00001.tif';
-% tifpath = "/home/dani/LocalData/raylearn-data/TPM/TPM-3D-scans/beads-0.5um-in-25uL-cyl-zoom30-zstep0.4um_00002.tif";
-% tifpath = "D:\ScientificData\TPM-3D-scans\beads-0.5um-in-25uL-cyl-zoom30-zstep0.4um_00002.tif";
+% tifpath = '/mnt/bmpi/Data/Daniel Cox/ExperimentalData/raylearn-data/TPM/TPM-3D-scans/2023-03-24_tube-0.5uL-zoom10-no-correction_00003.tif';
+tifpath = '/mnt/bmpi/Data/Daniel Cox/ExperimentalData/raylearn-data/TPM/TPM-3D-scans/2023-03-24_tube-0.5uL-zoom10-with-correction_00001.tif';
 zoom = 10;
 factor = 4;
-zstep_um = 2;
+zstep_um = 1;
 
 % % tifpath = "/home/dani/LocalData/raylearn-data/TPM/TPM-3D-scans/beads-0.5um-in-25uL-cyl-zoom15-zstep0.5_00001.tif";
 % tifpath = "D:\ScientificData\TPM-3D-scans\beads-0.5um-in-25uL-cyl-zoom15-zstep0.5_00001.tif";
@@ -53,29 +52,67 @@ stack_depth_um = zstep_um * size(framestack, 3);
 %% Plot
 um = [' (' 181 'm)'];
 fig = figure;
-dimdata = {[-FOV_um/2 FOV_um/2], [-FOV_um/2 FOV_um/2], [-stack_depth_um/2 stack_depth_um/2]};
+dimdata = {[-FOV_um/2 FOV_um/2], [-FOV_um/2 FOV_um/2], [stack_depth_um/2 -stack_depth_um/2]};
 % axesoptions = struct('xlim', [-4 8], 'ylim', [-8 4], 'fontsize', 16);
 axesoptions = struct('fontsize', 14);
 
 % Plot with im3
 im3(framestack, ...
-    'title', ['0.5' 181 'm beads in 25' 181 'L tube (cropped)'], ...
+    'title', ['0.5' 181 'm beads in 0.5' 181 'L tube'], ...
+    'slicedim', 3, ...
+    'slicenum', 160, ...
     'dimdata', dimdata, ...
-    'dimlabels', {['y' um], ['x' um], ['z' um]}, ...
+    'dimlabels', {['x' um], ['y' um], ['z' um]}, ...
+    'maxprojection', 0, ...
     'axesoptions', axesoptions)
 colormap inferno
 
-fig_resize(550, 1.05);
+pause(0.5)
+
+title(sprintf(['0.5' 181 'm beads in 0.5' 181 'L tube\nslice at z=%.0f' 181 'm'], stack_depth_um/2 - fig.UserData.slicenum * zstep_um))
+
+fig_resize(600, 1.1);
 movegui('center')
-savename = ['../plots/0.5' 181 'm-beads-in-25' 181 'L-tube-cropped-slice%03i.png'];
+% caxis([0 8e3])
+ylabel(fig.Children(1), 'Intensity')
 
-fig.UserData.slicenum = 5;
+%% Plot
+um = [' (' 181 'm)'];
+fig = figure;
+dimdata = {[-FOV_um/2 FOV_um/2], [-FOV_um/2 FOV_um/2], [stack_depth_um/2 -stack_depth_um/2]};
+% axesoptions = struct('xlim', [-4 8], 'ylim', [-8 4], 'fontsize', 16);
+axesoptions = struct('fontsize', 14);
 
-%% Save plots of a few different slices
-fig.UserData.changeslice(fig, 0)
-ax = gca;
+% Plot with im3
+im3(framestack, ...
+    'title', ['0.5' 181 'm beads in 0.5' 181 'L tube'], ...
+    'slicedim', 1, ...
+    'dimdata', dimdata, ...
+    'dimlabels', {['x' um], ['y' um], ['z' um]}, ...
+    'maxprojection', 1, ...
+    'axesoptions', axesoptions)
+colormap inferno
 
+pause(0.5)
+
+title(sprintf(['0.5' 181 'm beads in 0.5' 181 'L tube\nmax intensity projection'], stack_depth_um/2 - fig.UserData.slicenum * zstep_um))
+
+fig_resize(600, 0.9);
+movegui('center')
+% caxis([0 8e3])
+ylabel(fig.Children(1), 'Intensity')
+
+
+savename = ['../plots/0.5' 181 'm-beads-in-0.5' 181 'L-tube-cropped-slice%03i.png'];
+
+%%
 if dosave
+    fig.UserData.slicenum = 5;
+
+    %% Save plots of a few different slices
+    fig.UserData.changeslice(fig, 0)
+    ax = gca;
+
     for s = 1:6
         zposition_um = zstep_um * fig.UserData.slicenum - stack_depth_um/2;
         subtitle = ax.Title.String{2,1};
