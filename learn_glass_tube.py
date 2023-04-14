@@ -13,7 +13,7 @@ from tqdm import tqdm
 # from torchviz import make_dot
 
 from plot_functions import plot_coords, format_prefix, plot_rays, plot_lens, plot_plane, default_viewplane
-from testing import MSE, weighted_MSE
+from testing import MSE, weighted_SSE
 from tpm import TPM
 from vector_functions import components, rejection
 from interpolate_shader import interpolate_shader
@@ -486,28 +486,28 @@ for t in trange:
 
     # Error with measurements
     error_measure = \
-        weighted_MSE(cam_ft_coords_gt[mask_nanless],            # Fourier cam coords
+        weighted_SSE(cam_ft_coords_gt[mask_nanless],            # Fourier cam coords
                      cam_ft_coords[mask_nanless],
                      weight_cam_ft_coords[mask_nanless]) + \
-        weighted_MSE(cam_im_coords_gt[mask_nanless],            # Image cam coords
+        weighted_SSE(cam_im_coords_gt[mask_nanless],            # Image cam coords
                      cam_im_coords[mask_nanless],
                      weight_cam_im_coords[mask_nanless])
 
     # Error with initial guess
     error_init = \
-        weighted_MSE(tpm.sample.shell_thickness_m,              # Shell thickness
+        weighted_SSE(tpm.sample.shell_thickness_m,              # Shell thickness
                      shell_thickness_m_init,
                      weight_shell_thickness_m_init) + \
-        weighted_MSE(tpm.sample.outer_radius_m,                 # Outer radius
+        weighted_SSE(tpm.sample.outer_radius_m,                 # Outer radius
                      outer_radius_m_init,
                      weight_outer_radius_m_init) + \
-        weighted_MSE(tpm.sample_zshift,                         # Sample z-shift
+        weighted_SSE(tpm.sample_zshift,                         # Sample z-shift
                      sample_zshift_init,
                      weight_sample_zshift_init) + \
-        weighted_MSE(tpm.obj2_zshift,                           # OBJ2 z-shift
+        weighted_SSE(tpm.obj2_zshift,                           # OBJ2 z-shift
                      obj2_zshift_init,
                      weight_obj2_zshift_init) + \
-        weighted_MSE(tpm.sample.tube_angle,                     # Tube angle
+        weighted_SSE(tpm.sample.tube_angle,                     # Tube angle
                      tube_angle_init,
                      weight_tube_angle_init)
 
