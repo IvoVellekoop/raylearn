@@ -298,21 +298,21 @@ class TPM(OpticalSystem):
         plot_lens(ax, self.L3, self.f3, scale, ' L3\n', viewplane=viewplane)
         plot_lens(ax, self.L4, self.f4, scale, ' L4\n', viewplane=viewplane)
         plot_plane(ax, self.slm_plane, 0.8, ' SLM', viewplane=viewplane, plotkwargs={'color': 'red'})
-        plot_lens(ax, self.L5, self.f5, scale, ' L5\n', viewplane=viewplane)
-        plot_lens(ax, self.L7, self.f7, scale, ' L7\n', viewplane=viewplane)
+        plot_lens(ax, self.L5, self.f5, scale*1.7, ' L5\n', viewplane=viewplane)
+        plot_lens(ax, self.L7, self.f7, scale*1.7, ' L7\n', viewplane=viewplane)
 
-        plot_lens(ax, self.OBJ1, self.fobj1, scale, ' OBJ1\n', viewplane=viewplane)
+        plot_lens(ax, self.OBJ1, self.fobj1, scale*1.5, ' OBJ1\n', viewplane=viewplane)
         plot_plane(ax, self.sample_plane, scale*0.8, '', ' sample plane', viewplane=viewplane)
         self.sample.plot(ax, viewplane=viewplane, plotkwargs={'color': 'green'})
-        plot_lens(ax, self.OBJ2, self.fobj2, 0.75*scale, 'OBJ2\n', viewplane=viewplane)
+        plot_lens(ax, self.OBJ2, self.fobj2, 1.5*scale, 'OBJ2\n', viewplane=viewplane)
 
-        plot_lens(ax, self.L9, self.f9, scale, ' L9\n', viewplane=viewplane)
-        plot_lens(ax, self.L10, self.f10, scale, 'L10\n', viewplane=viewplane)
+        plot_lens(ax, self.L9, self.f9, scale*1.2, ' L9\n', viewplane=viewplane)
+        plot_lens(ax, self.L10, self.f10, scale*1.2, 'L10\n', viewplane=viewplane)
 
         plot_plane(ax, self.cam_ft_plane, 1000, ' Fourier Cam', viewplane=viewplane, plotkwargs={'color': 'red'})
         plot_plane(ax, self.cam_im_plane, 1000, ' Image Cam', viewplane=viewplane, plotkwargs={'color': 'red'})
 
         # Plot rays
         plot_rays(ax, self.rays, fraction=fraction, viewplane=viewplane, raypath_index=-1)
-        plt.xlabel('optical axis, z (m)')
-        plt.ylabel('x (m)')
+        ax.set_xlabel('optical axis, z (m)')
+        ax.set_ylabel('x (m)')

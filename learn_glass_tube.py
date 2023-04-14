@@ -31,7 +31,7 @@ from dirconfig_raylearn import dirs
 torch.set_default_tensor_type('torch.DoubleTensor')
 
 do_plot_empty = False
-do_save_frames_empty = False
+do_save_frames_empty = True
 do_plot_pincushion = False
 do_plot_tube = True
 do_plot_obj1_zshift = False
@@ -88,22 +88,22 @@ tpm.galvo_volts_per_optical_degree.requires_grad=True
 # Parameter groups
 params = {}
 params['angle'] = {
-    'SLM angle': tpm.slm_angle,
-    'Galvo angle': tpm.galvo_roll,
+    'SLM angle (rad)': tpm.slm_angle,
+    'Galvo angle (rad)': tpm.galvo_roll,
 }
 params['objective'] = {
-    'OBJ2 zshift': tpm.obj2_zshift,
-    # 'sample zshift': tpm.sample_zshift,
+    'OBJ2 zshift (m)': tpm.obj2_zshift,
+    # 'sample zshift (m)': tpm.sample_zshift,
 }
 params['other'] = {
-    # 'SLM zshift': tpm.slm_zshift,
-    # 'L9 zshift': tpm.L9_zshift,
-    'cam ft xshift': tpm.cam_ft_xshift,
-    'cam ft yshift': tpm.cam_ft_yshift,
-    'cam im xshift': tpm.cam_im_xshift,
-    'cam im yshift': tpm.cam_im_yshift,
-    # 'cam im zshift': tpm.cam_im_zshift,
-    # 'Galvo response': tpm.galvo_volts_per_optical_degree,
+    # 'SLM zshift (m)': tpm.slm_zshift,
+    # 'L9 zshift (m)': tpm.L9_zshift,
+    'cam ft xshift (m)': tpm.cam_ft_xshift,
+    'cam ft yshift (m)': tpm.cam_ft_yshift,
+    'cam im xshift (m)': tpm.cam_im_xshift,
+    'cam im yshift (m)': tpm.cam_im_yshift,
+    # 'cam im zshift (m)': tpm.cam_im_zshift,
+    # 'Galvo response (V/deg)': tpm.galvo_volts_per_optical_degree,
 }
 
 tpm.update()
@@ -147,9 +147,10 @@ if do_plot_empty:
     ax_tpm = plt.gca()
 
 if do_save_frames_empty:
-    fig_save_frames_empty = plt.figure(dpi=90, figsize=(11, 7))
+    fig_save_frames_empty = plt.figure(dpi=100, figsize=(11, 7))
 
     gs = fig_save_frames_empty.add_gridspec(2, 3)
+    gs.hspace = 0.3
     ax_ray = fig_save_frames_empty.add_subplot(gs[0, :-1])
     ax_ft = fig_save_frames_empty.add_subplot(gs[1, 0])
     ax_im = fig_save_frames_empty.add_subplot(gs[1, 1])
@@ -224,7 +225,7 @@ for t in trange:
         plt.draw()
         plt.pause(1e-1)
 
-    if do_save_frames_empty and t % 15 == 0:
+    if do_save_frames_empty and t % 30 == 0:
         plt.figure(fig_save_frames_empty.number)
 
         # Fourier cam
@@ -266,8 +267,9 @@ for t in trange:
         # Plot error and parameters
         ax_err.clear()
         errorcolor = 'darkred'
-        MSEs = errors.detach().cpu() * 5e-8
-        ax_err.plot(MSEs, label='error (a.u.)', color=errorcolor, linewidth=2)
+        MSEs = errors.detach().cpu() * 1e-7
+        ax_err.plot(MSEs, label='error (a.u.)', color=errorcolor, linewidth=2.5)
+        ax_err.set_xlabel('iteration')
         ax_err.set_ylim((-6e-3, 6e-3))
         ax_err.set_xlim((0, iterations))
 
@@ -282,6 +284,9 @@ for t in trange:
 
         plt.draw()
         plt.pause(1e-3)
+
+        # Uncomment to save the frames
+        # plt.savefig(str(dirs['localdata'].joinpath(f'plots/learn-calibration-it{t:03d}.png')))
 
 
 
