@@ -13,17 +13,17 @@ if forcereset || ~exist('dirs', 'var')
 end
 
 % Settings
-dosavedata = 0;                     % Toggle saving data
-doshowplot = 1;                     % Toggle showing plot of each found position (for debugging)
-dosaveplot = 1;                     % Toggle saving plots
-plotsubdir = 'plot_failed';                % Subdirectory for saving plot frames
+dosavedata = 1;                     % Toggle saving data
+doshowplot = 0;                     % Toggle showing plot of each found position (for debugging)
+dosaveplot = 0;                     % Toggle saving plots
+plotsubdir = 'plot';                % Subdirectory for saving plot frames
 fig_size_pix = 850;                 % Figure size in pixels
 
 percentile = 99.7;                  % Percentile of the frame values to use
 percentilefactor = 0.70;            % Multiply percentile pixel value with this
 min_threshold = 300;                % Minimum threshold value
 min_mask_size_pix = 1000;           % Minimum mask size in pixels
-max_std_pix = 30;                  % Maximum standard deviation of spot
+max_std_pix = 40;                   % Maximum standard deviation of spot
 medfiltsize = 5;                    % Size of the median filter
 erodestrel = strel('disk', 4);      % Erode filter structering element
 max_num_pixels_at_edge = 4;         % Maximum number of mask pixels at the edge before a measurement is considered as failed
@@ -167,8 +167,8 @@ for d = 1:D
 
 
             % Show plot of found pencil beam positions on frame
-%             if doshowplot
-            if doshowplot && ~found_spot(s, g)  % Uncomment to only show detections marked failed
+            if doshowplot
+%             if doshowplot && ~found_spot(s, g)  % Uncomment to only show detections marked failed
 %             if doshowplot && found_spot(s, g)   % Uncomment to only show detections marked good
                 figure(fig);
                 
@@ -233,10 +233,11 @@ for d = 1:D
         savepath = fullfile(savedir, [dirlist(d).name '.mat']);
         
         % Save
-        save(savepath, '-v7.3', 'copt_ft', 'copt_img', 'sopt', 'p',...
+        save(savepath, '-v7.3', 'copt_ft', 'copt_img', 'sopt', 'p', 'found_spot',...
             'cam_ft_col', 'cam_ft_row', 'cam_ft_mean_intensity', 'cam_ft_mean_masked_intensity',...
             'cam_img_col', 'cam_img_row', 'cam_img_mean_intensity', 'cam_img_mean_masked_intensity',...
-            'cam_ft_mask_area', 'cam_img_mask_area', 'found_spot')
+            'cam_ft_mask_area', 'cam_img_mask_area',...
+            'cam_ft_col_std', 'cam_ft_row_std', 'cam_img_col_std', 'cam_img_row_std')
     end
 end
 
