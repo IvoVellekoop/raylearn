@@ -362,6 +362,7 @@ matpath = dirs["localdata"].joinpath("raylearn-data/TPM/pencil-beam-positions/11
 
 matfile = h5py.File(matpath, 'r')
 
+# Detected beam spot coordinates in pix
 cam_ft_coords_gt = (tensor((matfile['cam_ft_col'], matfile['cam_ft_row']))
     - tensor((matfile['copt_ft/Width'], matfile['copt_ft/Height'])) / 2).permute(1, 2, 0)
 cam_im_coords_gt = (tensor((matfile['cam_img_col'], matfile['cam_img_row']))
@@ -373,26 +374,34 @@ not_found_spot_coords = torch.stack((found_spot, found_spot), dim=2).logical_not
 
 cam_ft_coords_gt[not_found_spot_coords] = torch.nan
 cam_im_coords_gt[not_found_spot_coords] = torch.nan
-# cam_ft_coords_gt.nan_to_num_(nan=0.0)
-# cam_im_coords_gt.nan_to_num_(nan=0.0)   ###############
+
+# Weight measured coordinates
+# Use 1 / (detected beam spot standard deviation in pix) as weight
+# Coordinates are also in pix, so division makes it unitless
+weight_cam_ft_coords = 1 / (tensor((matfile['cam_ft_col_std'], matfile['cam_ft_row_std']))).permute(1, 2, 0)
+weight_cam_im_coords = 1 / (tensor((matfile['cam_img_col_std'], matfile['cam_img_row_std']))).permute(1, 2, 0)
 
 
 # Initial conditions
+########### Base these on values optimized for initial guess? Only at first? Or dynamically?
 shell_thickness_m_init = (610e-6 - 143e-6) / 2
-shell_thickness_m_init_certainty = 100
 outer_radius_m_init = 610e-6 / 2
-outer_radius_m_init_certainty = 100
-sample_zshift_init = 260e-6                 ########### Base these on value optimized for initial guess? Only at first? Or dynamically?
-sample_zshift_init_certainty = 2
+sample_zshift_init = 260e-6
 obj2_zshift_init = 250e-6
-obj2_zshift_init_certainty = 2
+tube_angle_init = np.radians(90.)
+
+weight_shell_thickness_m_init = 1 / shell_thickness_m_init
+weight_outer_radius_m_init = 1 / outer_radius_m_init
+weight_sample_zshift_init = 1 / sample_zshift_init
+weight_obj2_zshift_init = 1 / obj2_zshift_init
+weight_tube_angle_init = 1 / np.radians(360.)
 
 # Parameters
 # tpm.total_coverslip_thickness = tensor((1170e-6,), requires_grad=True)
 
 tpm.set_measurement(matfile)
 tpm.sample = SampleTube()
-tpm.sample.tube_angle = tensor((np.radians(90.),), requires_grad=True)
+tpm.sample.tube_angle = tensor((tube_angle_init,), requires_grad=True)
 
 tpm.sample.shell_thickness_m = tensor((shell_thickness_m_init), requires_grad=True)
 tpm.sample.outer_radius_m = tensor((outer_radius_m_init,), requires_grad=True)
@@ -460,49 +469,55 @@ if do_plot_tube:
     ax_tpm = plt.gca()
 
 
-torch.autograd.set_detect_anomaly(True)         ##############
+torch.autograd.set_detect_anomaly(True)         ############## Use to detect NaNs in backward pass
 
-nans = []
+nans = []                                       # Count NaNs
 
 for t in trange:
     # === Learn sample === #
     # Forward pass
     tpm.update()
     cam_ft_coords, cam_im_coords = tpm.raytrace()
-    # slm_rays = tpm.backtrace()
-    # slm_dir_rej = rejection(slm_rays.direction, tpm.slm_plane.normal)
 
-    if cam_ft_coords.isnan().any():
-        pass
+    # Compute error
 
-    # Compute and print error
-
-    # error = MSE(cam_ft_coords_gt, cam_ft_coords) \
-    #     + MSE(cam_im_coords_gt, cam_im_coords) \
-    #     + 1e9 * MSE(slm_dir_rej, slm_dir_rej.mean())
-
-    alpha = 1e-6
-    beta = 1
-    # error_alpha = alpha * (weighted_MSE(cam_ft_coords_gt, cam_ft_coords,
-    #                        not_found_spot_coords.logical_not() * tpm.cam_ft_ray.weight.expand_as(cam_ft_coords)) +
-    #                        weighted_MSE(cam_im_coords_gt, cam_im_coords,
-    #                        not_found_spot_coords.logical_not() * tpm.cam_im_ray.weight.expand_as(cam_im_coords)))
-
+    # Ignore all values that are marked as undetected or yield NaN in computation
     mask_nanless = torch.logical_or(torch.logical_or(cam_ft_coords_gt.isnan(), cam_ft_coords.isnan()), torch.logical_or(cam_im_coords_gt.isnan(), cam_ft_coords.isnan())).logical_not()
 
-    error_alpha = alpha * (1 * MSE(cam_ft_coords_gt[mask_nanless], cam_ft_coords[mask_nanless])
-                         + MSE(cam_im_coords_gt[mask_nanless], cam_im_coords[mask_nanless]))
-    # error_alpha = alpha * (MSE(cam_ft_coords_gt, cam_ft_coords) +
-    #                        MSE(cam_im_coords_gt, cam_im_coords))
-    error_beta = beta * (
-        shell_thickness_m_init_certainty * MSE(tpm.sample.shell_thickness_m, shell_thickness_m_init)
-        + outer_radius_m_init_certainty * MSE(tpm.sample.outer_radius_m, outer_radius_m_init)
-        + sample_zshift_init_certainty * MSE(tpm.sample_zshift, sample_zshift_init)
-        + obj2_zshift_init_certainty * MSE(tpm.obj2_zshift, obj2_zshift_init))
-    error = error_alpha + error_beta
+    # Error with measurements
+    error_measure = \
+        weighted_MSE(cam_ft_coords_gt[mask_nanless],            # Fourier cam coords
+                     cam_ft_coords[mask_nanless],
+                     weight_cam_ft_coords[mask_nanless]) + \
+        weighted_MSE(cam_im_coords_gt[mask_nanless],            # Image cam coords
+                     cam_im_coords[mask_nanless],
+                     weight_cam_im_coords[mask_nanless])
 
+    # Error with initial guess
+    error_init = \
+        weighted_MSE(tpm.sample.shell_thickness_m,              # Shell thickness
+                     shell_thickness_m_init,
+                     weight_shell_thickness_m_init) + \
+        weighted_MSE(tpm.sample.outer_radius_m,                 # Outer radius
+                     outer_radius_m_init,
+                     weight_outer_radius_m_init) + \
+        weighted_MSE(tpm.sample_zshift,                         # Sample z-shift
+                     sample_zshift_init,
+                     weight_sample_zshift_init) + \
+        weighted_MSE(tpm.obj2_zshift,                           # OBJ2 z-shift
+                     obj2_zshift_init,
+                     weight_obj2_zshift_init) + \
+        weighted_MSE(tpm.sample.tube_angle,                     # Tube angle
+                     tube_angle_init,
+                     weight_tube_angle_init)
+
+    # Total error
+    error = error_measure + error_init
+
+    # Count NaN occurrences in ray tracing output and add to list
     nans += [cam_ft_coords.isnan().sum()]
 
+    # # Uncomment to search namespace for tensor objects containing NaNs
     # import gc
     # for obj in gc.get_objects():
     #     try:
@@ -514,8 +529,7 @@ for t in trange:
     #     except:
     #         pass
 
-    # print(MSE(slm_dir_rej, slm_dir_rej.mean()) / error)
-    beta_fraction = (error_beta / error).detach().item()
+    init_fraction = (error_init / error).detach().item()
 
     error_value = error.detach().item()
     errors[t] = error_value
@@ -525,10 +539,10 @@ for t in trange:
             params_obj1_zshift_logs[groupname][paramname][t] = params_obj1_zshift[groupname][paramname].detach().item()
 
     trange.desc = f'error: {error_value:<8.3g}' \
-        + f' beta fraction: {beta_fraction:.3f}'
+        + f' init fraction: {init_fraction:.3f}'
 
     # Plot
-    if t % 1 == 0 and do_plot_tube and t>=0:
+    if t % 1 == 0 and do_plot_tube and t >= 0:
         plt.figure(fig.number)
 
         # for n in range(52):
@@ -595,9 +609,11 @@ for t in trange:
 
 
     # error.backward(create_graph=True)
-    error.backward(retain_graph=True)
-    # error.backward()
+    # error.backward(retain_graph=True)
+    error.backward()
 
+    # # Uncomment to walk the computational graph, searching for a specified function name
+    # # Note: retain_graph=True is required for the backwards pass
     # def walk_graph(node, depth):
     #     # print(depth)
     #     if not(node is None):

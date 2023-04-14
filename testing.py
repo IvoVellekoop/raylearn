@@ -1,7 +1,7 @@
 """Functions for unit tests."""
 
 import torch
-from vector_functions import norm
+from vector_functions import ensure_tensor, norm
 
 
 torch.set_default_tensor_type('torch.DoubleTensor')
@@ -17,7 +17,7 @@ def comparetensors(a, b, error=1000):
     Required precision of computed answers: error x float64 (a.k.a. double) machine epsilon.
     """
     # return torch.all(torch.abs(a - b) < (error * machine_epsilon_f64))
-    return torch.all(torch.abs(a - b).nan_to_num(nan=0.0) < (error * machine_epsilon_f64))
+    return torch.all(torch.abs(a - b) < (error * machine_epsilon_f64))
 
 
 def checkunitvector(a, error=1000):
@@ -28,7 +28,7 @@ def checkunitvector(a, error=1000):
 
 def MSE(a, b, dim=()):
     """Mean Square Error (without NaNs)."""
-    return (a - b).nan_to_num(nan=0.0).abs().square().mean(dim=dim)
+    return (a - b).abs().square().mean(dim=dim)
 
 
 def weighted_MSE(a, b, w, dim=()):
@@ -36,8 +36,9 @@ def weighted_MSE(a, b, w, dim=()):
     return weighted_mean((a - b).abs().square(), w, dim=dim)
 
 
-def weighted_mean(a, w, dim=()):
+def weighted_mean(a_in, w_in, dim=()):
     """Weighted Mean (without NaNs)."""
-    assert a.shape == w.shape
-    # return torch.sum(a.nan_to_num(nan=0.0) * w, dim=dim) / torch.sum(w, dim=dim)
+    a = ensure_tensor(a_in)
+    w = ensure_tensor(w_in)
+    assert (a.shape == w.shape) or (a.numel() == 1 and w.numel() == 1)
     return torch.sum(a * w, dim=dim) / torch.sum(w, dim=dim)
