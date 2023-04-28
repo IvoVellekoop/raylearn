@@ -116,7 +116,7 @@ optimizer = torch.optim.Adam([
         {'lr': 2.0e-3, 'params': params['angle'].values()},
         {'lr': 2.0e-4, 'params': params['objective'].values()},
         {'lr': 1.0e-3, 'params': params['other'].values()},
-    ], lr=1.0e-5)
+    ], lr=1.0e-5, amsgrad=True)
 
 iterations = 150
 errors = torch.zeros(iterations) * torch.nan
@@ -445,7 +445,7 @@ optimizer = torch.optim.Adam([
         {'lr': 2.0e-2, 'params': params_obj1_zshift['angle'].values()},
         {'lr': 1.0e-5, 'params': params_obj1_zshift['obj'].values()},
         {'lr': 1.0e-6, 'params': params_obj1_zshift['other'].values()},
-    ], lr=1.0e-5)
+    ], lr=1.0e-5, amsgrad=True)
 
 iterations = 1000
 errors = torch.zeros(iterations)
@@ -715,7 +715,7 @@ tpm.update()
 optimizer = torch.optim.Adam([
         {'lr': 1.0e-2, 'params': params_obj1_zshift['angle'].values()},
         {'lr': 1.0e-4, 'params': params_obj1_zshift['other'].values()},
-    ], lr=1.0e-5)
+    ], lr=1.0e-5, amsgrad=True)
 
 iterations = 150
 errors = torch.zeros(iterations)
