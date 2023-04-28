@@ -390,11 +390,11 @@ sample_zshift_init = 260e-6
 obj2_zshift_init = 250e-6
 tube_angle_init = np.radians(90.)
 
-weight_shell_thickness_m_init = 1 / shell_thickness_m_init
-weight_outer_radius_m_init = 1 / outer_radius_m_init
-weight_sample_zshift_init = 1 / sample_zshift_init
-weight_obj2_zshift_init = 1 / obj2_zshift_init
-weight_tube_angle_init = 1 / np.radians(360.)
+weight_shell_thickness_m_init = 1 / (0.01 * shell_thickness_m_init)  # According to AlphaLabs: volume accuracy rating ±1%
+weight_outer_radius_m_init = 1 / 20e-6          # Mitutoyo Absolute Digimatic Calipers accuracy
+weight_sample_zshift_init = 1 / 200e-6
+weight_obj2_zshift_init = 1 / 200e-6
+weight_tube_angle_init = 1 / np.radians(5.0)    # Estimated accuracy of tube alignment
 
 # Parameters
 # tpm.total_coverslip_thickness = tensor((1170e-6,), requires_grad=True)
