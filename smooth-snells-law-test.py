@@ -1,8 +1,15 @@
 # Smooth Snell's law test
 # Test a derived version of Snell's law based on an angle distribution, rather than a single angle
 
+import torch
+from torch import tensor
 import numpy as np
 import matplotlib.pyplot as plt
+
+from vector_functions import ensure_tensor
+
+
+torch.set_default_tensor_type('torch.DoubleTensor')
 
 
 def snells(Dxin, n1, n2):
@@ -27,41 +34,90 @@ def smooth_snells_lorentzian_2d(DxInCenter, width, n1, n2):
         return DxOutMean
 
     else:
-        total_weight = (arccot(n1*width / (n2-n1*DxInCenter))
-                      + arccot(n1*width / (n2+n1*DxInCenter))) / np.pi
-        DxOutMean = \
-            n1/n2 * (DxInCenter + width/(2*np.pi * total_weight) * (
-                np.log((n2-n1*DxInCenter)**2 / n1**2 + width**2)
-              - np.log((n2+n1*DxInCenter)**2 / n1**2 + width**2)))
-        return DxOutMean
+        # total_weight = (arccot(n1*width / (n2-n1*DxInCenter))
+        #               + arccot(n1*width / (n2+n1*DxInCenter))) / np.pi
+        # DxOutMean = \
+        #     n1/n2 * (DxInCenter + width/(2*np.pi * total_weight) * (
+        #         np.log((n2-n1*DxInCenter)**2 / n1**2 + width**2)
+        #       - np.log((n2+n1*DxInCenter)**2 / n1**2 + width**2)))
+        # return DxOutMean
+
+        return (n1 * width *
+            ((DxInCenter * (arccot((n1*width)/((-DxInCenter)*n1 + n2)) +
+            arccot((n1*width)/(DxInCenter*n1 + n2))))/width +
+            (1/2)*(np.log(((-DxInCenter)*n1 + n2)**2/n1**2 + width**2) -
+            np.log((DxInCenter*n1 + n2)**2/n1**2 + width**2)))) / \
+            (n2*(arccot((n1*width)/((-DxInCenter)*n1 + n2)) +
+            arccot((n1*width)/(DxInCenter*n1 + n2))))
+
+
+def smooth_snells(DxInCenter, width, n1, n2, epsilon=0):
+    """
+    Smoothed Snell's law, with gaussian distribution as input.
+
+    Input
+    -----
+    DxInCenter
+    width       Standard deviation (sigma) of gaussian distribution in k_xy plane.
+    """
+    # DxInCrit = ensure_tensor(n2/n1)
+    # intensity = (torch.erf((DxInCrit - DxInCenter) / (np.sqrt(2)*width)) +
+    #              torch.erf((DxInCrit + DxInCenter) / (np.sqrt(2)*width))) / 2
+    # DxInMean = DxInCenter - ((-1 + torch.exp((2*DxInCrit*DxInCenter) / width**2)) * np.sqrt(2/np.pi) * width) / (2*intensity * torch.exp((DxInCrit + DxInCenter)**2 / (2*width**2)))
+    # DxOutMean = DxInMean * n1/n2
+    # return DxOutMean
+
+    DxInCrit = ensure_tensor(n2/n1)
+    intensity = (torch.erf((DxInCrit - DxInCenter) / (np.sqrt(2)*width)) +
+                 torch.erf((DxInCrit + DxInCenter) / (np.sqrt(2)*width))) / 2
+    DxInMean = DxInCenter + np.sqrt(2/np.pi) * width * (\
+          torch.exp(
+            -((DxInCenter + DxInCrit)**2/(2*width**2)) \
+            - torch.log( \
+                - torch.erf((DxInCenter - DxInCrit)/(np.sqrt(2)*width)) \
+                + torch.erf((DxInCenter + DxInCrit)/(np.sqrt(2)*width)) \
+                + epsilon))
+        - torch.exp(
+            (2*DxInCenter*DxInCrit)/width**2 \
+            - (DxInCenter + DxInCrit)**2/(2*width**2) \
+            - torch.log(
+                - torch.erf((DxInCenter - DxInCrit)/(np.sqrt(2)*width)) \
+                + torch.erf((DxInCenter + DxInCrit)/(np.sqrt(2)*width)) \
+                + epsilon)))
+    DxOutMean = DxInMean * n1/n2
+    return DxOutMean
+
+    # Compute DzOut
+    # Also apply intensity factor to ray
+    # Fresnel equations
 
 
 N = 800
-Dxincenter = np.linspace(-1, 1, N).reshape((-1, 1))
+DxInCenter = torch.linspace(-1, 1, N).view((-1, 1))
 
-width = np.array((0.2, 0.1, 0.04, 0.01)).reshape((1, -1))
+width = tensor((0.2, 0.1, 0.05, 0.02, 0.01)).view((1, -1))
 n1 = 1.5
 n2 = 1.3
 
 # Plot DxOut vs DxIn
-widthlabels = ['Width=' + str(w) for w in width.reshape(-1)]
-plt.plot(Dxincenter, smooth_snells_lorentzian_2d(Dxincenter, width, n1, n2), label=widthlabels)
-plt.plot(Dxincenter, snells(Dxincenter, n1, n2), label="Regular Snell's")
+widthlabels = ['Width=' + f'{w:.2f}' for w in width.view(-1)]
+plt.plot(DxInCenter, snells(DxInCenter, n1, n2), label="Regular Snell's")
+plt.plot(DxInCenter, smooth_snells(DxInCenter, width, n1, n2), label=widthlabels)
 
-plt.xlabel('$\\sin(\\theta_{in})$')
-plt.ylabel('$\\sin(\\theta_{out})$')
+plt.xlabel('Incoming direction x-component $(k_{x,in}/k_{in})$')
+plt.ylabel('Outgoing direction x-component $(k_{x,out}/k_{out})$')
 plt.grid()
 plt.legend()
-plt.title("Snell's law Lorentzian $\\sin(\\theta)$ distribution")
+plt.title(f"Smooth Snell's with gaussian distribution\n{torch.get_default_dtype()}")
 plt.show()
 
 
 # Plot angle out vs angle in
-theta_xincenter = np.linspace(-np.pi/2, np.pi/2, N).reshape((-1, 1))
+theta_xincenter = torch.linspace(-np.pi/2, np.pi/2, N).reshape((-1, 1))
 
-widthlabels = ['Width=' + str(w) for w in width.reshape(-1)]
-plt.plot(theta_xincenter, np.arcsin(smooth_snells_lorentzian_2d(np.sin(theta_xincenter), width, n1, n2)), label=widthlabels)
+widthlabels = ['Width=' + f'{w:.2f}' for w in width.reshape(-1)]
 plt.plot(theta_xincenter, np.arcsin(snells(np.sin(theta_xincenter), n1, n2)), label="Regular Snell's")
+plt.plot(theta_xincenter, np.arcsin(smooth_snells(np.sin(theta_xincenter), width, n1, n2)), label=widthlabels)
 
 plt.xlabel('$\\theta_{in}$ (rad)')
 plt.ylabel('$\\theta_{out}$ (rad)')
@@ -71,5 +127,5 @@ plt.xticks(np.array((-1/2, -1/4, 0, 1/4, 1/2))*np.pi,
 plt.yticks(np.array((-1/2, -1/4, 0, 1/4, 1/2))*np.pi,
     ('$-\\pi/2$', '$-\\pi/4$', '$0$', '$\\pi/4$', '$\\pi/2$'))
 plt.legend()
-plt.title("Snell's law Lorentzian $\\sin(\\theta)$ distribution")
+plt.title("Smooth Snell's with gaussian distribution")
 plt.show()
