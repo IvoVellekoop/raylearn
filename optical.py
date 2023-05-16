@@ -10,8 +10,8 @@ import torch
 import numpy as np
 
 from testing import checkunitvector, machine_epsilon_f64
-from vector_functions import unit, dot, norm_square, rejection, reflection, rotate, components, \
-    cartesian3d, Scalar
+from vector_functions import unit, dot, norm, norm_square, rejection, reflection, rotate, \
+    components, cartesian3d, Scalar, ensure_tensor
 from math_functions import solve_quadratic, sign, sqrt_zero
 from ray_plane import Ray, CoordPlane, Plane, translate, copy_update, PlaneType
 from plot_functions import default_viewplane, plot_plane
@@ -335,6 +335,8 @@ def snells(ray_in, normal, n_out):
     and thus it can act as sine in Snell's law. Furthermore, it is perpendicular to
     the surface_normal. Hence, it's the perpendicular component of dir_out. Once
     this is known, the parallel component can also be computed, since |dir_out| = 1.
+    Another way to think about this is that D_x == k_x / (n k_0), where D_x denotes
+    the transverse direction component.
 
     This function works regardless of incoming ray direction. If the ray is coming
     from the opposite direction, the normal vector will be flipped to make the computation work.
@@ -355,7 +357,7 @@ def snells(ray_in, normal, n_out):
 
     dir_inrej = rejection(dir_in, N)        # Perpendicular component (i.e. along plane) of dir_in
     dir_outrej = n_in/n_out * dir_inrej     # Perpendicular component (i.e. along plane) of dir_out
-    dir_outproj = - N * sqrt_zero(1 - norm_square(dir_outrej))     # Parallel component of dir_out
+    dir_outproj = - N * torch.sqrt(1 - norm_square(dir_outrej))     # Parallel component of dir_out
 
     dir_out = dir_outrej + dir_outproj      # Combine components
 
@@ -368,6 +370,90 @@ def snells(ray_in, normal, n_out):
 
     if (norm_square(dir_outproj) == 0).any():
         pass
+
+    return ray_out
+
+
+def snells_gaussian(ray_in, normal, std, n_out):
+    """
+    Compute refracted pencil beam with Gaussian transverse direction distribution.
+    Returns a new Ray instance with the new direction, refractive index and intensity.
+
+    The formula was derived with the following assumptions: The transverse direction component can
+    be described by a 1D gaussian distribution, where the center of the gaussian is the incoming
+    transverse direction component (D_x). Snell's law is applied on the entire distribution. The
+    output direction is the weighted mean over the gaussian distribution that falls within the
+    integration domain, i.e. within the critical angle. The result is a version of Snell's law that
+    follows regular Snell's law for small angles, but instead of having a discrete cutoff at the
+    critical angle, with larger angles resulting in NaN, this function flattens smoothly around the
+    critical angle, and is defined on the entire -1 < D_x < 1 domain. Furthermore, it is
+    monotonically increasing.
+
+    Input
+    -----
+        ray_in      Ray. Incoming Ray.
+        normal      Unit vector. Surface normal of interface.
+        std         Scalar. Standard deviation of gaussian distribution.
+        n_out       Scalar. Refractive index outgoing ray.
+
+    Output
+    ------
+        ray_out     Ray. Refracted outgoing Ray.
+
+    Notes: rejection(ray_dir, surface_normal) has magnitude sin(angle) and thus it can act as sine
+    in Snell's law. Furthermore, it is perpendicular to the surface_normal. Hence, it's the
+    perpendicular component of dir_out. Once this is known, the parallel component can also be
+    computed, since |dir_out| = 1.  Another way to think about this is that D_x == k_x / (n k_0),
+    and k_x_in == k_x_out, where D_x denotes the transverse direction component, k_x denotes the
+    transverse wave vector component, k_0 denotes the vacuum wave number, and n the refractive
+    index.
+    See also:
+    https://en.wikipedia.org/wiki/Snell%27s_law#Vector_form
+
+    This function works regardless of incoming ray direction. If the ray is coming from the opposite
+    direction, the normal vector will be flipped to make the computation work.
+
+    For very small std this function becomes numerically unstable near ±1. Some plotting tests show
+    unstability for:
+    std<0.020 for n_in/n_out==1.15 (float64)
+    std<0.035 for n_in/n_out==1.30 (float64)
+    std<0.050 for n_in/n_out==1.50 (float64)
+    std<0.040 for n_in/n_out==1.15 (float32)
+    std<0.070 for n_in/n_out==1.30 (float32)
+    std<0.100 for n_in/n_out==1.50 (float32)
+    """
+
+    assert checkunitvector(normal)
+
+    # Flip normal if ray_in is coming from opposite direction (required for backpropagation)
+    N = -normal * sign(dot(normal, ray_in.direction))
+
+    dir_in = ray_in.direction
+    n_in = ray_in.refractive_index
+
+    dir_inrej = rejection(dir_in, N)        # Perpendicular component (i.e. along plane) of dir_in
+
+    dir_in_center = norm(dir_inrej)         # Norm of perpendicular component and center of gaussian
+
+    # Critical perpendicular component for n_out>n_in, 1 for n_out<n_in
+    dir_in_crit = torch.min(ensure_tensor(n_out / n_in), torch.tensor(1.))
+
+    # Total intensity fraction of the gaussian distribution that falls within the integration domain
+    intensity = (torch.erf((dir_in_crit + dir_in_center) / (np.sqrt(2)*std)) +
+                 torch.erf((dir_in_crit - dir_in_center) / (np.sqrt(2)*std))) / 2
+
+    # Weighted mean perpendicular direction component, weighted within critical
+    dir_in_mean = dir_in_center + np.sqrt(2/np.pi) * std / (2*intensity) * (
+        - torch.exp(-((dir_in_center - dir_in_crit)**2 / (2*std**2)))
+        + torch.exp(-((dir_in_center + dir_in_crit)**2 / (2*std**2))))
+
+    # Outgoing direction vector
+    dir_outrej = unit(dir_inrej) * dir_in_mean * (n_in/n_out)
+    dir_outproj = - N * sqrt_zero(1 - norm_square(dir_outrej))      # Parallel component of dir_out
+    dir_out = dir_outrej + dir_outproj      # Combine components
+
+    ray_out = copy_update(ray_in, direction=dir_out, refractive_index=n_out,
+                          intensity=ray_in.intensity*intensity)
 
     return ray_out
 
