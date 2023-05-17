@@ -12,6 +12,7 @@ from plot_functions import plot_plane, plot_rays
 
 
 torch.set_default_tensor_type('torch.DoubleTensor')
+# torch.set_default_tensor_type('torch.FloatTensor')
 
 
 def snells_2d(Dxin, n1, n2):
@@ -91,7 +92,7 @@ plt.xlabel('Incoming direction x-component $(k_{x,in}/k_{in})$')
 plt.ylabel('Outgoing direction x-component $(k_{x,out}/k_{out})$')
 plt.grid()
 plt.legend()
-plt.title(f"Smooth Snell's with gaussian distribution\n{torch.get_default_dtype()}")
+plt.title(f"Smooth Snell's with gaussian distribution\n$n_1={n1}, n_2={n2}$, {torch.get_default_dtype()}")
 plt.show()
 
 
@@ -117,10 +118,11 @@ plt.show()
 # Test 3D ray tracing version
 origin, x, y, z = cartesian3d()
 component_range = 4
-Ny = 23
+Ny = 81
 n_in = 1.3
 n_out = 1.0
-std = 0.08
+std1 = 0.08
+std2 = 0.04
 source_plane = CoordPlane(origin, x, component_range*y)
 interface_plane = CoordPlane(origin + z, x, y)
 end_plane = CoordPlane(origin + 2*z, x, y)
@@ -128,29 +130,60 @@ end_plane = CoordPlane(origin + 2*z, x, y)
 rays1 = []
 rays1 += [point_source(source_plane, 1, Ny, refractive_index=n_in)]
 rays1 += [rays1[-1].intersect_plane(interface_plane)]
-rays1 += [snells_gaussian(rays1[-1], -z, std, n_out=n_out)]
+rays1 += [snells_gaussian(rays1[-1], -z, std1, n_out=n_out)]
 rays1 += [rays1[-1].propagate(1)]
 
 rays2 = []
 rays2 += [point_source(source_plane, 1, Ny, refractive_index=n_in)]
 rays2 += [rays2[-1].intersect_plane(interface_plane)]
-rays2 += [snells(rays2[-1], -z, n_out=n_out)]
+rays2 += [snells_gaussian(rays2[-1], -z, std2, n_out=n_out)]
 rays2 += [rays2[-1].propagate(1)]
 
+rays3 = []
+rays3 += [point_source(source_plane, 1, Ny, refractive_index=n_in)]
+rays3 += [rays3[-1].intersect_plane(interface_plane)]
+rays3 += [snells(rays3[-1], -z, n_out=n_out)]
+rays3 += [rays3[-1].propagate(1)]
+
 # Plot 3D ray tracing version
-fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(8, 8))
+fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(8, 7))
 fig.dpi = 144
+
+# Snell's with gaussian
 plot_plane(ax[0], interface_plane, scale=component_range+1)
 plot_rays(ax[0], rays1)
 ax[0].set_aspect(1)
-ax[0].set_title(f"Snell's with gaussian\n$n_1={n_in}, n_2={n_out}, \\sigma={std}$")
+ax[0].set_title(f"Snell's with gaussian\n$n_1={n_in}, n_2={n_out:.0f}, \\sigma={std1}$")
 ax[0].set_xlabel('optical axis (m)')
 ax[0].set_ylabel('transverse axis (m)')
 
+# Snell's with gaussian
 plot_plane(ax[1], interface_plane, scale=component_range+1)
 plot_rays(ax[1], rays2)
 ax[1].set_aspect(1)
-ax[1].set_title(f"Regular Snell's\n$n_1={n_in}, n_2={n_out}$")
+ax[1].set_title(f"Snell's with gaussian\n$n_1={n_in}, n_2={n_out:.0f}, \\sigma={std2}$")
 ax[1].set_xlabel('optical axis (m)')
 ax[1].set_ylabel('transverse axis (m)')
+
+# Regular Snell's
+plot_plane(ax[2], interface_plane, scale=component_range+1)
+plot_rays(ax[2], rays3)
+ax[2].set_aspect(1)
+ax[2].set_title(f"Regular Snell's\n$n_1={n_in}, n_2={n_out}$")
+ax[2].set_xlabel('optical axis (m)')
+ax[2].set_ylabel('transverse axis (m)')
+plt.show()
+
+# Intensity and kx/k plot
+intense_figure = plt.figure()
+fig.dpi = 144
+plt.plot(rays3[0].direction[:, :, 1].view(-1), rays3[-1].direction[:, :, 1].view(-1), label='$k_y/k$ out (Regular)')
+plt.plot(rays1[0].direction[:, :, 1].view(-1), rays1[-1].direction[:, :, 1].view(-1), label=f'$k_y/k$ out, $\\sigma={std1:.2f}$')
+plt.plot(rays2[0].direction[:, :, 1].view(-1), rays2[-1].direction[:, :, 1].view(-1), label=f'$k_y/k$ out, $\\sigma={std2:.2f}$')
+plt.plot(rays1[0].direction[:, :, 1].view(-1), rays1[-1].intensity.view(-1), label=f'Intensity out, $\\sigma={std1:.2f}$')
+plt.plot(rays2[0].direction[:, :, 1].view(-1), rays2[-1].intensity.view(-1), label=f'Intensity out, $\\sigma={std2:.2f}$')
+plt.xlabel('Incident $k_y/k$')
+plt.title(f"Raytracer Snell's law\n$n_1={n_in}, n_2={n_out}$")
+plt.legend()
+plt.grid()
 plt.show()

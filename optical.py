@@ -448,7 +448,9 @@ def snells_gaussian(ray_in, normal, std, n_out):
         + torch.exp(-((dir_in_center + dir_in_crit)**2 / (2*std**2))))
 
     # Outgoing direction vector
-    dir_outrej = unit(dir_inrej) * dir_in_mean * (n_in/n_out)
+    dir_outrej = torch.where(dir_in_mean != 0,
+                             unit(dir_inrej) * dir_in_mean * (n_in/n_out),  # Apply smooth Snell's
+                             0*dir_inrej)                                   # Prevent division by 0
     dir_outproj = - N * sqrt_zero(1 - norm_square(dir_outrej))      # Parallel component of dir_out
     dir_out = dir_outrej + dir_outproj      # Combine components
 
