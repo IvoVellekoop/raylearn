@@ -94,7 +94,8 @@ for d = 1:D
             cam_img_mean_intensity = nan(F, G);
             cam_img_mean_masked_intensity = nan(F, G);
             cam_img_mask_area = nan(F, G);
-            found_spot = false(F, G);
+            found_spot_ft = false(F, G);
+            found_spot_img = false(F, G);
 
             frame_ft_sum = zeros(size(frames_ft(:,:,1)));
             frame_img_sum = zeros(size(frames_img(:,:,1)));
@@ -144,32 +145,33 @@ for d = 1:D
             cam_img_mask_area(s, g) = sum(framemask_img, [1 2]);
 
             % Mark spot as found or not found, depending on a range of criteria
-            found_spot(s, g) = found_ft & found_img ...
+            found_spot_ft(s, g) = found_ft ...
                 & (num_pixels_at_edge_ft  < max_num_pixels_at_edge) ... % Spot mask near edge
-                & (num_pixels_at_edge_img < max_num_pixels_at_edge) ... % Spot mask near edge
                 & cam_ft_mask_area(s, g) > min_mask_size_pix ...        % Spot mask minimum area
-                & cam_img_mask_area(s, g) > min_mask_size_pix ...       % Spot mask minimum area
                 & cam_ft_col_std(s, g) < max_std_pix ...                % Spot maximum size (std)
                 & cam_ft_row_std(s, g) < max_std_pix ...                % Spot maximum size (std)
-                & cam_img_col_std(s, g) < max_std_pix ...               % Spot maximum size (std)
-                & cam_img_row_std(s, g) < max_std_pix ...               % Spot maximum size (std)
                 & cam_ft_col(s, g) > 3*cam_ft_col_std(s, g) ...         % Spot position near edge
                 & cam_ft_row(s, g) > 3*cam_ft_row_std(s, g) ...         % Spot position near edge
                 & cam_ft_col(s, g) < Nx - 3*cam_ft_col_std(s, g) ...    % Spot position near edge
-                & cam_ft_row(s, g) < Ny - 3*cam_ft_row_std(s, g) ...    % Spot position near edge
+                & cam_ft_row(s, g) < Ny - 3*cam_ft_row_std(s, g);       % Spot position near edge
+            found_spot_img(s, g) = found_img ...
+                & (num_pixels_at_edge_img < max_num_pixels_at_edge) ... % Spot mask near edge
+                & cam_img_mask_area(s, g) > min_mask_size_pix ...       % Spot mask minimum area
+                & cam_img_col_std(s, g) < max_std_pix ...               % Spot maximum size (std)
+                & cam_img_row_std(s, g) < max_std_pix ...               % Spot maximum size (std)
                 & cam_img_col(s, g) > 3*cam_img_col_std(s, g) ...       % Spot position near edge
                 & cam_img_row(s, g) > 3*cam_img_row_std(s, g) ...       % Spot position near edge
                 & cam_img_col(s, g) < Nx - 3*cam_img_col_std(s, g) ...  % Spot position near edge
                 & cam_img_row(s, g) < Ny - 3*cam_img_row_std(s, g);     % Spot position near edge
             
             % Count failed detections
-            total_found = total_found + found_spot(s, g);
+            total_found = total_found + (found_spot_ft(s, g) && found_spot_img(s, g));
 
 
             % Show plot of found pencil beam positions on frame
             if doshowplot
-%             if doshowplot && ~found_spot(s, g)  % Uncomment to only show detections marked failed
-%             if doshowplot && found_spot(s, g)   % Uncomment to only show detections marked good
+%             if doshowplot && ~found_spot_ft(s, g) || ~found_spot_img(s, g)  % Uncomment to only show detections marked failed
+%             if doshowplot && found_spot_ft(s, g) && found_spot_img(s, g)   % Uncomment to only show detections marked good
                 figure(fig);
                 
                 % Plot original ft frame with position
@@ -233,7 +235,7 @@ for d = 1:D
         savepath = fullfile(savedir, [dirlist(d).name '.mat']);
         
         % Save
-        save(savepath, '-v7.3', 'copt_ft', 'copt_img', 'sopt', 'p', 'found_spot',...
+        save(savepath, '-v7.3', 'copt_ft', 'copt_img', 'sopt', 'p', 'found_spot_ft', 'found_spot_img',...
             'cam_ft_col', 'cam_ft_row', 'cam_ft_mean_intensity', 'cam_ft_mean_masked_intensity',...
             'cam_img_col', 'cam_img_row', 'cam_img_mean_intensity', 'cam_img_mean_masked_intensity',...
             'cam_ft_mask_area', 'cam_img_mask_area',...
