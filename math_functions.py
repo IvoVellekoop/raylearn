@@ -2,8 +2,8 @@
 Mathematical functions.
 """
 
-from vector_functions import ensure_tensor
-from torch import Tensor, sqrt, isnan, nan, zeros_like, nn
+from vector_functions import ensure_tensor, components
+from torch import Tensor, sqrt, isnan, nan, zeros_like, nn, cat, where
 
 
 def sqrt_zero(x_in, epsilon=1e-4):
@@ -48,3 +48,25 @@ def sign(t: Tensor) -> Tensor:
     t_sign = t.sign()
     t_sign[isnan(t)] = nan
     return t_sign
+
+
+def pyramid(size: Tensor, coords: Tensor) -> Tensor:
+    """
+    Compute abs x,y distance to nearest border for points inside rectangle, box, etc. Points outside
+    will return 0.
+
+    Input
+    -----
+        size        Size (e.g. width and height) of the rectangle. Shape: ...xD
+        coords      Coordinates. Shape: ...xD
+
+    Output
+    ------
+        Absolute distance to nearest border for points inside. Points outside will return 0.
+    """
+
+    x, y = components(coords)
+    xdist, ydist = components((size/2 - coords.abs()).relu())
+    return where(xdist < ydist,
+                 cat((xdist, zeros_like(ydist)), dim=-1),
+                 cat((zeros_like(xdist), ydist), dim=-1))

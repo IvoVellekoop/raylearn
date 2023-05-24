@@ -31,9 +31,19 @@ def MSE(a, b, dim=()):
     return (a - b).abs().square().mean(dim=dim)
 
 
+def SSE(a, b, dim=()):
+    """Sum Square Error."""
+    return (a - b).abs().square().sum(dim=dim)
+
+
 def weighted_MSE(a, b, w, dim=()):
     """Weighted Mean Square Error."""
     return weighted_mean((a - b).abs().square(), w, dim=dim)
+
+
+def weighted_SSE(a, b, w, dim=()):
+    """Weighted Sum Square Error."""
+    return ((w * (a - b)).abs().square()).sum(dim=dim)
 
 
 def weighted_mean(a_in, w_in, dim=()):
@@ -42,8 +52,3 @@ def weighted_mean(a_in, w_in, dim=()):
     w = ensure_tensor(w_in)
     assert (a.shape == w.shape) or (a.numel() == 1 and w.numel() == 1)
     return torch.sum(a * w, dim=dim) / torch.sum(w, dim=dim)
-
-
-def weighted_SSE(a, b, w, dim=()):
-    """Weighted Sum Square Error."""
-    return ((w * (a - b)).abs().square()).sum(dim=dim)

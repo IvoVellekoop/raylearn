@@ -13,13 +13,14 @@ from tqdm import tqdm
 # from torchviz import make_dot
 
 from plot_functions import plot_coords, format_prefix, plot_rays, plot_lens, plot_plane, default_viewplane
-from testing import MSE, weighted_SSE
+from testing import MSE, SSE, weighted_SSE
 from tpm import TPM
 from vector_functions import components, rejection
 from interpolate_shader import interpolate_shader
 from optical import Coverslip
 from sample_tube import SampleTube
 from ray_plane import CoordPlane, detach
+from math_functions import pyramid
 from dirconfig_raylearn import dirs
 
 
@@ -369,17 +370,17 @@ cam_im_coords_gt = (tensor((matfile['cam_img_col'], matfile['cam_img_row']))
     - tensor((matfile['copt_img/Width'], matfile['copt_img/Height'])) / 2).permute(1, 2, 0)
 
 # Discard coords marked as spot not found
-found_spot = tensor(matfile['found_spot'])
-not_found_spot_coords = torch.stack((found_spot, found_spot), dim=2).logical_not()
-
-cam_ft_coords_gt[not_found_spot_coords] = torch.nan
-cam_im_coords_gt[not_found_spot_coords] = torch.nan
+found_spot_ft = tensor(matfile['found_spot_ft'])
+found_spot_im = tensor(matfile['found_spot_img'])
+found_spot_coords_ft = torch.stack((found_spot_ft, found_spot_ft), dim=2)
+found_spot_coords_im = torch.stack((found_spot_im, found_spot_im), dim=2)
 
 # Weight measured coordinates
 # Use 1 / (detected beam spot standard deviation in pix) as weight
-# Coordinates are also in pix, so division makes it unitless
-weight_cam_ft_coords = 1 / (tensor((matfile['cam_ft_col_std'], matfile['cam_ft_row_std']))).permute(1, 2, 0)
-weight_cam_im_coords = 1 / (tensor((matfile['cam_img_col_std'], matfile['cam_img_row_std']))).permute(1, 2, 0)
+# Coordinates are also in pix, so division makes result unitless
+# If the spot can't be found, the values are nan. In those cases the inverse std is set to 0
+invstd_cam_ft_coords = (1 / (tensor((matfile['cam_ft_col_std'], matfile['cam_ft_row_std']))).permute(1, 2, 0)).nan_to_num(0.0)
+invstd_cam_im_coords = (1 / (tensor((matfile['cam_img_col_std'], matfile['cam_img_row_std']))).permute(1, 2, 0)).nan_to_num(0.0)      ########### some are nan
 
 
 # Initial conditions
@@ -482,16 +483,32 @@ for t in trange:
     # Compute error
 
     # Ignore all values that are marked as undetected or yield NaN in computation
-    mask_nanless = torch.logical_or(torch.logical_or(cam_ft_coords_gt.isnan(), cam_ft_coords.isnan()), torch.logical_or(cam_im_coords_gt.isnan(), cam_ft_coords.isnan())).logical_not()
+    # mask_nanless = torch.logical_or(torch.logical_or(cam_ft_coords_gt.isnan(), cam_ft_coords.isnan()), torch.logical_or(cam_im_coords_gt.isnan(), cam_ft_coords.isnan())).logical_not()
+
+    # Create masks to find different cases
+    cam_ft_size = tensor((matfile['/copt_ft/Width'], matfile['/copt_ft/Height'])).view(1, 1, 2)
+    cam_im_size = tensor((matfile['/copt_img/Width'], matfile['/copt_img/Height'])).view(1, 1, 2)
+    ft_raytrace_inside = (cam_ft_coords.abs() < (cam_ft_size / 2)).prod(dim=-1)
+    im_raytrace_inside = (cam_im_coords.abs() < (cam_im_size / 2)).prod(dim=-1)
+
+    weight_cam_ft_coords = invstd_cam_ft_coords * tpm.cam_ft_ray.intensity
+    weight_cam_im_coords = invstd_cam_im_coords * tpm.cam_im_ray.intensity      ######### some invstd_cam_im_coords are nan, since those spots aren't detected
 
     # Error with measurements
     error_measure = \
-        weighted_SSE(cam_ft_coords_gt[mask_nanless],            # Fourier cam coords
-                     cam_ft_coords[mask_nanless],
-                     weight_cam_ft_coords[mask_nanless]) + \
-        weighted_SSE(cam_im_coords_gt[mask_nanless],            # Image cam coords
-                     cam_im_coords[mask_nanless],
-                     weight_cam_im_coords[mask_nanless])
+        weighted_SSE(cam_ft_coords_gt[found_spot_coords_ft],            # Fourier cam coords
+                     cam_ft_coords[found_spot_coords_ft],
+                     weight_cam_ft_coords[found_spot_coords_ft]) + \
+        weighted_SSE(cam_im_coords_gt[found_spot_coords_im],            # Image cam coords
+                     cam_im_coords[found_spot_coords_im],
+                     weight_cam_im_coords[found_spot_coords_im])
+
+    # Error of undetected measurements, but ray traced spot is on camera
+    error_edge = \
+        weighted_SSE(0, pyramid(cam_ft_size, cam_ft_coords)[found_spot_coords_ft.logical_not()],
+        weight_cam_ft_coords[found_spot_coords_ft.logical_not()]) + \
+        weighted_SSE(0, pyramid(cam_im_size, cam_im_coords)[found_spot_coords_im.logical_not()],
+        weight_cam_im_coords[found_spot_coords_im.logical_not()])       ####### Some are inf
 
     # Error with initial guess
     error_init = \
@@ -511,8 +528,13 @@ for t in trange:
                      tube_angle_init,
                      weight_tube_angle_init)
 
+    # Error intensity   ############## SSE
+    error_intense = \
+        (found_spot_ft - tpm.cam_ft_ray.intensity*ft_raytrace_inside).relu().square() + \
+        (found_spot_im - tpm.cam_im_ray.intensity*im_raytrace_inside).relu().square()
+
     # Total error
-    error = error_measure + error_init
+    error = error_measure + error_init + error_edge + error_intense
 
     # Count NaN occurrences in ray tracing output and add to list
     nans += [cam_ft_coords.isnan().sum()]
@@ -529,7 +551,7 @@ for t in trange:
     #     except:
     #         pass
 
-    init_fraction = (error_init / error).detach().item()
+    # init_fraction = (error_init / error).detach().item()
 
     error_value = error.detach().item()
     errors[t] = error_value
@@ -539,7 +561,7 @@ for t in trange:
             params_obj1_zshift_logs[groupname][paramname][t] = params_obj1_zshift[groupname][paramname].detach().item()
 
     trange.desc = f'error: {error_value:<8.3g}' \
-        + f' init fraction: {init_fraction:.3f}'
+        # + f' init fraction: {init_fraction:.3f}'
 
     # Plot
     if t % 1 == 0 and do_plot_tube and t >= 0:
