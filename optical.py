@@ -460,6 +460,76 @@ def snells_gaussian(ray_in, normal, std, n_out):
     return ray_out
 
 
+def snells_softplus(ray_in, normal, std, n_out):
+    """
+    Compute refracted pencil beam, but the curve smoothed with Softplus.
+    Similar to snells_gaussian, but with a more numerically stable function.
+    Returns a new Ray instance with the new direction, refractive index and intensity.
+
+    Input
+    -----
+        ray_in      Ray. Incoming Ray.
+        normal      Unit vector. Surface normal of interface.
+        beta        Scalar. Standard deviation of gaussian distribution.
+        n_out       Scalar. Refractive index outgoing ray.
+
+    Output
+    ------
+        ray_out     Ray. Refracted outgoing Ray.
+
+    Notes: rejection(ray_dir, surface_normal) has magnitude sin(angle) and thus it can act as sine
+    in Snell's law. Furthermore, it is perpendicular to the surface_normal. Hence, it's the
+    perpendicular component of dir_out. Once this is known, the parallel component can also be
+    computed, since |dir_out| = 1.  Another way to think about this is that D_x == k_x / (n k_0),
+    and k_x_in == k_x_out, where D_x denotes the transverse direction component, k_x denotes the
+    transverse wave vector component, k_0 denotes the vacuum wave number, and n the refractive
+    index.
+    See also:
+    https://en.wikipedia.org/wiki/Snell%27s_law#Vector_form
+
+    This function works regardless of incoming ray direction. If the ray is coming from the opposite
+    direction, the normal vector will be flipped to make the computation work.
+    """
+
+    assert checkunitvector(normal)
+
+    # Flip normal if ray_in is coming from opposite direction (required for backpropagation)
+    N = -normal * sign(dot(normal, ray_in.direction))
+
+    dir_in = ray_in.direction
+    n_in = ray_in.refractive_index
+
+    dir_inrej = rejection(dir_in, N)        # Perpendicular component (i.e. along plane) of dir_in
+
+    dir_in_center = norm(dir_inrej)         # Norm of perpendicular component and center of gaussian
+
+    # Critical perpendicular component for n_out>n_in, 1 for n_out<n_in
+    dir_in_crit = torch.min(ensure_tensor(n_out / n_in), torch.tensor(1.))
+
+    # Total intensity fraction of the gaussian distribution that falls within the integration domain
+    intensity = (torch.erf((dir_in_crit + dir_in_center) / (np.sqrt(2)*std)) +
+                 torch.erf((dir_in_crit - dir_in_center) / (np.sqrt(2)*std))) / 2
+
+    # Approximation to weighted mean perpendicular direction component, weighted within critical
+    denom = torch.log(1 + torch.exp((dir_in_crit/std)))
+    dir_in_mean = torch.where(
+        dir_in_center > 0,
+        +1 - torch.log(1 + torch.exp((dir_in_crit - dir_in_center)/std)) / denom,
+        -1 + torch.log(1 + torch.exp((dir_in_crit + dir_in_center)/std)) / denom)
+
+    # Outgoing direction vector
+    dir_outrej = torch.where(dir_in_mean != 0,
+                             unit(dir_inrej) * dir_in_mean,         # Apply smooth Snell's
+                             0*dir_inrej)                           # Prevent division by 0
+    dir_outproj = - N * sqrt_zero(1 - norm_square(dir_outrej))      # Parallel component of dir_out
+    dir_out = dir_outrej + dir_outproj      # Combine components
+
+    ray_out = copy_update(ray_in, direction=dir_out, refractive_index=n_out,
+                          intensity=ray_in.intensity*intensity)
+
+    return ray_out
+
+
 def flat_interface(in_ray, interface_plane, n_new):
     """
     Flat Interface

@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from vector_functions import ensure_tensor, cartesian3d
-from optical import snells_gaussian, point_source, CoordPlane, snells
+from optical import snells, snells_gaussian, snells_softplus, point_source, CoordPlane
 from plot_functions import plot_plane, plot_rays
 
 
@@ -117,7 +117,7 @@ plt.show()
 
 # Test 3D ray tracing version
 origin, x, y, z = cartesian3d()
-component_range = 4
+component_range = 4     # Controls max input angle = arctan(component_range)
 Ny = 81
 n_in = 1.3
 n_out = 1.0
@@ -184,6 +184,69 @@ plt.plot(rays1[0].direction[:, :, 1].view(-1), rays1[-1].intensity.view(-1), lab
 plt.plot(rays2[0].direction[:, :, 1].view(-1), rays2[-1].intensity.view(-1), label=f'Intensity out, $\\sigma={std2:.2f}$')
 plt.xlabel('Incident $k_y/k$')
 plt.title(f"Raytracer Snell's law\n$n_1={n_in}, n_2={n_out}$")
+plt.legend()
+plt.grid()
+plt.show()
+
+
+# Test 3D ray tracing version softplus
+rays_gauss = []
+rays_gauss += [point_source(source_plane, 1, Ny, refractive_index=n_in)]
+rays_gauss += [rays_gauss[-1].intersect_plane(interface_plane)]
+rays_gauss += [snells_gaussian(rays_gauss[-1], -z, std1, n_out=n_out)]
+rays_gauss += [rays_gauss[-1].propagate(1)]
+
+rays_softp = []
+rays_softp += [point_source(source_plane, 1, Ny, refractive_index=n_in)]
+rays_softp += [rays_softp[-1].intersect_plane(interface_plane)]
+rays_softp += [snells_softplus(rays_softp[-1], -z, std1, n_out=n_out)]
+rays_softp += [rays_softp[-1].propagate(1)]
+
+rays_snell = []
+rays_snell += [point_source(source_plane, 1, Ny, refractive_index=n_in)]
+rays_snell += [rays_snell[-1].intersect_plane(interface_plane)]
+rays_snell += [snells(rays_snell[-1], -z, n_out=n_out)]
+rays_snell += [rays_snell[-1].propagate(1)]
+
+# Plot 3D ray tracing version
+fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(8, 7))
+fig.dpi = 144
+
+# Snell's with gaussian
+plot_plane(ax[0], interface_plane, scale=component_range+1)
+plot_rays(ax[0], rays_gauss)
+ax[0].set_aspect(1)
+ax[0].set_title(f"Snell's with gaussian\n$n_1={n_in}, n_2={n_out:.0f}, \\sigma={std1}$")
+ax[0].set_xlabel('optical axis (m)')
+ax[0].set_ylabel('transverse axis (m)')
+
+# Snell's with gaussian
+plot_plane(ax[1], interface_plane, scale=component_range+1)
+plot_rays(ax[1], rays_softp)
+ax[1].set_aspect(1)
+ax[1].set_title(f"Snell's with Softplus\n$n_1={n_in}, n_2={n_out:.0f}, \\sigma={std1}$")
+ax[1].set_xlabel('optical axis (m)')
+ax[1].set_ylabel('transverse axis (m)')
+
+# Regular Snell's
+plot_plane(ax[2], interface_plane, scale=component_range+1)
+plot_rays(ax[2], rays_snell)
+ax[2].set_aspect(1)
+ax[2].set_title(f"Regular Snell's\n$n_1={n_in}, n_2={n_out}$")
+ax[2].set_xlabel('optical axis (m)')
+ax[2].set_ylabel('transverse axis (m)')
+plt.show()
+
+# Intensity and kx/k plot
+intense_figure = plt.figure()
+fig.dpi = 144
+plt.plot(rays_snell[0].direction[:, :, 1].view(-1), rays_snell[-1].direction[:, :, 1].view(-1), label='$k_y/k$ out (Regular)')
+plt.plot(rays_gauss[0].direction[:, :, 1].view(-1), rays_gauss[-1].direction[:, :, 1].view(-1), label=f'$k_y/k$ out (Gaussian), $\\sigma={std1:.3f}$')
+plt.plot(rays_softp[0].direction[:, :, 1].view(-1), rays_softp[-1].direction[:, :, 1].view(-1), label=f'$k_y/k$ out (Softplus), $\\sigma={std1:.3f}$')
+plt.plot(rays_gauss[0].direction[:, :, 1].view(-1), rays_gauss[-1].intensity.view(-1), label=f'Intensity out (Gaussian), $\\sigma={std1:.3f}$', linewidth=3, linestyle='dashed')
+plt.plot(rays_softp[0].direction[:, :, 1].view(-1), rays_softp[-1].intensity.view(-1), label=f'Intensity out (Softplus), $\\sigma={std1:.3f}$')
+plt.xlabel('Incident $k_y/k$')
+plt.title(f"Raytracer Snell's law\n$n_1={n_in}, n_2={n_out}$, {torch.get_default_dtype()}")
 plt.legend()
 plt.grid()
 plt.show()
