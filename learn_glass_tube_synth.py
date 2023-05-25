@@ -129,6 +129,8 @@ if do_plot_tube:
     ax_tpm = plt.gca()
 
 
+torch.autograd.set_detect_anomaly(True)         ############## Use to detect NaNs in backward pass
+
 for t in trange:
     # === Learn sample === #
     # Forward pass
