@@ -630,7 +630,7 @@ def cylinder_interface(in_ray, cylinder_plane, radius_m, n_new, propagation_sign
     normal = unit(rejection(Q-C, N))
 
     # Refract Ray
-    out_ray = snells(ray_at_cylinder, normal, n_new)
+    out_ray = snells_softplus(ray_at_cylinder, normal, 0.089, n_new)
     return out_ray
 
 
