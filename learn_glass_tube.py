@@ -530,8 +530,8 @@ for t in trange:
 
     # Error intensity   ############## SSE
     error_intense = \
-        (found_spot_ft - tpm.cam_ft_ray.intensity*ft_raytrace_inside).relu().square().sum() + \
-        (found_spot_im - tpm.cam_im_ray.intensity*im_raytrace_inside).relu().square().sum()
+        (found_spot_ft - tpm.cam_ft_ray.intensity.squeeze()*ft_raytrace_inside).relu().square().sum() + \
+        (found_spot_im - tpm.cam_im_ray.intensity.squeeze()*im_raytrace_inside).relu().square().sum()
 
     # Total error
     error = error_measure + error_init + error_edge + error_intense
