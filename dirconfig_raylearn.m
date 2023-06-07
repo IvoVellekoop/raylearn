@@ -33,6 +33,8 @@ restoredefaultpath
 addrepo(fullfile(dirs.main, 'raylearn'), ["__pycache__", ".pytest_cache", "LocalData"]);
 addrepo(fullfile(dirs.main, 'utilities'));
 addrepo(fullfile(dirs.main, 'hardware/matlab'));
+addrepo(fullfile(dirs.main, 'AO/Aberration mapping/zernike_analysis'));
+addrepo(fullfile(dirs.main, 'tpm/calibration/functions'));
 
 fprintf('\n')
 
