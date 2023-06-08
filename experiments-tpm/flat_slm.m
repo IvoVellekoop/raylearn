@@ -3,7 +3,7 @@ addpath(fileparts(fileparts(mfilename('fullpath'))))   % Grand parent dir
 dirconfig_raylearn
 addpath(fullfile(dirs.main, 'scanimage'))
 
-lambda = 715;
+lambda = 808;
 sopt.displayPort = 1;
     
 % setup SLM

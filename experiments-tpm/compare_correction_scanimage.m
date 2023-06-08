@@ -7,7 +7,7 @@
 
 % frame_no_correction = grabSIFrame(hSI, hSICtl, 1);
 %%
-SLM_pattern = -(angle(field_SLM) + pi) * 255 / (2*pi);
+SLM_pattern = (angle(field_SLM) + pi) * 255 / (2*pi);
 %%
 slm.setRect(1, [0 0 1 1]); slm.setData(1, 0); slm.update
 %% 1.9

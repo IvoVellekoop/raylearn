@@ -8,9 +8,9 @@ dirconfig_raylearn
 
 %% Setup hardware
 active_devices.slm = true;
-active_devices.galvos = true;
-active_devices.cam_img = true;
-active_devices.cam_ft = true;
+active_devices.galvos = false;
+active_devices.cam_img = false;
+active_devices.cam_ft = false;
 active_devices.pmt_gain = false;
 active_devices.sample_stage = false;
 

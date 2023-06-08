@@ -11,7 +11,7 @@ if doreset || ~exist('slm', 'var') || ~exist('daqs', 'var')  || ~exist('cam_ft',
 end
 
 %% Settings
-p.samplename = 'coverslip170um';
+p.samplename = 'tube-0.5uL';
 doshowcams        = 0;              % Toggle show what the cameras see
 dosave            = 1;              % Toggle savings
 dochecksamplename = 0;              % Toggle console sample name check
@@ -20,18 +20,20 @@ dochecksamplename = 0;              % Toggle console sample name check
 p.segment_patch_id = 2;             % Pencil Beam segment SLM patch ID
 p.ppp = 2;                          % Pixels per period for the grating. Should match Galvo setting!
 p.segmentsize_pix = 40 * p.ppp;     % Segment width in pixels
-p.beamdiameter = 0.85;              % Diameter of circular SLM segment set (relative coords)
+p.beamdiameter = 0.60;              % Diameter of circular SLM segment set (relative coords)
 p.slm_offset_x = 0.00;              % Horizontal offset of rectangle SLM geometry (relative coords)
 p.slm_offset_y = 0.00;              % Vertical offset of rectangle SLM geometry (relative coords)
-p.N_diameter =  5;                  % Number of segments across SLM diameter
+p.N_diameter =  9;                  % Number of segments across SLM diameter
 
 % Galvo Mirror scan settings
-p.GalvoNX =  3;                     % Number of Galvo steps, x
-p.GalvoNY =  3;                     % Number of Galvo steps, y
+p.GalvoNX =  9;                     % Number of Galvo steps, x
+p.GalvoNY =  4;                     % Number of Galvo steps, y
 p.GalvoXcenter =  0.053;            % Galvo center x
 p.GalvoYcenter = -0.598;            % Galvo center y
-p.GalvoXsize   =  0.345;            % Galvo scan radius: from center to outer x
-p.GalvoYsize   =  0.217;            % Galvo scan radius: from center to outer y
+% p.GalvoXsize   =  0.345;            % Galvo scan radius: from center to outer x
+% p.GalvoYsize   =  0.217;            % Galvo scan radius: from center to outer y
+p.GalvoXsize   =  0.125;            % Galvo scan radius: from center to outer x
+p.GalvoYsize   =  0.125;            % Galvo scan radius: from center to outer y
 
 % Ask if samplename is correct
 if dochecksamplename
