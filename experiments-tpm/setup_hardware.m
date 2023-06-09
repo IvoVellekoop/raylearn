@@ -32,7 +32,7 @@ if active_devices.slm
     
     % setup SLM
     [slm, sopt] = SLMsetup(lambda,sopt);
-    slm.setData(1,0); slm.update;
+    slm.setData(1,128); slm.update;
     fprintf('Initialized SLM with \x3BB=%.1f\n', lambda)
 end
 
@@ -75,6 +75,27 @@ if active_devices.cam_img
     copt_img.cam_x = copt_img.dx*(-copt_img.Width/2+1:copt_img.Width/2);
     copt_img.cam_y = copt_img.dx*(-copt_img.Height/2+1:copt_img.Height/2);
     fprintf('Initialized Image Plane Camera\n')
+end
+
+%% Connect to SLM Camera
+if active_devices.cam_slm
+    cam_slm.ExposureTime = 1/60*10^6;
+    cam_slm.Id = 'Camera/22961593:Basler';
+
+    copt_slm.Width = 1088;
+    copt_slm.Height = 1088;
+    cam_slm = Camera(copt_slm);
+    
+    % set camera ROI to center of sensor
+    copt_slm.OffsetX = (cam_slm.get('WidthMax') - copt_slm.Width)/2;
+    copt_slm.OffsetY = (cam_slm.get('HeightMax') - copt_slm.Height)/2;
+    cam_slm.setROI([copt_slm.OffsetX, copt_slm.OffsetY, copt_slm.Width, copt_slm.Height]);
+    
+    % set axes of image plane (after demagnification)
+    copt_slm.dx = 5.5*(200/100);                  % pixel_size at image plane (in um)
+    copt_slm.cam_x = copt_slm.dx*(-copt_slm.Width/2+1:copt_slm.Width/2);
+    copt_slm.cam_y = copt_slm.dx*(-copt_slm.Height/2+1:copt_slm.Height/2);
+    fprintf('Initialized SLM Camera\n')
 end
 
 
