@@ -3,15 +3,15 @@
 
 %% === Settings ===
 % Flags
-office_mode = 1;
+office_mode = 0;
 do_save = 1;
 do_plot_final = 1;
-do_plot_scan = 0;
+do_plot_scan = 1;
 do_save_plot_scan = 0;
 force_reset = 0;
 
 % Other settings
-p.samplename = 'tube500nL';
+p.samplename = 'tube500nL-top';
 
 p.slm_rotation_deg = -5.9;                  % Can be found with an SLM coordinate calibration
 p.truncate = false;                         % Truncate Zernike modes at circle edge
@@ -25,14 +25,14 @@ delaytime_gif = 0.05;
 
 % Define test range astigmatism
 p.min_cycles_2_2 = 3;                       % Minimum phase cycles (1 => 2pi phase)
-p.max_cycles_2_2 = 11;                      % Max phase cycles (1 => 2pi phase)
-p.num_patterns_2_2 = 8;                    % Number of patterns
+p.max_cycles_2_2 = 15;                      % Max phase cycles (1 => 2pi phase)
+p.num_patterns_2_2 = 18;                    % Number of patterns
 p.phase_range_2_2 = pi * linspace(p.min_cycles_2_2, p.max_cycles_2_2, p.num_patterns_2_2);
 
 % Define test range spherical aberrations
-p.min_cycles_4_2 = -1;                      % Minimum phase cycles (1 => 2pi phase)
-p.max_cycles_4_2 = 1;                       % Max phase cycles (1 => 2pi phase)
-p.num_patterns_4_2 = 5;                     % Number of patterns
+p.min_cycles_4_2 = -1.5;                    % Minimum phase cycles (1 => 2pi phase)
+p.max_cycles_4_2 = 1.5;                     % Max phase cycles (1 => 2pi phase)
+p.num_patterns_4_2 = 10;                     % Number of patterns
 p.phase_range_4_2 = pi * linspace(p.min_cycles_4_2, p.max_cycles_4_2, p.num_patterns_4_2);
 
 %% === Initialize fake/real hardware ===
@@ -41,7 +41,7 @@ if office_mode
     dirconfig_raylearn
 
     % Fake hardware handles
-    slm = struct('Height', 400);
+    slm = struct('getSize', [1152 1920]);
     hSI = struct();
     hSICtl = struct();
     grabSIFrame = @(hSI, hSICtl)(rand(128));
@@ -73,7 +73,8 @@ if do_save
 end
 
 % Initialize coords
-coord_x = linspace(-1, 1, slm.Height);
+slm_size = slm.getSize;
+coord_x = linspace(-1, 1, slm_size(1));
 coord_y = coord_x';
 
 % Generate aligned astigmatism and z
@@ -84,7 +85,7 @@ p.Zcart_4_2 = imrotate(zernfun_cart(coord_x, coord_y, 4, 2, p.truncate), p.slm_r
 all_feedback = zeros(p.num_patterns_2_2, p.num_patterns_4_2);
 
 if do_plot_scan
-    figure
+    fig_scan = figure;
     fig_resize(800, 1);
     movegui('center')
     colormap magma
@@ -106,19 +107,34 @@ for i_4_2 = 1:p.num_patterns_4_2                  % Scan spherical aberrations
             secret_pattern = fake_amplitude_2_2 .* p.Zcart_2_2 + fake_amplitude_4_2 .* p.Zcart_4_2;
             fake_wavefront = exp(1i .* (secret_pattern - slm_pattern_2pi)) ...
                 .* ((coord_x.^2) + (coord_y.^2) < 1);
-            frames = abs(fftshift(fft2(fake_wavefront))).^2;
+            fake_wavefront_flatslm = exp(1i .* (secret_pattern)) ...
+                .* ((coord_x.^2) + (coord_y.^2) < 1);
+            frames_ao = abs(fftshift(fft2(fake_wavefront))).^2;
+            frames_flatslm = abs(fftshift(fft2(fake_wavefront_flatslm))).^2;
 
         else
+            slm.setRect(1, [0 0 1 1])
+
+            % Flat pattern
+            slm.setData(p.pattern_patch_id, 0);
+            slm.update;
+            frames_flatslm = grabSIFrame(hSI, hSICtl);
+            
+            % Zernike Modes pattern
             slm.setData(p.pattern_patch_id, slm_pattern_gv);
             slm.update;
-    
-            frames = grabSIFrame(hSI, hSICtl);  % Find a way to get multiple slices
+            frames_ao = grabSIFrame(hSI, hSICtl);  % Find a way to get multiple slices
+
+            % Random pattern prevents bleaching
+            slm.setData(p.pattern_patch_id, 255*rand(1000));
+            slm.update
         end
 
-        feedback = p.feedback_func(frames);
+        feedback = p.feedback_func(frames_ao) ./ p.feedback_func(frames_flatslm);
         all_feedback(i_2_2, i_4_2) = feedback;
 
         if do_plot_scan
+            figure(fig_scan)
             % Plot pattern on SLM
             subplot(2,2,1)
             imagesc(angle(exp(1i .* slm_pattern_2pi)))
@@ -141,8 +157,13 @@ for i_4_2 = 1:p.num_patterns_4_2                  % Scan spherical aberrations
     
             % Plot aberrated image
             subplot(2,2,3)
-            imagesc(max(frames(end/2-20:end/2+20, end/2-20:end/2+20), [], 3))
-            title('Aberrated image (zoomed)')
+            if office_mode
+                imagesc(max(frames_ao(end/2-20:end/2+20, end/2-20:end/2+20), [], 3))
+                title('Aberrated image (zoomed)')
+            else
+                imagesc(max(frames_ao, [], 3))
+                title('Aberrated image')
+            end
             xlabel('x (pix)')
             ylabel('y (pix)')
             axis image
@@ -154,10 +175,13 @@ for i_4_2 = 1:p.num_patterns_4_2                  % Scan spherical aberrations
             title('Log of feedback signals')
             xlabel('Spherical Aberration phase amplitude')
             ylabel('Aligned astigmatism phase amplitude')
-            hold on
-            plot(fake_amplitude_4_2, fake_amplitude_2_2, '+r')
-            legend('Secret aberration')
-            hold off
+            
+            if office_mode
+                hold on
+                plot(fake_amplitude_4_2, fake_amplitude_2_2, '+r')
+                legend('Secret aberration')
+                hold off
+            end
             colorbar
 
             drawnow
@@ -178,13 +202,19 @@ for i_4_2 = 1:p.num_patterns_4_2                  % Scan spherical aberrations
             % Save intermediate frames
             savepath = fullfile(p.savedir, sprintf('%s_%03i_%03i.mat', p.savename, i_4_2, i_2_2));
             disp('Saving...')
-            save(savepath, '-v7.3', 'p', 'frames', 'i_4_2', 'i_2_2', ...
+            save(savepath, '-v7.3', 'p', 'frames_flatslm', 'frames_ao', 'i_4_2', 'i_2_2', ...
                 'slm_pattern_2pi', 'slm_pattern_gv')
         end
 
         eta(count, p.num_patterns_4_2.*p.num_patterns_2_2,  starttime, 'cmd', 'Scanning Zernike modes', 0);
         count = count+1;
     end
+end
+
+if ~office_mode
+    % Random pattern prevents bleaching
+    slm.setData(p.pattern_patch_id, 255*rand(1000));
+    slm.update
 end
 
 % Upscale image and find coordinates of maximum
@@ -198,12 +228,16 @@ peak_index_4_2 = downscale(peak_index_4_2_upscaled, p.upscale_factor);
 phase_amp_2_2_optimal = interp1(1:p.num_patterns_2_2, p.phase_range_2_2, peak_index_2_2);
 phase_amp_4_2_optimal = interp1(1:p.num_patterns_4_2, p.phase_range_4_2, peak_index_4_2);
 
+if isnan(phase_amp_4_2_optimal) || isnan(phase_amp_2_2_optimal)
+    warning('Could not find phase pattern. NaN phase amplitude.')
+end
+
 % Compute optimal pattern
 slm_pattern_2pi_optimal = phase_amp_2_2_optimal.*p.Zcart_2_2 + phase_amp_4_2_optimal.*p.Zcart_4_2;
 slm_pattern_gv_optimal = (128/pi) * slm_pattern_2pi_optimal;
 
 if do_plot_final
-    figure;
+    fig_final = figure;
     fig_resize(800, 1);
     movegui('center')
     colormap magma
@@ -257,6 +291,7 @@ if do_save
     save(savepath, '-v7.3', 'p', 'all_feedback', 'all_feedback_upscaled', ...
         'phase_amp_2_2_optimal', 'phase_amp_4_2_optimal', ...
         'slm_pattern_2pi_optimal', 'slm_pattern_gv_optimal')
+    fprintf('\nSaved optimized pattern to:\n%s\n', savepath)
 end
 
 % Compute downscaled image coordinates
