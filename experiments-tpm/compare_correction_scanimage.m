@@ -1,39 +1,68 @@
 % Compare scanimage frames with and without correction
 
-% N = 5;  % Number of times to switch between
-% starttime = now;
-% for n=1:N
-%     n_frames = 1;
+% Scan settings
+hSI.hStackManager.numSlices = 2;
+hSI.hStackManager.stackZStepSize = 1.5;
+hSI.hChannels.loggingEnable = true;                 % True = Enable save
 
-% frame_no_correction = grabSIFrame(hSI, hSICtl, 1);
-%%
-SLM_pattern = (angle(field_SLM) + pi) * 255 / (2*pi);
-%%
+zoom = hSICtl.hModel.hRoiManager.scanZoomFactor;    % Get zoom
+basefilename = sprintf('tube-500nL-zoom%i-', zoom);
+
+% Save directory
+hSI.hScan2D.logFilePath = 'C:\LocalData\raylearn-data\TPM\TPM-3D-scans';
+fprintf('\nSaving in:\n%s\n\n', hSI.hScan2D.logFilePath)
+
+% No correction
 slm.setRect(1, [0 0 1 1]); slm.setData(1, 0); slm.update
-%% 1.9
-frame_no_correction = hSI.hDisplay.lastFrame{1};
-disp('Grabbed frame no correction')
+hSI.hScan2D.logFileStem = strcat(basefilename, 'no-correction-1');
+fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
+grabSIFrame(hSI, hSICtl);
 
-%%
-slm.setRect(1, [0 0 1 1]); slm.setData(1, SLM_pattern); slm.update
+% Adaptive optics top pattern
+set_AO_pattern(slm, '\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\adaptive-optics\08-Jun-2023-tube500nL-top\tube_ao_739045.726853_tube500nL-top\tube_ao_739045.726853_tube500nL-top_optimal_pattern.mat')
+hSI.hScan2D.logFileStem = strcat(basefilename, 'top-AO');
+fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
+grabSIFrame(hSI, hSICtl);
 
-%%
-% 3.9
-frame_with_correction = hSI.hDisplay.lastFrame{1};
-disp('Grabbed frame with correction')
+% Adaptive optics bottom pattern
+set_AO_pattern(slm, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\adaptive-optics\08-Jun-2023-tube500nL-bottom\tube_ao_739045.687979_tube500nL\tube_ao_739045.687979_tube500nL_optimal_pattern.mat")
+hSI.hScan2D.logFileStem = strcat(basefilename, 'bottom-AO');
+fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
+grabSIFrame(hSI, hSICtl);
 
-% frame_with_correction = grabSIFrame(hSI, hSICtl, n_frames);
-% 
-%     eta(n, N, starttime, 'console', 'Grabbing frames...', 0);
-% end
-%%
-starttime = now;
-N = 10;
-for n=1:N
-    try
-        frames(:,:,n) = imread('C:\LocalData\no_correction_00007.tif',n);
-    end
-    eta(n, N, starttime, 'console', 'Loading...', 0);
+% No correction
+slm.setRect(1, [0 0 1 1]); slm.setData(1, 0); slm.update
+hSI.hScan2D.logFileStem = strcat(basefilename, 'no-correction-2');
+fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
+grabSIFrame(hSI, hSICtl);
+
+% Ray traced top pattern
+set_RT_pattern(slm, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\pattern-0.5uL-tube-top-λ808.0nm.mat")
+hSI.hScan2D.logFileStem = strcat(basefilename, 'top-RT');
+fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
+grabSIFrame(hSI, hSICtl);
+
+% Ray traced bottom pattern
+set_RT_pattern(slm, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\pattern-0.5uL-tube-bottom-λ808.0nm.mat")
+hSI.hScan2D.logFileStem = strcat(basefilename, 'bottom-RT');
+fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
+grabSIFrame(hSI, hSICtl);
+
+% No correction
+slm.setRect(1, [0 0 1 1]); slm.setData(1, 0); slm.update
+hSI.hScan2D.logFileStem = strcat(basefilename, 'no-correction-3');
+fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
+grabSIFrame(hSI, hSICtl);
+
+
+function set_RT_pattern(slm, matpath)
+    patterndata = load(matpath);
+    SLM_pattern = (angle(patterndata.field_SLM) + pi) * 255 / (2*pi);
+    slm.setRect(1, [0 0 1 1]); slm.setData(1, SLM_pattern); slm.update
 end
 
-figure; imagesc(max(frames, [], 3))
+
+function set_AO_pattern(slm, matpath)
+    patterndata = load(matpath);
+    slm.setRect(1, [0 0 1 1]); slm.setData(1, patterndata.slm_pattern_gv_optimal); slm.update
+end
