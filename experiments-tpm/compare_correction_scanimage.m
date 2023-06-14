@@ -1,7 +1,7 @@
 % Compare scanimage frames with and without correction
 
 % Scan settings
-hSI.hStackManager.numSlices = 2;
+hSI.hStackManager.numSlices = 120;
 hSI.hStackManager.stackZStepSize = 1.5;
 hSI.hChannels.loggingEnable = true;                 % True = Enable save
 
@@ -53,6 +53,9 @@ slm.setRect(1, [0 0 1 1]); slm.setData(1, 0); slm.update
 hSI.hScan2D.logFileStem = strcat(basefilename, 'no-correction-3');
 fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
 grabSIFrame(hSI, hSICtl);
+
+% Random pattern to annihilate the focus
+slm.setRect(1, [0 0 1 1]); slm.setData(1, 255*rand(300)); slm.update
 
 
 function set_RT_pattern(slm, matpath)
