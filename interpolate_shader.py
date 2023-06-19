@@ -133,7 +133,7 @@ class ShaderInterpolator:
         out vec4 color;
         void main() { 
             float phi = fragmentColor * 2*PI/lambda;
-            color = vec4(cos(phi),sin(phi),0,0);
+            color = vec4(cos(phi),sin(phi),phi,0);
         }
         """
 
@@ -214,6 +214,7 @@ class ShaderInterpolator:
         image_out = np.frombuffer(image_buffer, dtype=np.float32).reshape(npoints[1],npoints[0], 4)
         # Convert to complex field
         self.field_out = image_out[:,:,0] + 1j*image_out[:,:,1]
+        self.path_length_out = image_out[:,:,2]
         
         # # Main loop, draw to window. Not necessary for calculation but may be useful for debugging
         # GL.glBindFramebuffer(GL.GL_FRAMEBUFFER,0)
