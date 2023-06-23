@@ -11,9 +11,9 @@ do_save_plot_scan = 0;
 force_reset = 0;
 
 % Other settings
-p.samplename = 'tube500nL-top';
+p.samplename = 'tube500nL-bottom';
 
-p.slm_rotation_deg = -5.9;                  % Can be found with an SLM coordinate calibration
+p.slm_rotation_deg = 5.9;                   % Can be found with an SLM coordinate calibration
 p.truncate = false;                         % Truncate Zernike modes at circle edge
 p.pattern_patch_id = 1;
 p.feedback_func = @(frames)(var(frames, [], [1 2 3]));
@@ -32,7 +32,7 @@ p.phase_range_2_2 = pi * linspace(p.min_cycles_2_2, p.max_cycles_2_2, p.num_patt
 % Define test range spherical aberrations
 p.min_cycles_4_2 = -1.5;                    % Minimum phase cycles (1 => 2pi phase)
 p.max_cycles_4_2 = 1.5;                     % Max phase cycles (1 => 2pi phase)
-p.num_patterns_4_2 = 10;                     % Number of patterns
+p.num_patterns_4_2 = 10;                    % Number of patterns
 p.phase_range_4_2 = pi * linspace(p.min_cycles_4_2, p.max_cycles_4_2, p.num_patterns_4_2);
 
 %% === Initialize fake/real hardware ===
@@ -53,6 +53,9 @@ else
     if force_reset || ~exist('slm', 'var')
         close all; clear; clc
         setup_raylearn_exptpm
+
+        calibrationdata = load("\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\calibration\calibration_values.mat");
+        offset_center_slm = calibrationdata.sopt.offset_center_slm;
     end
 end
 
@@ -91,6 +94,14 @@ if do_plot_scan
     colormap magma
 end
 
+if ~office_mode
+    % Random pattern to get dark frame
+    slm.setRect(1, [offset_center_slm(1) offset_center_slm(2) 1 1]);
+    slm.setData(p.pattern_patch_id, 255*rand(300));
+    slm.update
+    frames_dark = grabSIFrame(hSI, hSICtl);
+    frames_dark_mean = mean(frames_dark(:));
+end
 
 %% === Scan Zernike modes ===
 starttime = now;
@@ -113,7 +124,7 @@ for i_4_2 = 1:p.num_patterns_4_2                  % Scan spherical aberrations
             frames_flatslm = abs(fftshift(fft2(fake_wavefront_flatslm))).^2;
 
         else
-            slm.setRect(1, [0 0 1 1])
+            slm.setRect(1, [offset_center_slm(1) offset_center_slm(2) 1 1]);
 
             % Flat pattern
             slm.setData(p.pattern_patch_id, 0);
@@ -126,11 +137,11 @@ for i_4_2 = 1:p.num_patterns_4_2                  % Scan spherical aberrations
             frames_ao = grabSIFrame(hSI, hSICtl);  % Find a way to get multiple slices
 
             % Random pattern prevents bleaching
-            slm.setData(p.pattern_patch_id, 255*rand(1000));
+            slm.setData(p.pattern_patch_id, 255*rand(300));
             slm.update
         end
 
-        feedback = p.feedback_func(frames_ao) ./ p.feedback_func(frames_flatslm);
+        feedback = p.feedback_func(frames_ao - frames_dark_mean) ./ p.feedback_func(frames_flatslm - frames_dark_mean);
         all_feedback(i_2_2, i_4_2) = feedback;
 
         if do_plot_scan
@@ -213,7 +224,7 @@ end
 
 if ~office_mode
     % Random pattern prevents bleaching
-    slm.setData(p.pattern_patch_id, 255*rand(1000));
+    slm.setData(p.pattern_patch_id, 255*rand(300));
     slm.update
 end
 
