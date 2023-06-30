@@ -15,46 +15,44 @@ end
 dosave = 0;
 
 %%
-% BMPI/Projects/WAVEFRONTSHAPING/data/TPM/4th gen/calibration/calibration_values.mat
-%%%%% Automate: M matrix, pixels in frame / pixels per line, zoom
+calibration_data = load('/mnt/bmpi/Data/Daniel Cox/ExperimentalData/raylearn-data/TPM/calibration/calibration_matrix_parabola/calibration_values.mat');
 
-% tifpath = '/mnt/bmpi/Data/Daniel Cox/ExperimentalData/raylearn-data/TPM/TPM-3D-scans/tube-0.5uL-zoom10-no-correction_00001.tif';
+tiffolder = fullfile(dirs.expdata, '/raylearn-data/TPM/TPM-3D-scans/23-Jun-2023_tube-500nL/');
+% tifpath = [tiffolder 'tube-500nL-zoom8-zstep1.400um-top-RT-1_00001.tif']; titlestr = 'Top RT 1';
+% tifpath = [tiffolder 'tube-500nL-zoom8-zstep1.400um-top-RT-2_00001.tif']; titlestr = 'Top RT 2';
+% tifpath = [tiffolder 'tube-500nL-zoom8-zstep1.400um-top-AO-1_00001.tif']; titlestr = 'Top AO 1';
+% tifpath = [tiffolder 'tube-500nL-zoom8-zstep1.400um-top-AO-2_00001.tif']; titlestr = 'Top AO 2';
+tifpath = [tiffolder 'tube-500nL-zoom8-zstep1.400um-bottom-RT-1_00001.tif']; titlestr = 'Bottom RT 1';
+% tifpath = [tiffolder 'tube-500nL-zoom8-zstep1.400um-bottom-RT-2_00001.tif']; titlestr = 'Bottom RT 2';
+% tifpath = [tiffolder 'tube-500nL-zoom8-zstep1.400um-bottom-AO-1_00001.tif']; titlestr = 'Bottom AO 1';
+% tifpath = [tiffolder 'tube-500nL-zoom8-zstep1.400um-bottom-AO-2_00001.tif']; titlestr = 'Bottom AO 2';
 
-% tifpath = '/mnt/bmpi/Data/Daniel Cox/ExperimentalData/raylearn-data/TPM/TPM-3D-scans/scans-AO-vs-RT-5mW-try2/tube-500nL-zoom9-bottom-AO_00001.tif'; titlestr = 'bottom AO 5mW';
-% tifpath = '/mnt/bmpi/Data/Daniel Cox/ExperimentalData/raylearn-data/TPM/TPM-3D-scans/scans-AO-vs-RT-5mW-try2/tube-500nL-zoom9-bottom-RT_00001.tif'; titlestr = 'bottom RT 5mW';
-% tifpath = '/mnt/bmpi/Data/Daniel Cox/ExperimentalData/raylearn-data/TPM/TPM-3D-scans/scans-AO-vs-RT-5mW-try2/tube-500nL-zoom9-top-AO_00001.tif'; titlestr = 'top AO 5mW';
-% tifpath = '/mnt/bmpi/Data/Daniel Cox/ExperimentalData/raylearn-data/TPM/TPM-3D-scans/scans-AO-vs-RT-5mW-try2/tube-500nL-zoom9-top-RT_00001.tif'; titlestr = 'top RT 5mW';
-% tifpath = '/mnt/bmpi/Data/Daniel Cox/ExperimentalData/raylearn-data/TPM/TPM-3D-scans/scans-AO-vs-RT-5mW-try2/tube-500nL-zoom9-no-correction-1_00001.tif'; titlestr = 'no correction (before) 5mW';
-% tifpath = '/mnt/bmpi/Data/Daniel Cox/ExperimentalData/raylearn-data/TPM/TPM-3D-scans/scans-AO-vs-RT-5mW-try2/tube-500nL-zoom9-no-correction-2_00001.tif'; titlestr = 'no correction (halfway) 5mW';
-tifpath = '/mnt/bmpi/Data/Daniel Cox/ExperimentalData/raylearn-data/TPM/TPM-3D-scans/scans-AO-vs-RT-5mW-try2/tube-500nL-zoom9-no-correction-3_00001.tif'; titlestr = 'no correction (after) 5mW';
-
-% tifpath = "/home/dani/LocalData/raylearn-data/TPM/TPM-3D-scans/beads-0.5um-in-25uL-cyl-zoom30-zstep0.4um_00002.tif";
-% tifpath = "D:\ScientificData\TPM-3D-scans\beads-0.5um-in-25uL-cyl-zoom30-zstep0.4um_00002.tif";
-zoom = 9;
-factor = 1024/256;
-zstep_um = 1.5;
-
-% % tifpath = "/home/dani/LocalData/raylearn-data/TPM/TPM-3D-scans/beads-0.5um-in-25uL-cyl-zoom15-zstep0.5_00001.tif";
-% tifpath = "D:\ScientificData\TPM-3D-scans\beads-0.5um-in-25uL-cyl-zoom15-zstep0.5_00001.tif";
-% zoom = 15;
-% factor = 4;
-% zstep_um = 0.5;
-
-pixels_per_um = 0.2033 * factor * zoom;
-
-FOV_um = 1/pixels_per_um * 1024;
+% Get zstep from filename (it's not saved in the metadata!?)
+zstep_um_cellstr = regexp(tifpath, 'zstep([.\d]+)um', 'tokens');
+zstep_um = str2double(zstep_um_cellstr{1}{1});
 
 %% Load frames
 tifinfo = imfinfo(tifpath);         % Get info about image
 num_of_frames = length(tifinfo);    % Number of frames
-framestack = zeros(tifinfo(1).Width, tifinfo(1).Height, num_of_frames); % Initialize
+framestack_raw = zeros(tifinfo(1).Width, tifinfo(1).Height, num_of_frames); % Initialize
+
+% Retrieve zoom
+tif_scanimage_metadata = tifinfo.Artist;
+zoom_cellstr = regexp(tif_scanimage_metadata, '"scanZoomFactor": (\d+),', 'tokens');
+zoom = str2double(zoom_cellstr{1}{1});
+
+% Compute resolution and FOV of this measurement
+pixels_per_um_calibration = sqrt(sum(calibration_data.M(:,1).^2));
+scan_resolution_factor = tifinfo(1).Width / calibration_data.scanimage_details.pixels_per_line;
+pixels_per_um = pixels_per_um_calibration * scan_resolution_factor * zoom;
+FOV_um = 1/pixels_per_um * tifinfo(1).Width;                    % Field of View
 
 for n = 1:num_of_frames
-    framestack(:,:,n) = imread(tifpath, n);
+    framestack_raw(:,:,n) = imread(tifpath, n);
 end
 
 
-framestack_raw = framestack;
+framestack = framestack_raw - median(framestack_raw(:));
 framestack(framestack<0) = 0;
 stack_depth_um = zstep_um * size(framestack, 3);
 
