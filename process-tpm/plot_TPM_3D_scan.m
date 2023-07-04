@@ -26,49 +26,22 @@ tifpath = [tiffolder 'tube-500nL-zoom8-zstep1.400um-bottom-RT-1_00001.tif']; tit
 % tifpath = [tiffolder 'tube-500nL-zoom8-zstep1.400um-bottom-RT-2_00001.tif']; titlestr = 'Bottom RT 2';
 % tifpath = [tiffolder 'tube-500nL-zoom8-zstep1.400um-bottom-AO-1_00001.tif']; titlestr = 'Bottom AO 1';
 % tifpath = [tiffolder 'tube-500nL-zoom8-zstep1.400um-bottom-AO-2_00001.tif']; titlestr = 'Bottom AO 2';
+% tifpath = [tiffolder 'tube-500nL-zoom8-zstep1.400um-no-correction-1_00001.tif']; titlestr = 'No correction 1';
 
-% Get zstep from filename (it's not saved in the metadata!?)
-zstep_um_cellstr = regexp(tifpath, 'zstep([.\d]+)um', 'tokens');
-zstep_um = str2double(zstep_um_cellstr{1}{1});
-
-%% Load frames
-tifinfo = imfinfo(tifpath);         % Get info about image
-num_of_frames = length(tifinfo);    % Number of frames
-framestack_raw = zeros(tifinfo(1).Width, tifinfo(1).Height, num_of_frames); % Initialize
-
-% Retrieve zoom
-tif_scanimage_metadata = tifinfo.Artist;
-zoom_cellstr = regexp(tif_scanimage_metadata, '"scanZoomFactor": (\d+),', 'tokens');
-zoom = str2double(zoom_cellstr{1}{1});
-
-% Compute resolution and FOV of this measurement
-pixels_per_um_calibration = sqrt(sum(calibration_data.M(:,1).^2));
-scan_resolution_factor = tifinfo(1).Width / calibration_data.scanimage_details.pixels_per_line;
-pixels_per_um = pixels_per_um_calibration * scan_resolution_factor * zoom;
-FOV_um = 1/pixels_per_um * tifinfo(1).Width;                    % Field of View
-
-for n = 1:num_of_frames
-    framestack_raw(:,:,n) = imread(tifpath, n);
-end
-
-
-framestack = framestack_raw - median(framestack_raw(:));
-framestack(framestack<0) = 0;
-stack_depth_um = zstep_um * size(framestack, 3);
+tiff = load_tiff(tifpath, calibration_data);
 
 %% Plot
 um = [' (' 181 'm)'];
 fig = figure;
-dimdata = {[-FOV_um/2 FOV_um/2], [-FOV_um/2 FOV_um/2], [-stack_depth_um/2 stack_depth_um/2]};
 % axesoptions = struct('xlim', [-4 8], 'ylim', [-8 4], 'fontsize', 16);
 axesoptions = struct('fontsize', 14);
 
 % Plot with im3
-im3(log(flip(framestack, 3)), ...
+im3(log(flip(tiff.framestack, 3)), ...
     'slicedim', 1,...
     'maxprojection', true,...
     'title', ['0.5' 181 'm beads in 0.5' 181 'L tube, ' titlestr], ...
-    'dimdata', dimdata, ...
+    'dimdata', tiff.dimdata, ...
     'dimlabels', {['y' um], ['x' um], ['z' um]}, ...
     'axesoptions', axesoptions)
 colormap inferno
