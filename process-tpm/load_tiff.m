@@ -5,7 +5,8 @@ function tiff = load_tiff(tiffpath, calibration_data, loadstr, create_corrected)
     % Input:
     % tiffpath              Path to tiff file
     % calibrationdata       Struct containing loaded calibration data
-    % loadstr               String to be displayed during loading of frames
+    % loadstr               String to be displayed during loading of frames. If it is empty,
+    %                       the estimated time of arrival message will be omitted.
     % create_corrected      Create copy of framestack_raw data with corrected offset (median is
     %                       used to find noise peak) and negative values clipped to 0.
     %
@@ -28,9 +29,11 @@ function tiff = load_tiff(tiffpath, calibration_data, loadstr, create_corrected)
     arguments
         tiffpath {mustBeTextScalar}
         calibration_data struct
-        loadstr {mustBeTextScalar} = "Loading frames..."
+        loadstr {mustBeTextScalar} = ""
         create_corrected (1, 1) logical = true
     end
+
+    tiff.filepath = tiffpath;
 
     % Retrieve zstep from filename
     zstep_um_cellstr = regexp(tiffpath, 'zstep([.\d]+)um', 'tokens');
@@ -67,7 +70,9 @@ function tiff = load_tiff(tiffpath, calibration_data, loadstr, create_corrected)
     starttime = now;
     for n = 1:tiff.num_of_frames
         tiff.framestack_raw(:,:,n) = imread(tiffpath, n);
-        eta(n, tiff.num_of_frames, starttime, 'cmd', loadstr, 10);
+        if ~strcmp(loadstr, "")
+            eta(n, tiff.num_of_frames, starttime, 'cmd', loadstr, 10);
+        end
     end
     
     % Create corrected copy of the data with median subtracted, and negatives clipped to 0

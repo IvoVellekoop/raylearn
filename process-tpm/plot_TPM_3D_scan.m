@@ -15,7 +15,7 @@ end
 dosave = 0;
 
 %%
-calibration_data = load('/mnt/bmpi/Data/Daniel Cox/ExperimentalData/raylearn-data/TPM/calibration/calibration_matrix_parabola/calibration_values.mat');
+calibration_data = load(fullfile(dirs.expdata, 'raylearn-data/TPM/calibration/calibration_matrix_parabola/calibration_values.mat'));
 
 tiffolder = fullfile(dirs.expdata, '/raylearn-data/TPM/TPM-3D-scans/23-Jun-2023_tube-500nL/');
 % tifpath = [tiffolder 'tube-500nL-zoom8-zstep1.400um-top-RT-1_00001.tif']; titlestr = 'Top RT 1';
