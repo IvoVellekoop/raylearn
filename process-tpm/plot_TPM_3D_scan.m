@@ -28,7 +28,7 @@ tifpath = [tiffolder 'tube-500nL-zoom8-zstep1.400um-bottom-RT-1_00001.tif']; tit
 % tifpath = [tiffolder 'tube-500nL-zoom8-zstep1.400um-bottom-AO-2_00001.tif']; titlestr = 'Bottom AO 2';
 % tifpath = [tiffolder 'tube-500nL-zoom8-zstep1.400um-no-correction-1_00001.tif']; titlestr = 'No correction 1';
 
-tiff = load_tiff(tifpath, calibration_data);
+tiff = load_tiff(tifpath, calibration_data, 'Loading frames...');
 
 %% Plot
 um = [' (' 181 'm)'];
