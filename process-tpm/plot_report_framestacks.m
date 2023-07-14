@@ -12,6 +12,7 @@ end
 
 do_save = 1;
 savedir = fullfile(dirs.repo, 'plots/3D-scans/');
+mkdir(savedir);
 
 %%
 disp('Loading calibration...')
@@ -80,7 +81,7 @@ title('Signal \sigma noise corrected, flat pattern')
 legend('\sigma top', '\sigma bottom')
 set(gca, 'FontSize', 14)
 
-%% Process signals with correction patterns
+%% Process/plot/save signals with correction patterns
 
 figure;
 process_tiff([tiffolder 'tube-500nL-zoom8-zstep1.400um-top-RT-1_00001.tif'], calibration_data, flatpattern_stds_top, noise_index, signal_index_top, 'Top RT 1', savedir, do_save);
@@ -91,6 +92,13 @@ process_tiff([tiffolder 'tube-500nL-zoom8-zstep1.400um-bottom-RT-1_00001.tif'], 
 process_tiff([tiffolder 'tube-500nL-zoom8-zstep1.400um-bottom-RT-2_00001.tif'], calibration_data, flatpattern_stds_bottom, noise_index, signal_index_bottom, 'Bottom RT 2', savedir, do_save);
 process_tiff([tiffolder 'tube-500nL-zoom8-zstep1.400um-bottom-AO-1_00001.tif'], calibration_data, flatpattern_stds_bottom, noise_index, signal_index_bottom, 'Bottom AO 1', savedir, do_save);
 process_tiff([tiffolder 'tube-500nL-zoom8-zstep1.400um-bottom-AO-2_00001.tif'], calibration_data, flatpattern_stds_bottom, noise_index, signal_index_bottom, 'Bottom AO 2', savedir, do_save);
+
+%% Process/plot/save signals without correction patterns
+for index = 1:M                     % Loop over 'no correction framestack' index
+
+    %%%%%%% For top and bottom?
+    process_tiff([tiffolder sprintf('tube-500nL-zoom8-zstep1.400um-no-correction-%i_00001.tif', index)], calibration_data, flatpattern_stds_top, noise_index, signal_index_top, sprintf('No correction %i', index), savedir, do_save);
+end
 
 
 % If we assume that the std error scales with the signal, then the error fraction
