@@ -6,7 +6,7 @@
 office_mode = 0;
 do_save = 1;
 do_plot_final = 1;
-do_plot_scan = 1;
+do_plot_scan = 0;
 do_save_plot_scan = 0;
 force_reset = 0;
 
@@ -29,14 +29,14 @@ filename_gif = "tube_adaptive_optics.gif";  % Specify the output file name of gi
 delaytime_gif = 0.05;
 
 % Define test range astigmatism
-p.min_cycles_mode1 = 15;                    % Min radians (center to edge max)
-p.max_cycles_mode1 = 30;                    % Max radians (center to edge max)
-p.num_patterns_mode1 = 18;                  % Number of amplitudes to test
+p.min_cycles_mode1 = 16;                    % Min radians (center to edge max)
+p.max_cycles_mode1 = 32;                    % Max radians (center to edge max)
+p.num_patterns_mode1 = 15;                  % Number of amplitudes to test
 p.phase_range_mode1 = linspace(p.min_cycles_mode1, p.max_cycles_mode1, p.num_patterns_mode1);
 
 % Define test range spherical aberrations
-p.min_cycles_mode2 = -1;                    % Minimum phase cycles (1 => 2pi phase)
-p.max_cycles_mode2 = 4;                     % Max phase cycles (1 => 2pi phase)
+p.min_cycles_mode2 = -5;                    % Minimum phase cycles (1 => 2pi phase)
+p.max_cycles_mode2 = 5;                     % Max phase cycles (1 => 2pi phase)
 p.num_patterns_mode2 = 10;                  % Number of amplitudes to test
 p.phase_range_mode2 = linspace(p.min_cycles_mode2, p.max_cycles_mode2, p.num_patterns_mode2);
 
@@ -60,10 +60,11 @@ else
     if force_reset || ~exist('slm', 'var')
         close all; clear; clc
         setup_raylearn_exptpm
-
-        calibrationdata = load("\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\calibration\calibration_values.mat");
-        offset_center_slm = calibrationdata.sopt.offset_center_slm;
     end
+    calibrationdata = load("\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\calibration\calibration_matrix_parabola\calibration_values.mat");
+    offset_center_slm = calibrationdata.sopt.offset_center_slm;
+
+    hSI.hStackManager.numSlices = 1;
 end
 
 if do_save
@@ -113,7 +114,8 @@ else
 end
 
 p.piezo_center_um = hSI.hMotors.motorPosition;
-p.piezo_start_um = p.piezo_center_um - p.zstep_um * p.num_zslices/2;
+p.piezo_start_um = p.piezo_center_um(3) - p.zstep_um * p.num_zslices/2;
+p.piezo_range_um = p.piezo_start_um + (0:p.num_zslices-1) * p.zstep_um;
 
 %% === Scan Zernike modes ===
 starttime = now;
@@ -143,7 +145,7 @@ for i_mode2 = 1:p.num_patterns_mode2                  % Scan mode 2
             slm.update;
 
             % To start position
-            hSI.hMotors.motorPosition = [0 0 p.piezo_start_um + p.backlash];
+            hSI.hMotors.motorPosition = [0 0 p.piezo_start_um + p.z_backlash_distance_um];
             current_piezo_z = p.piezo_start_um;
             hSI.hMotors.motorPosition = [0 0 current_piezo_z];
 
@@ -159,15 +161,14 @@ for i_mode2 = 1:p.num_patterns_mode2                  % Scan mode 2
             slm.update;
             
             % To start position
-            hSI.hMotors.motorPosition = [0 0 p.piezo_start_um + p.backlash];
+            hSI.hMotors.motorPosition = [0 0 p.piezo_start_um + p.z_backlash_distance_um];
             current_piezo_z = p.piezo_start_um;
             hSI.hMotors.motorPosition = [0 0 current_piezo_z];
 
             % Volume acquisition
-            for iz = 1:length(p.num_zslices)
+            for iz = 1:p.num_zslices
                 frames_ao(:, :, iz) = grabSIFrame(hSI, hSICtl);
-                current_piezo_z = current_piezo_z + p.zstep_um;
-                hSI.hMotors.motorPosition = [0 0 current_piezo_z];
+                hSI.hMotors.motorPosition = [0 0 p.piezo_range_um(iz)];
             end
 
             % Random pattern prevents bleaching
