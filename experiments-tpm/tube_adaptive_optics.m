@@ -17,7 +17,7 @@ p.slm_rotation_deg = 5.9;                   % Can be found with an SLM coordinat
 p.truncate = false;                         % Truncate Zernike modes at circle edge
 p.pattern_patch_id = 1;
 p.feedback_func = @(frames)(var(frames, [], [1 2 3]));
-p.upscale_factor = 10;                      % How much the final scan should be bicubically upscaled
+p.upscale_factor = 20;                      % How much the final scan should be bicubically upscaled
 
 % Image acquisition
 p.zstep_um = 1.5;                           % Size of a z-step for the volume acquisition
@@ -29,16 +29,16 @@ filename_gif = "tube_adaptive_optics.gif";  % Specify the output file name of gi
 delaytime_gif = 0.05;
 
 % Define test range astigmatism
-p.min_cycles_2_2 = 3;                       % Minimum phase cycles (1 => 2pi phase)
-p.max_cycles_2_2 = 15;                      % Max phase cycles (1 => 2pi phase)
-p.num_patterns_2_2 = 18;                    % Number of patterns
-p.phase_range_2_2 = pi * linspace(p.min_cycles_2_2, p.max_cycles_2_2, p.num_patterns_2_2);
+p.min_cycles_mode1 = 15;                    % Min radians (center to edge max)
+p.max_cycles_mode1 = 30;                    % Max radians (center to edge max)
+p.num_patterns_mode1 = 18;                  % Number of amplitudes to test
+p.phase_range_mode1 = linspace(p.min_cycles_mode1, p.max_cycles_mode1, p.num_patterns_mode1);
 
 % Define test range spherical aberrations
-p.min_cycles_4_2 = -1.5;                    % Minimum phase cycles (1 => 2pi phase)
-p.max_cycles_4_2 = 1.5;                     % Max phase cycles (1 => 2pi phase)
-p.num_patterns_4_2 = 10;                    % Number of patterns
-p.phase_range_4_2 = pi * linspace(p.min_cycles_4_2, p.max_cycles_4_2, p.num_patterns_4_2);
+p.min_cycles_mode2 = -1;                    % Minimum phase cycles (1 => 2pi phase)
+p.max_cycles_mode2 = 4;                     % Max phase cycles (1 => 2pi phase)
+p.num_patterns_mode2 = 10;                  % Number of amplitudes to test
+p.phase_range_mode2 = linspace(p.min_cycles_mode2, p.max_cycles_mode2, p.num_patterns_mode2);
 
 %% === Initialize fake/real hardware ===
 if office_mode
@@ -54,8 +54,8 @@ if office_mode
     grabSIFrame = @(hSI, hSICtl)(rand(128));
 
     % Fake aberrations
-    fake_amplitude_2_2 = 8.2.* pi;
-    fake_amplitude_4_2 = 0.4.* pi;
+    fake_amplitude_mode1 = 22;
+    fake_amplitude_mode2 = 2;
 else
     if force_reset || ~exist('slm', 'var')
         close all; clear; clc
@@ -88,11 +88,11 @@ coord_x = linspace(-1, 1, slm_size(1));
 coord_y = coord_x';
 
 % Generate aligned astigmatism and z
-p.Zcart_2_2 = imrotate(zernfun_cart(coord_x, coord_y, 2, 2, p.truncate), p.slm_rotation_deg, "bilinear", "crop");
-p.Zcart_4_2 = imrotate(zernfun_cart(coord_x, coord_y, 4, 2, p.truncate), p.slm_rotation_deg, "bilinear", "crop");
+p.Zcart_mode1 = imrotate(zernfun_cart(coord_x, coord_y, 2, 2, p.truncate), p.slm_rotation_deg, "bilinear", "crop");
+p.Zcart_mode2 = imrotate(zernfun_cart(coord_x, coord_y, 4, 3, p.truncate), p.slm_rotation_deg, "bilinear", "crop");
 
 % Initialize feedback
-all_feedback = zeros(p.num_patterns_2_2, p.num_patterns_4_2);
+all_feedback = zeros(p.num_patterns_mode1, p.num_patterns_mode2);
 
 if do_plot_scan
     fig_scan = figure;
@@ -118,16 +118,16 @@ p.piezo_start_um = p.piezo_center_um - p.zstep_um * p.num_zslices/2;
 %% === Scan Zernike modes ===
 starttime = now;
 count = 1;
-for i_4_2 = 1:p.num_patterns_4_2                  % Scan spherical aberrations
-    phase_amp_4_2 = p.phase_range_4_2(i_4_2);
-    for i_2_2 = 1:p.num_patterns_2_2              % Scan astigmatism
-        phase_amp_2_2 = p.phase_range_2_2(i_2_2);
+for i_mode2 = 1:p.num_patterns_mode2                  % Scan mode 2
+    phase_amp_mode2 = p.phase_range_mode2(i_mode2);
+    for i_mode1 = 1:p.num_patterns_mode1              % Scan mode 1
+        phase_amp_mode1 = p.phase_range_mode1(i_mode1);
 
-        slm_pattern_2pi = phase_amp_2_2.*p.Zcart_2_2 + phase_amp_4_2.*p.Zcart_4_2;
+        slm_pattern_2pi = phase_amp_mode1.*p.Zcart_mode1 + phase_amp_mode2.*p.Zcart_mode2;
         slm_pattern_gv = (128/pi) * slm_pattern_2pi;
 
         if office_mode
-            secret_pattern = fake_amplitude_2_2 .* p.Zcart_2_2 + fake_amplitude_4_2 .* p.Zcart_4_2;
+            secret_pattern = fake_amplitude_mode1 .* p.Zcart_mode1 + fake_amplitude_mode2 .* p.Zcart_mode2;
             fake_wavefront = exp(1i .* (secret_pattern - slm_pattern_2pi)) ...
                 .* ((coord_x.^2) + (coord_y.^2) < 1);
             fake_wavefront_flatslm = exp(1i .* (secret_pattern)) ...
@@ -176,7 +176,7 @@ for i_4_2 = 1:p.num_patterns_4_2                  % Scan spherical aberrations
         end
 
         feedback = p.feedback_func(frames_ao - frames_dark_mean) ./ p.feedback_func(frames_flatslm - frames_dark_mean);
-        all_feedback(i_2_2, i_4_2) = feedback;
+        all_feedback(i_mode1, i_mode2) = feedback;
 
         if do_plot_scan
             figure(fig_scan)
@@ -216,14 +216,14 @@ for i_4_2 = 1:p.num_patterns_4_2                  % Scan spherical aberrations
 
             % Feedback signal
             subplot(2,2,4)
-            imagesc(p.phase_range_4_2, p.phase_range_2_2, log(all_feedback))
+            imagesc(p.phase_range_mode2, p.phase_range_mode1, log(all_feedback))
             title('Log of feedback signals')
-            xlabel('Spherical Aberration phase amplitude')
-            ylabel('Aligned astigmatism phase amplitude')
+            xlabel('Mode 2 phase amplitude')
+            ylabel('Mode 1 phase amplitude')
             
             if office_mode
                 hold on
-                plot(fake_amplitude_4_2, fake_amplitude_2_2, '+r')
+                plot(fake_amplitude_mode2, fake_amplitude_mode1, '+r')
                 legend('Secret aberration')
                 hold off
             end
@@ -235,7 +235,7 @@ for i_4_2 = 1:p.num_patterns_4_2                  % Scan spherical aberrations
             if do_save_plot_scan
                 im = frame2im(getframe(gcf));
                 [A,map] = rgb2ind(im,256);
-                if i_4_2 == 1 && i_2_2 == 1
+                if i_mode2 == 1 && i_mode1 == 1
                     imwrite(A,map,filename_gif,"gif","LoopCount",Inf,"DelayTime",delaytime_gif);
                 else
                     imwrite(A,map,filename_gif,"gif","WriteMode","append","DelayTime",delaytime_gif);
@@ -245,13 +245,13 @@ for i_4_2 = 1:p.num_patterns_4_2                  % Scan spherical aberrations
     
         if do_save
             % Save intermediate frames
-            savepath = fullfile(p.savedir, sprintf('%s_%03i_%03i.mat', p.savename, i_4_2, i_2_2));
+            savepath = fullfile(p.savedir, sprintf('%s_%03i_%03i.mat', p.savename, i_mode2, i_mode1));
             disp('Saving...')
-            save(savepath, '-v7.3', 'p', 'frames_flatslm', 'frames_ao', 'i_4_2', 'i_2_2', ...
+            save(savepath, '-v7.3', 'p', 'frames_flatslm', 'frames_ao', 'i_mode2', 'i_mode1', ...
                 'slm_pattern_2pi', 'slm_pattern_gv')
         end
 
-        eta(count, p.num_patterns_4_2.*p.num_patterns_2_2,  starttime, 'cmd', 'Scanning Zernike modes', 0);
+        eta(count, p.num_patterns_mode2.*p.num_patterns_mode1,  starttime, 'cmd', 'Scanning Zernike modes', 0);
         count = count+1;
     end
 end
@@ -266,20 +266,20 @@ end
 % Upscale image and find coordinates of maximum
 all_feedback_upscaled = imresize(all_feedback, p.upscale_factor);
 [~, imax] = max(all_feedback_upscaled(:));
-[peak_index_2_2_upscaled, peak_index_4_2_upscaled] = ind2sub(size(all_feedback_upscaled), imax);
-peak_index_2_2 = downscale(peak_index_2_2_upscaled, p.upscale_factor);
-peak_index_4_2 = downscale(peak_index_4_2_upscaled, p.upscale_factor);
+[peak_index_mode1_upscaled, peak_index_mode2_upscaled] = ind2sub(size(all_feedback_upscaled), imax);
+peak_index_mode1 = downscale(peak_index_mode1_upscaled, p.upscale_factor);
+peak_index_mode2 = downscale(peak_index_mode2_upscaled, p.upscale_factor);
 
 % Compute optimal coordinates
-phase_amp_2_2_optimal = interp1(1:p.num_patterns_2_2, p.phase_range_2_2, peak_index_2_2);
-phase_amp_4_2_optimal = interp1(1:p.num_patterns_4_2, p.phase_range_4_2, peak_index_4_2);
+phase_amp_mode1_optimal = interp1(1:p.num_patterns_mode1, p.phase_range_mode1, peak_index_mode1);
+phase_amp_mode2_optimal = interp1(1:p.num_patterns_mode2, p.phase_range_mode2, peak_index_mode2);
 
-if isnan(phase_amp_4_2_optimal) || isnan(phase_amp_2_2_optimal)
+if isnan(phase_amp_mode2_optimal) || isnan(phase_amp_mode1_optimal)
     warning('Could not find phase pattern. NaN phase amplitude.')
 end
 
 % Compute optimal pattern
-slm_pattern_2pi_optimal = phase_amp_2_2_optimal.*p.Zcart_2_2 + phase_amp_4_2_optimal.*p.Zcart_4_2;
+slm_pattern_2pi_optimal = phase_amp_mode1_optimal.*p.Zcart_mode1 + phase_amp_mode2_optimal.*p.Zcart_mode2;
 slm_pattern_gv_optimal = (128/pi) * slm_pattern_2pi_optimal;
 
 if do_plot_final
@@ -290,17 +290,17 @@ if do_plot_final
 
     % Plot parameter landscape
     subplot(2,2,1)
-    imagesc(p.phase_range_4_2, p.phase_range_2_2, all_feedback); hold on
-    plot(phase_amp_4_2_optimal, phase_amp_2_2_optimal, '+r'); hold off
+    imagesc(p.phase_range_mode2, p.phase_range_mode1, all_feedback); hold on
+    plot(phase_amp_mode2_optimal, phase_amp_mode1_optimal, '+r'); hold off
     title(sprintf('Zernike mode\namplitude landscape'))
-    xlabel('Spherical Aberration phase amplitude')
-    ylabel('Aligned astigmatism phase amplitude')
+    xlabel('Mode 2 phase amplitude')
+    ylabel('Mode 1 phase amplitude')
     colorbar
 
     % Plot upscaled parameter landscape
     subplot(2,2,2)
     imagesc(all_feedback_upscaled); hold on
-    plot(peak_index_4_2_upscaled, peak_index_2_2_upscaled, '+r'); hold off
+    plot(peak_index_mode2_upscaled, peak_index_mode1_upscaled, '+r'); hold off
     title(sprintf('Zernike mode\namplitude landscape upscaled'))
     xlabel('Index Spherical Aberration')
     ylabel('Index Aligned astigmatism')
@@ -335,7 +335,7 @@ if do_save
     savepath = fullfile(p.savedir, sprintf('%s_optimal_pattern.mat', p.savename));
     disp('Saving...')
     save(savepath, '-v7.3', 'p', 'all_feedback', 'all_feedback_upscaled', ...
-        'phase_amp_2_2_optimal', 'phase_amp_4_2_optimal', ...
+        'phase_amp_mode1_optimal', 'phase_amp_mode2_optimal', ...
         'slm_pattern_2pi_optimal', 'slm_pattern_gv_optimal')
     fprintf('\nSaved optimized pattern to:\n%s\n', savepath)
 end
