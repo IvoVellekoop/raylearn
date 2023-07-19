@@ -19,6 +19,11 @@ p.pattern_patch_id = 1;
 p.feedback_func = @(frames)(var(frames, [], [1 2 3]));
 p.upscale_factor = 10;                      % How much the final scan should be bicubically upscaled
 
+% Image acquisition
+p.zstep_um = 1.5;                           % Size of a z-step for the volume acquisition
+p.num_zslices = 7;                          % Number of z-slices per volume acquisition
+p.z_backlash_distance_um = -10;             % Backlash distance piezo (must be negative!)
+
 % GIF animation settings
 filename_gif = "tube_adaptive_optics.gif";  % Specify the output file name of gif animation
 delaytime_gif = 0.05;
@@ -43,6 +48,8 @@ if office_mode
     % Fake hardware handles
     slm = struct('getSize', [1152 1920]);
     hSI = struct();
+    hSI.hMotors = struct();
+    hSI.hMotors.motorPosition = [0 0 100];
     hSICtl = struct();
     grabSIFrame = @(hSI, hSICtl)(rand(128));
 
@@ -101,7 +108,12 @@ if ~office_mode
     slm.update
     frames_dark = grabSIFrame(hSI, hSICtl);
     frames_dark_mean = mean(frames_dark(:));
+else
+    frames_dark_mean = zeros(slm_size(1));
 end
+
+p.piezo_center_um = hSI.hMotors.motorPosition;
+p.piezo_start_um = p.piezo_center_um - p.zstep_um * p.num_zslices/2;
 
 %% === Scan Zernike modes ===
 starttime = now;
@@ -126,15 +138,37 @@ for i_4_2 = 1:p.num_patterns_4_2                  % Scan spherical aberrations
         else
             slm.setRect(1, [offset_center_slm(1) offset_center_slm(2) 1 1]);
 
-            % Flat pattern
+            % === Flat pattern ===
             slm.setData(p.pattern_patch_id, 0);
             slm.update;
-            frames_flatslm = grabSIFrame(hSI, hSICtl);
+
+            % To start position
+            hSI.hMotors.motorPosition = [0 0 p.piezo_start_um + p.backlash];
+            current_piezo_z = p.piezo_start_um;
+            hSI.hMotors.motorPosition = [0 0 current_piezo_z];
+
+            % Volume acquisition
+            for iz = 1:length(p.num_zslices)
+                frames_flatslm(:, :, iz) = grabSIFrame(hSI, hSICtl);
+                current_piezo_z = current_piezo_z + p.zstep_um;
+                hSI.hMotors.motorPosition = [0 0 current_piezo_z];
+            end
             
-            % Zernike Modes pattern
+            % === Zernike Modes pattern ===
             slm.setData(p.pattern_patch_id, slm_pattern_gv);
             slm.update;
-            frames_ao = grabSIFrame(hSI, hSICtl);  % Find a way to get multiple slices
+            
+            % To start position
+            hSI.hMotors.motorPosition = [0 0 p.piezo_start_um + p.backlash];
+            current_piezo_z = p.piezo_start_um;
+            hSI.hMotors.motorPosition = [0 0 current_piezo_z];
+
+            % Volume acquisition
+            for iz = 1:length(p.num_zslices)
+                frames_ao(:, :, iz) = grabSIFrame(hSI, hSICtl);
+                current_piezo_z = current_piezo_z + p.zstep_um;
+                hSI.hMotors.motorPosition = [0 0 current_piezo_z];
+            end
 
             % Random pattern prevents bleaching
             slm.setData(p.pattern_patch_id, 255*rand(300));
@@ -164,21 +198,21 @@ for i_4_2 = 1:p.num_patterns_4_2                  % Scan spherical aberrations
                 yticklabels([])
                 axis image
                 colorbar
-            end
     
-            % Plot aberrated image
-            subplot(2,2,3)
-            if office_mode
-                imagesc(max(frames_ao(end/2-20:end/2+20, end/2-20:end/2+20), [], 3))
-                title('Aberrated image (zoomed)')
-            else
-                imagesc(max(frames_ao, [], 3))
-                title('Aberrated image')
+                % Plot aberrated image
+                subplot(2,2,3)
+                if office_mode
+                    imagesc(max(frames_ao(end/2-20:end/2+20, end/2-20:end/2+20), [], 3))
+                    title('Aberrated image (zoomed)')
+                else
+                    imagesc(max(frames_ao, [], 3))
+                    title('Aberrated image')
+                end
+                xlabel('x (pix)')
+                ylabel('y (pix)')
+                axis image
+                colorbar
             end
-            xlabel('x (pix)')
-            ylabel('y (pix)')
-            axis image
-            colorbar
 
             % Feedback signal
             subplot(2,2,4)
@@ -228,6 +262,7 @@ if ~office_mode
     slm.update
 end
 
+%% Plot final
 % Upscale image and find coordinates of maximum
 all_feedback_upscaled = imresize(all_feedback, p.upscale_factor);
 [~, imax] = max(all_feedback_upscaled(:));
