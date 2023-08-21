@@ -11,18 +11,19 @@ do_save_plot_scan = 0;
 force_reset = 0;
 
 % Other settings
-p.samplename = 'tube500nL-bottom';
+p.samplename = 'tube500nL-top';
 
 p.slm_rotation_deg = 5.9;                   % Can be found with an SLM coordinate calibration
 p.truncate = false;                         % Truncate Zernike modes at circle edge
 p.pattern_patch_id = 1;
 p.feedback_func = @(frames)(var(frames, [], [1 2 3]));
-p.upscale_factor = 20;                      % How much the final scan should be bicubically upscaled
+p.upscale_factor = 40;                      % How much the final scan should be bicubically upscaled
 
 % Image acquisition
-p.zstep_um = 1.5;                           % Size of a z-step for the volume acquisition
-p.num_zslices = 7;                          % Number of z-slices per volume acquisition
+p.zstep_um = 1.4;                           % Size of a z-step for the volume acquisition
+p.num_zslices = 9;                          % Number of z-slices per volume acquisition
 p.z_backlash_distance_um = -10;             % Backlash distance piezo (must be negative!)
+assert(p.z_backlash_distance_um < 0, 'Z backlash distance must be negative.')
 
 % GIF animation settings
 filename_gif = "tube_adaptive_optics.gif";  % Specify the output file name of gif animation
@@ -35,9 +36,9 @@ p.num_patterns_mode1 = 15;                  % Number of amplitudes to test
 p.phase_range_mode1 = linspace(p.min_cycles_mode1, p.max_cycles_mode1, p.num_patterns_mode1);
 
 % Define test range spherical aberrations
-p.min_cycles_mode2 = -5;                    % Minimum phase cycles (1 => 2pi phase)
-p.max_cycles_mode2 = 5;                     % Max phase cycles (1 => 2pi phase)
-p.num_patterns_mode2 = 10;                  % Number of amplitudes to test
+p.min_cycles_mode2 = -4;                    % Minimum phase cycles (1 => 2pi phase)
+p.max_cycles_mode2 = 4;                     % Max phase cycles (1 => 2pi phase)
+p.num_patterns_mode2 = 12;                  % Number of amplitudes to test
 p.phase_range_mode2 = linspace(p.min_cycles_mode2, p.max_cycles_mode2, p.num_patterns_mode2);
 
 %% === Initialize fake/real hardware ===
@@ -64,7 +65,12 @@ else
     calibrationdata = load("\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\calibration\calibration_matrix_parabola\calibration_values.mat");
     offset_center_slm = calibrationdata.sopt.offset_center_slm;
 
-    hSI.hStackManager.numSlices = 1;
+    % Random pattern on SLM
+    slm.setData(p.pattern_patch_id, 255*rand(300));
+    slm.update
+
+    abort_if_required(hSI, hSICtl)
+    hSI.hStackManager.numSlices = 1;        % One slice per grab
 end
 
 if do_save
@@ -303,8 +309,8 @@ if do_plot_final
     imagesc(all_feedback_upscaled); hold on
     plot(peak_index_mode2_upscaled, peak_index_mode1_upscaled, '+r'); hold off
     title(sprintf('Zernike mode\namplitude landscape upscaled'))
-    xlabel('Index Spherical Aberration')
-    ylabel('Index Aligned astigmatism')
+    xlabel('Index Mode 2')
+    ylabel('Index Mode 1')
     colorbar
 
     % Plot optimal SLM pattern
@@ -330,7 +336,7 @@ if do_plot_final
     end
 end
 
-
+%% === Save ===
 if do_save
     % Save intermediate frames
     savepath = fullfile(p.savedir, sprintf('%s_optimal_pattern.mat', p.savename));
@@ -344,4 +350,18 @@ end
 % Compute downscaled image coordinates
 function x_down = downscale(x_up, upscale_factor)
     x_down = x_up ./ upscale_factor + 0.5*(1 - 1./upscale_factor);
+end
+
+
+function abort_if_required(hSI, hSICtl)
+    %% Press abort button if required
+    if ~strcmp(hSI.acqState, 'idle')
+        disp('Scanimage not idle. Trying to abort...')
+        hSICtl.abortButton
+        pause(0.2)
+        if ~strcmp(hSI.acqState, 'idle')
+            error('Could not abort current scanimage operation')
+        end
+        disp('Succesfully aborted current operation.')
+    end
 end
