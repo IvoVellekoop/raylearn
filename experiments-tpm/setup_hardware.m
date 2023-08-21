@@ -99,13 +99,6 @@ if active_devices.cam_slm
 end
 
 
-%% connect to PMT gain readout channel
-if active_devices.pmt_gain
-    pmt_gain = daq.createSession('ni');
-    addAnalogInputChannel(pmt_gain,'Dev3', 1, 'Voltage'); %%%%%
-    fprintf('Initialized PMT gain readout\n')
-end
-
 %% connect to sample stage
 if active_devices.sample_stage
     s = Serial('COM5', 9600);
@@ -126,11 +119,17 @@ end
 % plane (based on measurements performed on 190909)
 f_power = @(Pbs)(-5.3780e-07*lambda.^2+7.6990e-04*lambda+-0.0490)*Pbs;
 
-%% Connect to Galvos
+%% Connect to Galvos and PMT Gain
+assert(~(active_devices.galvos && active_devices.pmt_gain), 'Galvo and PMT gain currently cannot be used at the same time.')
+
 if active_devices.galvos
     daqs = daq.createSession('ni');
     daqs.addAnalogOutputChannel('Dev4', 'ao2', 'Voltage');
     daqs.addAnalogOutputChannel('Dev4', 'ao3', 'Voltage');
     fprintf('Initialized Galvo Mirrors\n')
+elseif active_devices.pmt_gain
+    daqs = daq.createSession('ni');
+    daqs.addAnalogOutputChannel('Dev4', 'ao0', 'Voltage');
+    fprintf('Initialized Gain\n')
 end
 
