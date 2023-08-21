@@ -1,5 +1,5 @@
 % Setup paths and hardware for raylearn experiments in Two Photon Microscope
-clear; close all; clc
+clear; clc
 
 % Define location paths
 addpath(fileparts(fileparts(mfilename('fullpath'))))   % Grand parent dir
@@ -12,7 +12,7 @@ active_devices.galvos = false;
 active_devices.cam_img = false;
 active_devices.cam_ft = false;
 active_devices.cam_slm = false;
-active_devices.pmt_gain = false;
+active_devices.pmt_gain = true;
 active_devices.sample_stage = false;
 
 setup_hardware
