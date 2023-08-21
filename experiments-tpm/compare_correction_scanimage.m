@@ -12,7 +12,7 @@ zstep = hSI.hStackManager.stackZStepSize;
 basefilename = sprintf('tube-500nL-zoom%i-zstep%.3fum-', zoom, zstep);
 savedir = ['C:\LocalData\raylearn-data\TPM\TPM-3D-scans\' sprintf('%s_tube-500nL', date)];
 
-calibrationdata = load("\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\calibration\calibration_values.mat");
+calibrationdata = load("\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\calibration\calibration_matrix_parabola\calibration_values.mat");
 offset_center_slm = calibrationdata.sopt.offset_center_slm;
 
 % Save directory
