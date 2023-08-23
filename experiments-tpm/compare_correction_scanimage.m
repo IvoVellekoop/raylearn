@@ -1,4 +1,6 @@
 % Compare scanimage frames with different correction patterns
+% This script uses corrections found with Adaptive Optics scans (tube_adaptive_optics)
+% and Ray Tracing (learn_glass_tube) to demonstrate enhanced imaging
 
 abort_if_required(hSI, hSICtl)
 
@@ -88,7 +90,7 @@ grabSIFrame(hSI, hSICtl);
 
 %% Ray traced bottom pattern
 set_RT_pattern(slm, offset_center_slm, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\pattern-0.5uL-tube-bottom-λ808.0nm.mat")
-hSI.hScan2D.logFileStem = strcat(basefilename, 'bottom-RT-3');
+hSI.hScan2D.logFileStem = strcat(basefilename, 'bottom-RT-2');
 fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
 grabSIFrame(hSI, hSICtl);
 

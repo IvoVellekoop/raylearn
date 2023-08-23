@@ -17,12 +17,12 @@ dosave = 0;
 %%
 calibration_data = load(fullfile(dirs.expdata, 'raylearn-data/TPM/calibration/calibration_matrix_parabola/calibration_values.mat'));
 
-tiffolder = fullfile(dirs.expdata, '/raylearn-data/TPM/TPM-3D-scans/23-Jun-2023_tube-500nL/');
+tiffolder = fullfile(dirs.expdata, '/raylearn-data/TPM/TPM-3D-scans/21-Aug-2023_tube-500nL/');
 % tifpath = [tiffolder 'tube-500nL-zoom8-zstep1.400um-top-RT-1_00001.tif']; titlestr = 'Top RT 1';
 % tifpath = [tiffolder 'tube-500nL-zoom8-zstep1.400um-top-RT-2_00001.tif']; titlestr = 'Top RT 2';
-% tifpath = [tiffolder 'tube-500nL-zoom8-zstep1.400um-top-AO-1_00001.tif']; titlestr = 'Top AO 1';
+tifpath = [tiffolder 'tube-500nL-zoom8-zstep1.400um-top-AO-1_00001.tif']; titlestr = 'Top AO 1';
 % tifpath = [tiffolder 'tube-500nL-zoom8-zstep1.400um-top-AO-2_00001.tif']; titlestr = 'Top AO 2';
-tifpath = [tiffolder 'tube-500nL-zoom8-zstep1.400um-bottom-RT-1_00001.tif']; titlestr = 'Bottom RT 1';
+% tifpath = [tiffolder 'tube-500nL-zoom8-zstep1.400um-bottom-RT-1_00001.tif']; titlestr = 'Bottom RT 1';
 % tifpath = [tiffolder 'tube-500nL-zoom8-zstep1.400um-bottom-RT-2_00001.tif']; titlestr = 'Bottom RT 2';
 % tifpath = [tiffolder 'tube-500nL-zoom8-zstep1.400um-bottom-AO-1_00001.tif']; titlestr = 'Bottom AO 1';
 % tifpath = [tiffolder 'tube-500nL-zoom8-zstep1.400um-bottom-AO-2_00001.tif']; titlestr = 'Bottom AO 2';
@@ -40,6 +40,7 @@ axesoptions = struct('fontsize', 14);
 im3(log(flip(tiff.framestack, 3)), ...
     'slicedim', 1,...
     'maxprojection', true,...
+    'clim', [5 9], ...
     'title', ['0.5' 181 'm beads in 0.5' 181 'L tube, ' titlestr], ...
     'dimdata', tiff.dimdata, ...
     'dimlabels', {['y' um], ['x' um], ['z' um]}, ...
@@ -56,7 +57,6 @@ ylabel(cb,'log(signal)')
 drawnow
 pause(0.1)
 % title(titlestr)
-caxis([5.5 8.0])
 
 %% Save plots of a few different slices
 

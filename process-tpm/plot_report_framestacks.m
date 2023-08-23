@@ -1,4 +1,5 @@
 % Plot and Report from framestacks
+% This script processes the 3D scans (tiff files) measured with experiments-tpm/compare_correction_scanimage
 
 forcereset = 0;
 
@@ -14,16 +15,18 @@ do_save = 1;
 savedir = fullfile(dirs.repo, 'plots/3D-scans/');
 mkdir(savedir);
 
+log = "";
+
 %%
 disp('Loading calibration...')
 calibration_data = load(fullfile(dirs.expdata, 'raylearn-data/TPM/calibration/calibration_matrix_parabola/calibration_values.mat'));
-tiffolder = fullfile(dirs.expdata, '/raylearn-data/TPM/TPM-3D-scans/23-Jun-2023_tube-500nL/');
+tiffolder = fullfile(dirs.expdata, '/raylearn-data/TPM/TPM-3D-scans/21-Aug-2023_tube-500nL/');
 
 noise_index = {1:1024, 1:140, 100:120};
 signal_index_top = {1:1024, 1:1024, 1:30};
 signal_index_bottom = {1:1024, 1:1024, 91:120};
 
-M = 4;  % Number of measurements
+M = 5;  % Number of measurements
 percentiles = 99.991:0.002:99.999;
 flatpattern_high_signals = zeros(M, numel(percentiles));
 flatpattern_stds_top    = zeros(M, 1);
@@ -72,6 +75,13 @@ title('Percentiles of flat pattern measurements')
 legend({}, 'Location', 'Best')
 legend(strcat(num2str(percentiles'), repmat("%tile", [numel(percentiles) 1])))
 set(gca, 'FontSize', 14)
+drawnow
+if do_save
+    [~, filename, ~] = fileparts(tiff.filepath);
+    savepath = fullfile(savedir, [filename '_percentiles.fig']);
+    savefig(savepath);
+    fprintf('Saved as: %s\n', savepath)
+end
 
 figure;
 plot(flatpattern_stds_top, '.-'); hold on
@@ -80,6 +90,13 @@ ylabel('Signal \sigma')
 title('Signal \sigma noise corrected, flat pattern')
 legend('\sigma top', '\sigma bottom')
 set(gca, 'FontSize', 14)
+drawnow
+if do_save
+    [~, filename, ~] = fileparts(tiff.filepath);
+    savepath = fullfile(savedir, [filename '_stdcontrast.fig']);
+    savefig(savepath);
+    fprintf('Saved as: %s\n', savepath)
+end
 
 %% Process/plot/save signals with correction patterns
 

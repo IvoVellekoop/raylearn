@@ -1,4 +1,5 @@
-% Plot and Report from framestacks
+% Compose plot to compare different framestacks
+% This script processes the output from plot_report_framestacks
 close all; clc;
 
 forcereset = 0;
@@ -23,41 +24,46 @@ compose_plots(savedir, "_max-proj")
 function compose_plots(savedir, suffix)
     fig = figure;
     set(fig, 'Position', [10, 500, 1200, 800]);
-    colormap magma
+    colormap inferno
+
+    % Global parameters
+    w = 0.42;
+    h = 0.42;
 
     % No correction
     s1.title = "no correction";
     s1.filename = sprintf("tube-500nL-zoom8-zstep1.400um-no-correction-1_00001%s.fig", suffix);
     s1.savedir = savedir;
-    s1.sub = [1 3 1];
+    s1.position = [1/6-w/2+0.01, 1/2-h/2, w, h];
     place_subplot(fig, s1)
+    cb = colorbar;
 
     % AO top
     s2.title = "AO top correction";
     s2.filename = sprintf("tube-500nL-zoom8-zstep1.400um-top-AO-1_00001%s.fig", suffix);
     s2.savedir = savedir;
-    s2.sub = [2, 3, 2];
+    s2.position = [1/2-w/2, 3/4-h/2, w, h];
     place_subplot(fig, s2)
 
     % RT top
     s3.title = "RT top correction";
     s3.filename = sprintf("tube-500nL-zoom8-zstep1.400um-top-RT-1_00001%s.fig", suffix);
     s3.savedir = savedir;
-    s3.sub = [2, 3, 3];
+    s3.position = [5/6-w/2, 3/4-h/2, w, h];
     place_subplot(fig, s3)
 
     % AO bottom
     s4.title = "AO bottom correction";
     s4.filename = sprintf("tube-500nL-zoom8-zstep1.400um-bottom-AO-1_00001%s.fig", suffix);
     s4.savedir = savedir;
-    s4.sub = [2, 3, 5];
+    s4.position = [1/2-w/2, 1/4-h/2, w, h];
     place_subplot(fig, s4)
 
     % RT bottom
     s5.title = "RT bottom correction";
     s5.filename = sprintf("tube-500nL-zoom8-zstep1.400um-bottom-RT-1_00001%s.fig", suffix);
     s5.savedir = savedir;
-    s5.sub = [2, 3, 6];
+    s5.position = [5/6-w/2, 1/4-h/2, w, h];
     place_subplot(fig, s5)
 
     movegui('center')
@@ -74,8 +80,7 @@ function place_subplot(fig, s)
     drawnow
     
     ax_infig.Title.String = s.title;            % Set title
-%     subplot(s.sub(1), s.sub(2), s.sub(3), ax_infig)
-    %%%%%% Set positions to control width and height
+    set(ax_infig, 'Position', s.position)
     add_scalebar('size', [30, 2], 'text', '30', 'ax', ax_infig)
 
     set(ax_infig, 'XTick', [])
