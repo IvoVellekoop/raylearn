@@ -12,20 +12,24 @@ if forcereset || ~exist('dirs', 'var')
 end
 
 do_save = 1;
-savedir = fullfile(dirs.repo, 'plots/3D-scans/');
-mkdir(savedir);
+savedir_base = fullfile(dirs.repo, 'plots/3D-scans');
+reportname = 'report.txt';
+mkdir(savedir_base);
 
-log = "";
-
-%%
+%% Define directories
 disp('Loading calibration...')
 calibration_data = load(fullfile(dirs.expdata, 'raylearn-data/TPM/calibration/calibration_matrix_parabola/calibration_values.mat'));
-tiffolder = fullfile(dirs.expdata, '/raylearn-data/TPM/TPM-3D-scans/21-Aug-2023_tube-500nL/');
+tiffolder = fullfile(dirs.expdata, '/raylearn-data/TPM/TPM-3D-scans/21-Aug-2023_tube-500nL-agar/');
+[~,measurement_foldername,~] = fileparts(fileparts(tiffolder));
+savedir = fullfile(savedir_base, measurement_foldername);
+mkdir(savedir);
 
+% Define noise volume
 noise_index = {1:1024, 1:140, 100:120};
 signal_index_top = {1:1024, 1:1024, 1:30};
 signal_index_bottom = {1:1024, 1:1024, 91:120};
 
+% Initialize signal vars
 M = 5;  % Number of measurements
 percentiles = 99.991:0.002:99.999;
 flatpattern_high_signals = zeros(M, numel(percentiles));
@@ -50,21 +54,21 @@ for index = 1:M                     % Loop over 'no correction framestack' index
 end
 
 %% Report on flat patterns, photobleaching analysis and signal stability
-disp('Flat patterns')
+file_report = fopen(fullfile(savedir, reportname), 'w+');
+fprintf(file_report, 'Flat patterns:\n');
 
 % High signals (percentiles)
 perc_index = 4;
 flatpattern_perc_mean = mean(flatpattern_high_signals(:, perc_index));
 flatpattern_perc_std = std(flatpattern_high_signals(:, perc_index));
-fprintf('%.3f%%tile   = %.3g\xB1%.2g\n', percentiles(perc_index), flatpattern_perc_mean, flatpattern_perc_std)
+fprintf(file_report, '%.3f%%tile   = %.3g\xB1%.2g\n', percentiles(perc_index), flatpattern_perc_mean, flatpattern_perc_std);
 
 % Signal std
-fprintf('Signal top \x3C3      = %.3g\xB1%.2g\n', mean(flatpattern_stds_top), std(flatpattern_stds_top))
-fprintf('Signal bottom \x3C3   = %.3g\xB1%.2g\n', mean(flatpattern_stds_bottom), std(flatpattern_stds_bottom))
+fprintf(file_report, 'Signal top \x3C3      = %.3g\xB1%.2g\n', mean(flatpattern_stds_top), std(flatpattern_stds_top));
+fprintf(file_report, 'Signal bottom \x3C3   = %.3g\xB1%.2g\n', mean(flatpattern_stds_bottom), std(flatpattern_stds_bottom));
 
 % Signal offset
-fprintf('Signal offset = %.3g\xB1%.2g\n', mean(flatpattern_offsets), std(flatpattern_offsets))
-
+fprintf(file_report, 'Signal offset = %.3g\xB1%.2g\n', mean(flatpattern_offsets), std(flatpattern_offsets));
 
 %% Plot photobleaching analysis and signal stability
 figure;
@@ -101,25 +105,24 @@ end
 %% Process/plot/save signals with correction patterns
 
 figure;
-process_tiff([tiffolder 'tube-500nL-zoom8-zstep1.400um-top-RT-1_00001.tif'], calibration_data, flatpattern_stds_top, noise_index, signal_index_top, 'Top RT 1', savedir, do_save);
-process_tiff([tiffolder 'tube-500nL-zoom8-zstep1.400um-top-RT-2_00001.tif'], calibration_data, flatpattern_stds_top, noise_index, signal_index_top, 'Top RT 2', savedir, do_save);
-process_tiff([tiffolder 'tube-500nL-zoom8-zstep1.400um-top-AO-1_00001.tif'], calibration_data, flatpattern_stds_top, noise_index, signal_index_top, 'Top AO 1', savedir, do_save);
-process_tiff([tiffolder 'tube-500nL-zoom8-zstep1.400um-top-AO-2_00001.tif'], calibration_data, flatpattern_stds_top, noise_index, signal_index_top, 'Top AO 2', savedir, do_save);
-process_tiff([tiffolder 'tube-500nL-zoom8-zstep1.400um-bottom-RT-1_00001.tif'], calibration_data, flatpattern_stds_bottom, noise_index, signal_index_bottom, 'Bottom RT 1', savedir, do_save);
-process_tiff([tiffolder 'tube-500nL-zoom8-zstep1.400um-bottom-RT-2_00001.tif'], calibration_data, flatpattern_stds_bottom, noise_index, signal_index_bottom, 'Bottom RT 2', savedir, do_save);
-process_tiff([tiffolder 'tube-500nL-zoom8-zstep1.400um-bottom-AO-1_00001.tif'], calibration_data, flatpattern_stds_bottom, noise_index, signal_index_bottom, 'Bottom AO 1', savedir, do_save);
-process_tiff([tiffolder 'tube-500nL-zoom8-zstep1.400um-bottom-AO-2_00001.tif'], calibration_data, flatpattern_stds_bottom, noise_index, signal_index_bottom, 'Bottom AO 2', savedir, do_save);
+process_tiff([tiffolder 'tube-500nL-zoom8-zstep1.400um-top-RT-1_00001.tif'], calibration_data, flatpattern_stds_top, noise_index, signal_index_top, 'Top RT 1', savedir, do_save, file_report);
+process_tiff([tiffolder 'tube-500nL-zoom8-zstep1.400um-top-RT-2_00001.tif'], calibration_data, flatpattern_stds_top, noise_index, signal_index_top, 'Top RT 2', savedir, do_save, file_report);
+process_tiff([tiffolder 'tube-500nL-zoom8-zstep1.400um-top-AO-1_00001.tif'], calibration_data, flatpattern_stds_top, noise_index, signal_index_top, 'Top AO 1', savedir, do_save, file_report);
+process_tiff([tiffolder 'tube-500nL-zoom8-zstep1.400um-top-AO-2_00001.tif'], calibration_data, flatpattern_stds_top, noise_index, signal_index_top, 'Top AO 2', savedir, do_save, file_report);
+process_tiff([tiffolder 'tube-500nL-zoom8-zstep1.400um-bottom-RT-1_00001.tif'], calibration_data, flatpattern_stds_bottom, noise_index, signal_index_bottom, 'Bottom RT 1', savedir, do_save, file_report);
+process_tiff([tiffolder 'tube-500nL-zoom8-zstep1.400um-bottom-RT-2_00001.tif'], calibration_data, flatpattern_stds_bottom, noise_index, signal_index_bottom, 'Bottom RT 2', savedir, do_save, file_report);
+process_tiff([tiffolder 'tube-500nL-zoom8-zstep1.400um-bottom-AO-1_00001.tif'], calibration_data, flatpattern_stds_bottom, noise_index, signal_index_bottom, 'Bottom AO 1', savedir, do_save, file_report);
+process_tiff([tiffolder 'tube-500nL-zoom8-zstep1.400um-bottom-AO-2_00001.tif'], calibration_data, flatpattern_stds_bottom, noise_index, signal_index_bottom, 'Bottom AO 2', savedir, do_save, file_report);
 
 %% Process/plot/save signals without correction patterns
 for index = 1:M                     % Loop over 'no correction framestack' index
-    process_tiff([tiffolder sprintf('tube-500nL-zoom8-zstep1.400um-no-correction-%i_00001.tif', index)], calibration_data, flatpattern_stds_top, noise_index, signal_index_top, sprintf('No correction %i', index), savedir, do_save);
+    process_tiff([tiffolder sprintf('tube-500nL-zoom8-zstep1.400um-no-correction-%i_00001.tif', index)], calibration_data, flatpattern_stds_top, noise_index, signal_index_top, sprintf('No correction %i', index), savedir, do_save, file_report);
 end
 
+fclose(file_report);
 
-% If we assume that the std error scales with the signal, then the error fraction
-% for both measurements is the same, hence the error fraction of the enhancement is:
 
-function process_tiff(tiffpath, calibration_data, flatpattern_stds, noise_index, signal_index, titlestr, savedir, do_save)
+function process_tiff(tiffpath, calibration_data, flatpattern_stds, noise_index, signal_index, titlestr, savedir, do_save, file_report)
 	tiff = load_tiff(tiffpath, calibration_data);
 	
 	std_framestack = std_framestack_noisecorrect(tiff.framestack, noise_index, signal_index);
@@ -128,9 +131,9 @@ function process_tiff(tiffpath, calibration_data, flatpattern_stds, noise_index,
     % Note: this is based on the assumption that the error scales with the signal
     enhancement_error = sqrt(2) * std(flatpattern_stds) ./ mean(flatpattern_stds);
 
-    fprintf('\n%s\n', titlestr)
-	fprintf('Signal \x3C3 = %.3g\n', std_framestack)
-    fprintf('Signal enhancement = %.3g\xB1%.2g\n', enhancement, enhancement_error)
+    fprintf(file_report, '\n%s\n', titlestr);
+	fprintf(file_report, 'Signal \x3C3 = %.3g\n', std_framestack);
+    fprintf(file_report, 'Signal enhancement = %.3g\xB1%.2g\n', enhancement, enhancement_error);
 
 
     % === Plot ===
@@ -198,3 +201,4 @@ function process_tiff(tiffpath, calibration_data, flatpattern_stds, noise_index,
         fprintf('Saved as: %s\n', savepath)
     end
 end
+

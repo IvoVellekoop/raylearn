@@ -12,17 +12,18 @@ if forcereset || ~exist('dirs', 'var')
     dirconfig_raylearn
 end
 
-do_save = 1;
-savedir = fullfile(dirs.repo, 'plots/3D-scans/agar/');
-mkdir(savedir);
+saveprops.do_save = 1;
+saveprops.dir = fullfile(dirs.repo, 'plots/3D-scans/21-Aug-2023_tube-500nL-agar');      % Folder for reading and writing plots
+saveprops.save_prefix = 'tube-0.5uL-tube-agar';
+mkdir(saveprops.dir);
 
 
 %% Compositions
-compose_plots(savedir, "_hori-slice", dirs)
-compose_plots(savedir, "_max-proj", dirs)
+compose_plots(saveprops, "_hori-slice", dirs)
+compose_plots(saveprops, "_max-proj", dirs)
 
 % Settings per subplot
-function compose_plots(savedir, suffix, dirs)
+function compose_plots(saveprops, suffix, dirs)
     fig = figure;
     set(fig, 'Position', [10, 500, 1200, 800]);
     colormap inferno
@@ -46,7 +47,7 @@ function compose_plots(savedir, suffix, dirs)
     s1.title = "no correction";
     s1.filename = sprintf("tube-500nL-zoom8-zstep1.400um-no-correction-1_00001%s.fig", suffix);
     s1.pattern_rad = ones(size(inset.NA_mask));
-    s1.savedir = savedir;
+    s1.savedir = saveprops.dir;
     s1.position = [1/6-w/2+0.01, 1/2-h/2, w, h];
     ax1 = place_subplot(fig, s1);
     cb = colorbar;
@@ -56,7 +57,7 @@ function compose_plots(savedir, suffix, dirs)
     s2.title = "AO top correction";
     s2.filename = sprintf("tube-500nL-zoom8-zstep1.400um-top-AO-1_00001%s.fig", suffix);
     s2.pattern_rad = load_AO_pattern(fullfile(dirs.expdata, ao_dir, '21-Aug-2023-tube500nL-top/tube_ao_739119.626092_tube500nL-top/tube_ao_739119.626092_tube500nL-top_optimal_pattern.mat'));
-    s2.savedir = savedir;
+    s2.savedir = saveprops.dir;
     s2.position = [1/2-w/2, 3/4-h/2, w, h];
     ax2 = place_subplot(fig, s2);
     place_slm_inset(fig, ax2, s2, inset)
@@ -65,7 +66,7 @@ function compose_plots(savedir, suffix, dirs)
     s3.title = "RT top correction";
     s3.filename = sprintf("tube-500nL-zoom8-zstep1.400um-top-RT-1_00001%s.fig", suffix);
     s3.pattern_rad = load_RT_pattern(fullfile(dirs.expdata, 'raylearn-data/pattern-0.5uL-tube-top-λ808.0nm.mat'));
-    s3.savedir = savedir;
+    s3.savedir = saveprops.dir;
     s3.position = [5/6-w/2, 3/4-h/2, w, h];
     ax3 = place_subplot(fig, s3);
     place_slm_inset(fig, ax3, s3, inset)
@@ -74,7 +75,7 @@ function compose_plots(savedir, suffix, dirs)
     s4.title = "AO bottom correction";
     s4.filename = sprintf("tube-500nL-zoom8-zstep1.400um-bottom-AO-1_00001%s.fig", suffix);
     s4.pattern_rad = load_AO_pattern(fullfile(dirs.expdata, ao_dir, '21-Aug-2023-tube500nL-bottom/tube_ao_739119.716406_tube500nL-bottom/tube_ao_739119.716406_tube500nL-bottom_optimal_pattern.mat'));
-    s4.savedir = savedir;
+    s4.savedir = saveprops.dir;
     s4.position = [1/2-w/2, 1/4-h/2, w, h];
     ax4 = place_subplot(fig, s4);
     place_slm_inset(fig, ax4, s4, inset)
@@ -83,12 +84,19 @@ function compose_plots(savedir, suffix, dirs)
     s5.title = "RT bottom correction";
     s5.filename = sprintf("tube-500nL-zoom8-zstep1.400um-bottom-RT-1_00001%s.fig", suffix);
     s5.pattern_rad = load_RT_pattern(fullfile(dirs.expdata, 'raylearn-data/pattern-0.5uL-tube-bottom-λ808.0nm.mat'));
-    s5.savedir = savedir;
+    s5.savedir = saveprops.dir;
     s5.position = [5/6-w/2, 1/4-h/2, w, h];
     ax5 = place_subplot(fig, s5);
     place_slm_inset(fig, ax5, s5, inset)
 
     movegui('center')
+
+    % Save composition
+    if saveprops.do_save
+        savepath = fullfile(saveprops.dir, strcat(saveprops.save_prefix, suffix, '.pdf'));
+        save_figtopdf(savepath);
+        fprintf('Saved as: %s\n', savepath)
+    end
 end
 
 
@@ -116,6 +124,8 @@ end
 
 
 function place_slm_inset(fig, ax_subplot, s, inset, insetshift)
+    % Place figure inset with SLM pattern
+
     if nargin < 5
         insetshift = [0, 0];
     end
@@ -123,14 +133,14 @@ function place_slm_inset(fig, ax_subplot, s, inset, insetshift)
 
     boxpos = plotboxpos(ax_subplot);                        % Get plot box position
 %     annotation('rectangle', boxpos, 'edgecolor', 'r', 'linestyle', '-.');
-    ARfig = fig.Position(4) ./ fig.Position(3);
+    ARfig = fig.Position(4) ./ fig.Position(3);             % Aspect Ratio of figure
     xy = boxpos(1:2) + (inset.position(1:2) + insetshift) .* boxpos(4);    % x, y, relative
     wh = boxpos(4) .* inset.position(3:4) .* [ARfig 1];     % width, height, relative
     ax_inset = axes(fig, 'Position', [xy wh]);              % Apply inset position
     imagesc(ax_inset, pattern, 'AlphaData', inset.NA_mask, 'Tag', 'slm_pattern');
-    axis(ax_inset, 'off')
+    axis(ax_inset, 'off')                                   % Hide axis
     ax_inset.CLim = inset.clim;                             % Set colormap limits
-    colormap(ax_inset, inset.cmap)
+    colormap(ax_inset, inset.cmap)                          % Set colormap
     drawnow
 end
 
