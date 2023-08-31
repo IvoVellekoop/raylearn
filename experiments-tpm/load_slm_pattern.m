@@ -10,6 +10,9 @@ set_RT_pattern(slm, offset_center_slm, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox
 %% Random pattern to annihilate the focus
 slm.setRect(1, [0 0 1 1]); slm.setData(1, 255*rand(300)); slm.update
 
+%% Flat pattern
+slm.setRect(1, [0 0 1 1]); slm.setData(1, 1); slm.update
+
 
 %% Functions
 function set_RT_pattern(slm, offset_center_slm, matpath)
