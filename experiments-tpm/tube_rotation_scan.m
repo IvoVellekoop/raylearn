@@ -10,22 +10,22 @@ force_reset = 0;
 
 % Other settings
 p.samplename = 'tube500nL-bottom-anglescan';
+p.sampleid = 'DCOX-2023-8-C';
 
-p.slm_rotation_deg = 5.9;                   % Base rotation SLM pattern. Can be found with an SLM coordinate calibration
 p.truncate = false;                         % Truncate Zernike modes at circle edge
 p.pattern_patch_id = 1;
-p.feedback_func = @(frames)(var(frames, [], [1 2 3]));
+p.feedback_func = @contrast_enhancement;
 
 % Image acquisition
-p.zstep_um = 1.4;                           % Size of a z-step for the volume acquisition
-p.num_zslices = 7;                          % Number of z-slices per volume acquisition
+p.zstep_um = 2;                             % Size of a z-step for the volume acquisition
+p.num_zslices = 5;                          % Number of z-slices per volume acquisition
 p.z_backlash_distance_um = -10;             % Backlash distance piezo (must be negative!)
 assert(p.z_backlash_distance_um < 0, 'Z backlash distance must be negative.')
 
 % Define test range astigmatism
-p.min_angle_deg = -5;                       % Min tube angle in degree
-p.max_angle_deg = 5;                        % Max tube angle in degree
-p.num_angles = 41;                          % Number of angles to test
+p.min_angle_deg = -15;                      % Min tube angle in degree
+p.max_angle_deg =   0;                      % Max tube angle in degree
+p.num_angles = 31;                          % Number of angles to test
 p.angle_range = linspace(p.min_angle_deg, p.max_angle_deg, p.num_angles);
 
 %% === Initialize fake/real hardware ===
@@ -79,9 +79,7 @@ coord_y = coord_x';
 
 % Fetch SLM pattern
 patterndata = load(replace("\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\pattern-0.5uL-tube-bottom-λ808.0nm.mat", '\', filesep));
-SLM_pattern_straight = flip((angle(patterndata.field_SLM)) * 255 / (2*pi));
-
-p.SLM_pattern_base = imrotate(SLM_pattern_straight, p.slm_rotation_deg, "bilinear", "crop");
+SLM_pattern_base = flip((angle(patterndata.field_SLM)) * 255 / (2*pi));
 
 % Initialize feedback
 all_feedback = zeros(1, p.num_angles);
@@ -100,6 +98,7 @@ if ~office_mode
     slm.update
     frames_dark = grabSIFrame(hSI, hSICtl);
     frames_dark_mean = mean(frames_dark(:));
+    frames_dark_var = var(frames_dark(:));
 else
     frames_dark_mean = zeros(slm_size(1));
 end
@@ -164,8 +163,12 @@ for i_angle = 1:p.num_angles              % Scan mode 1
         slm.update
     end
 
-    feedback = p.feedback_func(frames_ao - frames_dark_mean) ./ p.feedback_func(frames_flatslm - frames_dark_mean);
+    % Compute feedback, save signal variances
+    feedback = p.feedback_func(frames_ao, frames_flatslm, frames_dark);
     all_feedback(i_angle) = feedback;
+    all_signal_std_flat(i_angle) = sqrt( var(frames_flatslm, [], [1 2 3]) - var(frames_dark, [], [1 2 3]) );
+    all_signal_std_corrected(i_angle) = sqrt( var(frames_ao, [], [1 2 3]) - var(frames_dark, [], [1 2 3]) );
+
 
     if do_plot_scan
         figure(fig_scan)
@@ -233,10 +236,17 @@ end
 %%
 if do_plot_final
     figure;
-    plot(p.angle_range, all_feedback, '.-')
+    plot(p.angle_range, all_feedback, '.-'); hold on
     title('Feedback signals')
     xlabel('Tube Angle (deg)')
-    ylabel('Feedback')
+    ylabel('Contrast enhancement')
+
+    figure;
+    plot(p.angle_range, all_signal_std_corrected, '.-r'); hold on
+    plot(p.angle_range, all_signal_std_flat, '.-k'); hold on
+    xlabel('Tube Angle (deg)')
+    ylabel('Signal \sigma')
+    legend({'corrected std', 'uncorrected std'}, 'Location', 'best')
 end
 
 
@@ -261,4 +271,10 @@ function abort_if_required(hSI, hSICtl)
         end
         disp('Succesfully aborted current operation.')
     end
+end
+
+% Contrast enhancement, corrected for background std
+function contrast_enh = contrast_enhancement(corrected, uncorrected, background)
+    contrast_enh = sqrt( (var(corrected, [], [1 2 3]) - var(background, [], [1 2 3])) ...
+        ./ (var(uncorrected, [], [1 2 3]) - var(background, [], [1 2 3])) );
 end
