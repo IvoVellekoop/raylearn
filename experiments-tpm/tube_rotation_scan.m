@@ -23,9 +23,9 @@ p.z_backlash_distance_um = -10;             % Backlash distance piezo (must be n
 assert(p.z_backlash_distance_um < 0, 'Z backlash distance must be negative.')
 
 % Define test range astigmatism
-p.min_angle_deg = -15;                      % Min tube angle in degree
-p.max_angle_deg =   0;                      % Max tube angle in degree
-p.num_angles = 31;                          % Number of angles to test
+p.min_angle_deg = -12;                      % Min tube angle in degree
+p.max_angle_deg =  12;                      % Max tube angle in degree
+p.num_angles = 41;                          % Number of angles to test
 p.angle_range = linspace(p.min_angle_deg, p.max_angle_deg, p.num_angles);
 
 %% === Initialize fake/real hardware ===
@@ -79,7 +79,7 @@ coord_y = coord_x';
 
 % Fetch SLM pattern
 patterndata = load(replace("\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\pattern-0.5uL-tube-bottom-λ808.0nm.mat", '\', filesep));
-SLM_pattern_base = flip((angle(patterndata.field_SLM)) * 255 / (2*pi));
+p.SLM_pattern_base = flip((angle(patterndata.field_SLM)) * 255 / (2*pi));
 
 % Initialize feedback
 all_feedback = zeros(1, p.num_angles);
@@ -96,12 +96,11 @@ if ~office_mode
     slm.setRect(1, [offset_center_slm(1) offset_center_slm(2) 1 1]);
     slm.setData(p.pattern_patch_id, 255*rand(300));
     slm.update
-    frames_dark = grabSIFrame(hSI, hSICtl);
-    frames_dark_mean = mean(frames_dark(:));
-    frames_dark_var = var(frames_dark(:));
-else
-    frames_dark_mean = zeros(slm_size(1));
 end
+
+frames_dark = grabSIFrame(hSI, hSICtl);
+frames_dark_mean = mean(frames_dark(:));
+frames_dark_var = var(frames_dark(:));
 
 p.piezo_center_um = hSI.hMotors.motorPosition;
 p.piezo_start_um = p.piezo_center_um(3) - p.zstep_um * p.num_zslices/2;
