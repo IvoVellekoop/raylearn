@@ -27,6 +27,7 @@ p.min_angle_deg = -12;                      % Min tube angle in degree
 p.max_angle_deg =  12;                      % Max tube angle in degree
 p.num_angles = 41;                          % Number of angles to test
 p.angle_range = linspace(p.min_angle_deg, p.max_angle_deg, p.num_angles);
+p.upscale_factor = 40;
 
 %% === Initialize fake/real hardware ===
 if office_mode
@@ -234,18 +235,30 @@ end
 
 %%
 if do_plot_final
+    p.angle_range_interp = linspace(p.angle_range(1), p.angle_range(end), p.num_angles * p.upscale_factor);
+    all_feedback_interp = interp1(p.angle_range, all_feedback, p.angle_range_interp, 'spline');
+    [max_feedback, i_max_feedback] = max(all_feedback_interp);
+
     figure;
-    plot(p.angle_range, all_feedback, '.-'); hold on
-    title('Feedback signals')
+    plot(p.angle_range_interp, all_feedback_interp, '-k'); hold on
+    plot(p.angle_range, all_feedback, '.b');
+    plot(p.angle_range_interp(i_max_feedback), max_feedback, '+r'); hold off
+    title(sprintf('Feedback signals\nmax at: %.2f deg', p.angle_range_interp(i_max_feedback)))
     xlabel('Tube Angle (deg)')
     ylabel('Contrast enhancement')
 
+    all_signal_std_corrected_interp = interp1(p.angle_range, all_signal_std_corrected, p.angle_range_interp, 'spline');
+    [max_signal_std, i_max_signal_std] = max(all_signal_std_corrected_interp);
+
     figure;
-    plot(p.angle_range, all_signal_std_corrected, '.-r'); hold on
-    plot(p.angle_range, all_signal_std_flat, '.-k'); hold on
+    plot(p.angle_range_interp, all_signal_std_corrected_interp, '-k'); hold on
+    plot(p.angle_range, all_signal_std_corrected, '.b');
+    plot(p.angle_range, all_signal_std_flat, '.-g');
+    plot(p.angle_range_interp(i_max_signal_std), max_signal_std, '+r'); hold off
     xlabel('Tube Angle (deg)')
     ylabel('Signal \sigma')
     legend({'corrected std', 'uncorrected std'}, 'Location', 'best')
+    title(sprintf('Signal std\nmax at: %.2f deg', p.angle_range_interp(i_max_signal_std)))
 end
 
 
@@ -254,7 +267,9 @@ if do_save
     % Save intermediate frames
     savepath = fullfile(p.savedir, sprintf('%s_angle_scan.mat', p.savename));
     disp('Saving...')
-    save(savepath, '-v7.3', 'p', 'all_feedback')
+    save(savepath, '-v7.3', 'p', 'all_feedback', 'all_feedback_interp', ...
+        'all_signal_std_corrected', 'all_signal_std_flat', 'max_feedback', ...
+        'i_max_feedback', 'max_signal_std', 'i_max_signal_std')
     fprintf('\nSaved optimized pattern to:\n%s\n', savepath)
 end
 
