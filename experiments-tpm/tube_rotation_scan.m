@@ -80,7 +80,7 @@ coord_y = coord_x';
 
 % Fetch SLM pattern
 patterndata = load(replace("\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\pattern-0.5uL-tube-bottom-λ808.0nm.mat", '\', filesep));
-p.SLM_pattern_base = flip((angle(patterndata.field_SLM)) * 255 / (2*pi));
+p.SLM_pattern_base = angle(patterndata.field_SLM) * 255 / (2*pi);
 
 % Initialize feedback
 all_feedback = zeros(1, p.num_angles);
@@ -137,7 +137,7 @@ for i_angle = 1:p.num_angles              % Scan mode 1
         hSI.hMotors.motorPosition = [0 0 current_piezo_z];
 
         % Volume acquisition
-        for iz = 1:length(p.num_zslices)
+        for iz = 1:p.num_zslices
             frames_flatslm(:, :, iz) = grabSIFrame(hSI, hSICtl);
             current_piezo_z = current_piezo_z + p.zstep_um;
             hSI.hMotors.motorPosition = [0 0 current_piezo_z];
