@@ -17,8 +17,8 @@ p.pattern_patch_id = 1;
 p.feedback_func = @contrast_enhancement;
 
 % Image acquisition
-p.zstep_um = 2;                             % Size of a z-step for the volume acquisition
-p.num_zslices = 5;                          % Number of z-slices per volume acquisition
+p.zstep_um = 1.5;                           % Size of a z-step for the volume acquisition
+p.num_zslices = 10;                         % Number of z-slices per volume acquisition
 p.z_backlash_distance_um = -10;             % Backlash distance piezo (must be negative!)
 assert(p.z_backlash_distance_um < 0, 'Z backlash distance must be negative.')
 
@@ -257,7 +257,7 @@ if do_plot_final
     plot(p.angle_range_interp(i_max_signal_std), max_signal_std, '+r'); hold off
     xlabel('Tube Angle (deg)')
     ylabel('Signal \sigma')
-    legend({'corrected std', 'uncorrected std'}, 'Location', 'best')
+    legend({'corrected std (interp)', 'corrected std', 'uncorrected std'}, 'Location', 'best')
     title(sprintf('Signal std\nmax at: %.2f deg', p.angle_range_interp(i_max_signal_std)))
 end
 
