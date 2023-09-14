@@ -85,7 +85,7 @@ details.result_folder = fullfile(dirs.expdata, 'raylearn-data/TPM/SLM_LUT_calibr
 
 %% Experiment parameters
 gray_values = (0:255)';    % gray values tested     
-n_exp = 3;              % number of times experiment is performed
+n_exp = 4;              % number of times experiment is performed
 pause_time = 0.1;       % waiting time between every measurement (in sec)
 excluded_from_fft = 5;  % first 'excluded_from_fft' sample is excluded in finding FFT maximum
 
@@ -148,13 +148,13 @@ for exp_i = 1:n_exp
 end
 
 %% Saving the results into a subfolder
-mkdir(details.result_folder);
-details.current_folder = pwd;
-cd(details.result_folder)
-display(['..Saving results in the sub folder:' details.result_folder])
-file_name_to_save = ['SLM_Camera ' details.date_and_time '.mat'];
-save('-v7.3', file_name_to_save,'details','pix_min','pix_max','frames','n_exp','gray_values','excluded_from_fft','max_freq_top','max_freq_bottom');
-cd(details.current_folder)
+% mkdir(details.result_folder);
+% details.current_folder = pwd;
+% cd(details.result_folder)
+% display(['..Saving results in the sub folder:' details.result_folder])
+% file_name_to_save = ['SLM_Camera ' details.date_and_time '.mat'];
+% save('-v7.3', file_name_to_save,'details','pix_min','pix_max','frames','n_exp','gray_values','excluded_from_fft','max_freq_top','max_freq_bottom');
+% cd(details.current_folder)
 
 %% Analysis
 for exp_i = 1:n_exp
@@ -197,7 +197,8 @@ p_error = mean(abs(phase_mean-p_linear));
 %% plot phase response
 
 figure(); clf
-plot(gray_values,phase_response)   
+plot(gray_values,phase_response); hold on
+plot([0 255], 2*pi*[1 1], 'g'); hold off
 xlabel('Gray value');
 ylabel('Measured phase shift (rad)');
 title('Phase responses from individual experiments');
@@ -210,14 +211,16 @@ errorbar(gray_values,phase_mean,phase_std,'s'); hold on;
 
 % plot linear fitted response
 plot(gray_values,p_linear,'--k','LineWidth',2);
+plot([0 255], 2*pi*[1 1], 'g')
 
 % figure layout
-legend('Measured','linear fit','Location','SouthEast');
+legend('Measured','linear fit', '2\pi','Location','SouthEast');
 xlabel('Gray value');
 ylabel('Measured phase shift (rad)');
 title('SLM phase response');
 set(gca,'FontSize',14);
 xlim([gray_values(1), gray_values(end)]);
+grid on
 
 
 % plot modulated field in complex plane
@@ -231,6 +234,7 @@ xlim([-1.1,1.1]); ylim([-1.1,1.1])
 axis square; grid on;
 
 %% Saving the analysis results into the same subfolder
+details.Date_and_time = date;
 cd(details.result_folder)
 display(['..Saving alayzed results in the sub folder:' details.result_folder])
 file_name_to_save = ['SLM_Camera_analyzed ' details.Date_and_time '.mat'];
