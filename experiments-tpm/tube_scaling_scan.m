@@ -9,7 +9,8 @@ do_plot_scan = 0;
 force_reset = 0;
 
 % Scan settings
-scale_range = linspace(0.85, 1.05, 41);
+num_scales = 41;
+p.scale_range = linspace(0.85, 1.05, num_scales);
 
 % Other settings
 p.samplename = 'tube500nL-bottom-scalescan';
@@ -122,7 +123,7 @@ count = 1;
 for i_pattern = 1:num_scales              % Scan
 
     % Prepare scaled SLM pattern
-    scale_slm = scale_range(i_pattern);
+    scale_slm = p.scale_range(i_pattern);
     xq = x_slmpattern * scale_slm;
     yq = xq';
     
@@ -148,24 +149,23 @@ for i_pattern = 1:num_scales              % Scan
 
         % To start position
         hSI.hMotors.motorPosition = [0 0 p.piezo_start_um + p.z_backlash_distance_um];
-        current_piezo_z = p.piezo_start_um;
-        hSI.hMotors.motorPosition = [0 0 current_piezo_z];
+        pause(0.05)
+        hSI.hMotors.motorPosition = [0 0 p.piezo_start_um];
 
         % Volume acquisition
         for iz = 1:p.num_zslices
             frames_flatslm(:, :, iz) = grabSIFrame(hSI, hSICtl);
-            current_piezo_z = current_piezo_z + p.zstep_um;
-            hSI.hMotors.motorPosition = [0 0 current_piezo_z];
+            hSI.hMotors.motorPosition = [0 0 p.piezo_range_um(iz)];
         end
         
-        % === Zernike Modes pattern ===
+        % === SLM test pattern ===
         slm.setData(p.pattern_patch_id, slm_pattern_gv);
         slm.update;
         
         % To start position
         hSI.hMotors.motorPosition = [0 0 p.piezo_start_um + p.z_backlash_distance_um];
-        current_piezo_z = p.piezo_start_um;
-        hSI.hMotors.motorPosition = [0 0 current_piezo_z];
+        pause(0.05)
+        hSI.hMotors.motorPosition = [0 0 p.piezo_start_um];
 
         % Volume acquisition
         for iz = 1:p.num_zslices
@@ -246,12 +246,14 @@ if ~office_mode
     % Random pattern prevents bleaching
     slm.setData(p.pattern_patch_id, 255*rand(300));
     slm.update
+
+    hSI.hMotors.motorPosition = [0 0 p.piezo_start_um + p.z_backlash_distance_um];
+    pause(0.1)
+    hSI.hMotors.motorPosition = [0 0 p.piezo_start_um];
 end
 
 %%
 if do_plot_final
-    index_gt = (num_scales-1)/2+1;
-    p.scale_range = patterndata.mdict_array{1}.slm_height_m_range ./ patterndata.mdict_array{index_gt}.slm_height_m;
     p.scale_range_interp = linspace(p.scale_range(1), p.scale_range(end), num_scales * p.upscale_factor);
     all_feedback_interp = interp1(p.scale_range, all_feedback, p.scale_range_interp, 'cubic');
     [max_feedback, i_max_feedback] = max(all_feedback_interp);
