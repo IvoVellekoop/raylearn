@@ -8,6 +8,9 @@ do_plot_final = 1;
 do_plot_scan = 0;
 force_reset = 0;
 
+% Scan settings
+scale_range = linspace(0.85, 1.05, 41);
+
 % Other settings
 p.samplename = 'tube500nL-bottom-scalescan';
 p.sampleid = 'DCOX-2023-8-C';
@@ -17,9 +20,9 @@ p.pattern_patch_id = 1;
 p.feedback_func = @contrast_enhancement;
 
 % Image acquisition
-slm_rotation_deg = 3.2;
-p.zstep_um = 1.5;                           % Size of a z-step for the volume acquisition
-p.num_zslices = 10;                         % Number of z-slices per volume acquisition
+slm_rotation_deg = 3.0;
+p.zstep_um = 1.25;                          % Size of a z-step for the volume acquisition
+p.num_zslices = 12;                         % Number of z-slices per volume acquisition
 p.z_backlash_distance_um = -10;             % Backlash distance piezo (must be negative!)
 assert(p.z_backlash_distance_um < 0, 'Z backlash distance must be negative.')
 
@@ -76,9 +79,14 @@ coord_x = linspace(-1, 1, slm_size(1));
 coord_y = coord_x';
 
 % Fetch SLM pattern data
-disp('Loading patterns...')
-patterndata = load(replace("\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\pattern-0.5uL-tube-bottom-λ808.0nm-slm_height_scan.mat", '\', filesep));
-num_scales = length(patterndata.mdict_array);
+disp('Loading pattern...')
+patterndata = load(replace("\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\pattern-0.5uL-tube-bottom-λ808.0nm.mat", '\', filesep));
+
+% Coords for rescaling pattern
+phase_SLM_rot_gv = 255 / (2*pi) * imrotate(patterndata.phase_SLM, slm_rotation_deg, "bilinear", "crop");
+Nslmpattern = size(patterndata.phase_SLM, 2);
+x_slmpattern = linspace(-1, 1, Nslmpattern);
+y_slmpattern = x_slmpattern';
 
 % Initialize feedback
 all_feedback = zeros(1, num_scales);
@@ -105,13 +113,23 @@ p.piezo_center_um = hSI.hMotors.motorPosition;
 p.piezo_start_um = p.piezo_center_um(3) - p.zstep_um * p.num_zslices/2;
 p.piezo_range_um = p.piezo_start_um + (0:p.num_zslices-1) * p.zstep_um;
 
-%% === Scan Zernike modes ===
+frames_flatslm = [];
+frames_ao = [];
+
+%% === Scan scaling ===
 starttime = now;
 count = 1;
 for i_pattern = 1:num_scales              % Scan
-    SLM_pattern_base = patterndata.mdict_array{i_pattern}.phase_SLM' * 255 / (2*pi);
-    slm_pattern_gv = imrotate(SLM_pattern_base, slm_rotation_deg, "bilinear", "crop");
 
+    % Prepare scaled SLM pattern
+    scale_slm = scale_range(i_pattern);
+    xq = x_slmpattern * scale_slm;
+    yq = xq';
+    
+    extrapval = 0;
+    slm_pattern_gv = interp2(x_slmpattern, y_slmpattern, phase_SLM_rot_gv, xq, yq, 'bilinear', extrapval);
+
+    % Measure
     if office_mode
         secret_pattern = p.SLM_pattern_base;
         fake_wavefront = exp(1i .* (pi/128) .* (secret_pattern - slm_pattern_gv)) ...

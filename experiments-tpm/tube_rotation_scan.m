@@ -107,7 +107,10 @@ p.piezo_center_um = hSI.hMotors.motorPosition;
 p.piezo_start_um = p.piezo_center_um(3) - p.zstep_um * p.num_zslices/2;
 p.piezo_range_um = p.piezo_start_um + (0:p.num_zslices-1) * p.zstep_um;
 
-%% === Scan Zernike modes ===
+frames_flatslm = [];
+frames_ao = [];
+
+%% === Scan rotation ===
 starttime = now;
 count = 1;
 for i_angle = 1:p.num_angles              % Scan mode 1
