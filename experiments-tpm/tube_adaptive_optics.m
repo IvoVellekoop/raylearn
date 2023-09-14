@@ -11,9 +11,10 @@ do_save_plot_scan = 0;
 force_reset = 0;
 
 % Other settings
-p.samplename = 'tube500nL-top';
+p.samplename = 'tube500nL-side';
+p.sampleid = 'DCOX-2023-8-C';
 
-p.slm_rotation_deg = 5.9;                   % Can be found with an SLM coordinate calibration
+p.slm_rotation_deg = 2.7;                   % Can be found with an SLM coordinate calibration
 p.truncate = false;                         % Truncate Zernike modes at circle edge
 p.pattern_patch_id = 1;
 p.feedback_func = @(frames)(var(frames, [], [1 2 3]));
@@ -30,14 +31,14 @@ filename_gif = "tube_adaptive_optics.gif";  % Specify the output file name of gi
 delaytime_gif = 0.05;
 
 % Define test range astigmatism
-p.min_cycles_mode1 = 16;                    % Min radians (center to edge max)
-p.max_cycles_mode1 = 32;                    % Max radians (center to edge max)
+p.min_cycles_mode1 = 24;                    % Min radians (center to edge max)
+p.max_cycles_mode1 = 44;                    % Max radians (center to edge max)
 p.num_patterns_mode1 = 15;                  % Number of amplitudes to test
 p.phase_range_mode1 = linspace(p.min_cycles_mode1, p.max_cycles_mode1, p.num_patterns_mode1);
 
 % Define test range spherical aberrations
-p.min_cycles_mode2 = -4;                    % Minimum phase cycles (1 => 2pi phase)
-p.max_cycles_mode2 = 4;                     % Max phase cycles (1 => 2pi phase)
+p.min_cycles_mode2 = -8;                    % Minimum phase cycles (1 => 2pi phase)
+p.max_cycles_mode2 = 8;                     % Max phase cycles (1 => 2pi phase)
 p.num_patterns_mode2 = 12;                  % Number of amplitudes to test
 p.phase_range_mode2 = linspace(p.min_cycles_mode2, p.max_cycles_mode2, p.num_patterns_mode2);
 
@@ -96,7 +97,7 @@ coord_y = coord_x';
 
 % Generate aligned astigmatism and z
 p.Zcart_mode1 = imrotate(zernfun_cart(coord_x, coord_y, 2, 2, p.truncate), p.slm_rotation_deg, "bilinear", "crop");
-p.Zcart_mode2 = imrotate(zernfun_cart(coord_x, coord_y, 4, 3, p.truncate), p.slm_rotation_deg, "bilinear", "crop");
+p.Zcart_mode2 = imrotate(zernfun_cart(coord_x, coord_y, 4, 4, p.truncate), p.slm_rotation_deg, "bilinear", "crop");
 
 % Initialize feedback
 all_feedback = zeros(p.num_patterns_mode1, p.num_patterns_mode2);
