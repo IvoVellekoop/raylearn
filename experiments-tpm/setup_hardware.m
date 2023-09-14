@@ -79,8 +79,8 @@ end
 
 %% Connect to SLM Camera
 if active_devices.cam_slm
-    cam_slm.ExposureTime = 1/60*10^6;
-    cam_slm.Id = 'Camera/22961593:Basler';
+    copt_slm.ExposureTime = 1/60*10^6;
+    copt_slm.Id = 'Camera/22961593:Basler';
 
     copt_slm.Width = 1088;
     copt_slm.Height = 1088;
