@@ -208,11 +208,6 @@ class TPM(OpticalSystem):
         self.sample.sample_plane = self.sample_plane
         self.sample.update()
 
-        # Desired focal plane: aim focus here, place point source for backtrace here
-        self.desired_focus_plane = copy_update(self.sample.desired_focus_plane,
-            x=-x * self.backtrace_source_opening_tan_angle,
-            y=y * self.backtrace_source_opening_tan_angle)
-
 
     def raytrace(self):
         """

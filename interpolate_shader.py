@@ -32,7 +32,7 @@ def interpolate_shader(data, npoints=(600,600), limits=(-100e-6,100e-6, -100e-6,
 
     """
     s = ShaderInterpolator(data, npoints, limits, wavelength_m)
-    return s.get_field()
+    return s.get_field(), s.get_phase()
 
 def calculate_elements(nx, ny):
     """
@@ -214,7 +214,7 @@ class ShaderInterpolator:
         image_out = np.frombuffer(image_buffer, dtype=np.float32).reshape(npoints[1],npoints[0], 4)
         # Convert to complex field
         self.field_out = image_out[:,:,0] + 1j*image_out[:,:,1]
-        self.path_length_out = image_out[:,:,2]
+        self.phase_out = image_out[:,:,2]
         
         # # Main loop, draw to window. Not necessary for calculation but may be useful for debugging
         # GL.glBindFramebuffer(GL.GL_FRAMEBUFFER,0)
@@ -234,3 +234,6 @@ class ShaderInterpolator:
 
     def get_field(self):
         return self.field_out
+
+    def get_phase(self):
+        return self.phase_out
