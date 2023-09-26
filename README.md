@@ -8,6 +8,8 @@ RayLearn is a sequential ray tracer written in PyTorch, capable of both forward 
 
 1b: or install using your package manager. On Windows, you can use winget to install it:
 `winget install Anaconda.Anaconda3`
+or
+`winget install Anaconda.Miniconda3`
 
 Note: you may need to reopen your terminal before the conda command is available. On Windows, you can use either the Anaconda Cmd or Powershell, or regular Cmd or Powershell. On Linux, see step 2.
 
@@ -22,6 +24,7 @@ This adds some lines to your ~/.bashrc, and activates the base environment by de
 
 3: More details on installation can be found here: https://docs.anaconda.com/anaconda/install/
 
+4: On Windows, execute these commands either in Powershell/cmd, or the Anaconda Powershell/Prompt.
 4a: Install the exact package versions using the environment snapshot yml file. Navigate to the raylearn folder in your terminal, and the command suitable for your platform (or alternatively do a fresh install, see step 4b).
 `conda env create -f environment-windows.yml`
 or
