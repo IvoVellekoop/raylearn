@@ -80,7 +80,7 @@ class TPM(OpticalSystem):
         # https://bmpi.wiki.utwente.nl/doku.php?id=instrumentation:slm:meadowlark_slm
         # https://www.meadowlark.com/store/data_sheet/SLM%20-%201920%20x%201152%20Data%20Sheet%20021021.pdf
         # https://www.meadowlark.com/images/files/Specification%20Backgrounder%20for%20XY%20Series%20Phase%20SLMS%20-%20SB0520.pdf
-        self.slm_height_m = 10.7e-3
+        self.slm_height_m = 9.2e-6 * 1152
         self.slm_height_pixels = 1152
         self.slm_angle  = tensor((0.,))         # Rotation angle around optical axis
         self.slm_zshift = tensor((0.,))
