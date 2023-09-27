@@ -9,7 +9,7 @@ do_plot_scan = 0;
 force_reset = 0;
 
 % Scan settings
-p.num_scales = 21;
+p.num_scales = 15;
 p.num_angles = 11;
 p.scale_range = linspace(0.85, 1.00, p.num_scales);
 p.angle_range_deg = linspace(1.0, 5.00, p.num_angles);
@@ -260,9 +260,10 @@ end
 
 %% Plot final
 % Upscale image and find coordinates of maximum
-all_feedback_upscaled = imresize(all_feedback, p.upscale_factor);
-[~, imax] = max(all_feedback_upscaled(:));
-[peak_index_angle_upscaled, peak_index_scale_upscaled] = ind2sub(size(all_feedback_upscaled), imax);
+all_feedback_meanflat = all_signal_std_corrected ./ mean(all_signal_std_flat);
+all_feedback_meanflat_upscaled = imresize(all_feedback_meanflat, p.upscale_factor);
+[~, imax] = max(all_feedback_meanflat_upscaled(:));
+[peak_index_angle_upscaled, peak_index_scale_upscaled] = ind2sub(size(all_feedback_meanflat_upscaled), imax);
 peak_index_angle = downscale(peak_index_angle_upscaled, p.upscale_factor);
 peak_index_scale = downscale(peak_index_scale_upscaled, p.upscale_factor);
 
@@ -283,20 +284,20 @@ if do_plot_final
 
     % Plot parameter landscape
     subplot(1,2,1)
-    imagesc(p.scale_range, p.angle_range_deg, all_feedback); hold on
+    imagesc(p.scale_range, p.angle_range_deg, all_feedback_meanflat); hold on
     plot(scale_optimal, angle_optimal, '+r'); hold off
-    title(sprintf('Parameter landscape'))
+    title(sprintf('Contrast enhancement parameter landscape\n(no photobleaching compensation)'))
     if office_mode
         title(sprintf('Simulated parameter landscape'))
     end
     xlabel('Scale')
-    ylabel('Angle')
+    ylabel('Angle (deg)')
     set(gca, 'fontsize', 14)
     colorbar
 
     % Plot upscaled parameter landscape
     subplot(1,2,2)
-    imagesc(all_feedback_upscaled); hold on
+    imagesc(all_feedback_meanflat_upscaled); hold on
     plot(peak_index_scale_upscaled, peak_index_angle_upscaled, '+r'); hold off
     title(sprintf('Parameter landscape upscaled\nOptimal: angle=%.3fdeg, scale=%.3f', angle_optimal, scale_optimal))
     xlabel('Index Scale')
@@ -312,7 +313,7 @@ if do_save
     % Save intermediate frames
     savepath = fullfile(p.savedir, sprintf('%s_angle_scan.mat', p.savename));
     disp('Saving...')
-    save(savepath, '-v7.3', 'p', 'all_feedback', 'all_feedback_upscaled', ...
+    save(savepath, '-v7.3', 'p', 'all_feedback', 'all_feedback_meanflat', 'all_feedback_meanflat_upscaled', ...
         'all_signal_std_corrected', 'all_signal_std_flat', 'angle_optimal', 'scale_optimal')
     fprintf('\nSaved optimized pattern to:\n%s\n', savepath)
 end

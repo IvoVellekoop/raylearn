@@ -10,7 +10,7 @@ force_reset = 0;
 
 % Other settings
 p.samplename = 'tube500nL-bottom-anglescan';
-p.sampleid = 'DCOX-2023-8-C';
+p.sampleid = 'DCOX-2023-8-A';
 
 p.truncate = false;                         % Truncate Zernike modes at circle edge
 p.pattern_patch_id = 1;
@@ -79,7 +79,7 @@ coord_x = linspace(-1, 1, slm_size(1));
 coord_y = coord_x';
 
 % Fetch SLM pattern
-patterndata = load(replace("\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\pattern-0.5uL-tube-bottom-λ808.0nm.mat", '\', filesep));
+patterndata = load(replace("\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\slm-patterns\pattern-0.5uL-tube-bottom-λ808.0nm.mat", '\', filesep));
 p.SLM_pattern_base = angle(patterndata.field_SLM) * 255 / (2*pi);
 
 % Initialize feedback
@@ -234,6 +234,10 @@ if ~office_mode
     % Random pattern prevents bleaching
     slm.setData(p.pattern_patch_id, 255*rand(300));
     slm.update
+
+    hSI.hMotors.motorPosition = p.piezo_center_um + [0 0 p.z_backlash_distance_um];
+    pause(0.5)
+    hSI.hMotors.motorPosition = p.piezo_center_um;
 end
 
 %%

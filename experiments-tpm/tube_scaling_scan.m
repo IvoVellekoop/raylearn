@@ -10,20 +10,20 @@ force_reset = 0;
 
 % Scan settings
 num_scales = 41;
-p.scale_range = linspace(0.85, 1.05, num_scales);
+p.scale_range = linspace(0.80, 1.00, num_scales);
 
 % Other settings
-p.samplename = 'tube500nL-bottom-scalescan';
-p.sampleid = 'DCOX-2023-8-C';
+p.samplename = 'tube500nL-side-scalescan';
+p.sampleid = 'DCOX-2023-8-A';
 
 p.truncate = false;                         % Truncate Zernike modes at circle edge
 p.pattern_patch_id = 1;
 p.feedback_func = @contrast_enhancement;
 
 % Image acquisition
-slm_rotation_deg = 3.0;
-p.zstep_um = 1.25;                          % Size of a z-step for the volume acquisition
-p.num_zslices = 12;                         % Number of z-slices per volume acquisition
+slm_rotation_deg = 3.2;
+p.zstep_um = 1.00;                          % Size of a z-step for the volume acquisition
+p.num_zslices = 15;                         % Number of z-slices per volume acquisition
 p.z_backlash_distance_um = -10;             % Backlash distance piezo (must be negative!)
 assert(p.z_backlash_distance_um < 0, 'Z backlash distance must be negative.')
 
@@ -66,7 +66,7 @@ if do_save
     p.save_time = now;
 
     % Create save directory
-    filenameprefix = 'tube_angle_scan';
+    filenameprefix = 'tube_scale_scan';
     p.savename = sprintf('%s_%f_%s', filenameprefix, now, p.samplename);
     p.subdir = ['/raylearn-data/TPM/adaptive-optics/' date '-' p.samplename];
     p.savedir = fullfile([dirs.localdata p.subdir], p.savename);
@@ -81,7 +81,7 @@ coord_y = coord_x';
 
 % Fetch SLM pattern data
 disp('Loading pattern...')
-patterndata = load(replace("\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\pattern-0.5uL-tube-bottom-λ808.0nm.mat", '\', filesep));
+patterndata = load(replace("\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\slm-patterns\pattern-0.5uL-tube-side-λ808.0nm.mat", '\', filesep));
 
 % Coords for rescaling pattern
 phase_SLM_rot_gv = 255 / (2*pi) * imrotate(patterndata.phase_SLM, slm_rotation_deg, "bilinear", "crop");
@@ -241,15 +241,15 @@ for i_pattern = 1:num_scales              % Scan
     eta(count, num_scales,  starttime, 'cmd', 'Scanning scale', 0);
     count = count+1;
 end
-
+%%
 if ~office_mode
     % Random pattern prevents bleaching
     slm.setData(p.pattern_patch_id, 255*rand(300));
     slm.update
 
-    hSI.hMotors.motorPosition = [0 0 p.piezo_start_um + p.z_backlash_distance_um];
-    pause(0.1)
-    hSI.hMotors.motorPosition = [0 0 p.piezo_start_um];
+    hSI.hMotors.motorPosition = p.piezo_center_um + [0 0 p.z_backlash_distance_um];
+    pause(0.5)
+    hSI.hMotors.motorPosition = p.piezo_center_um;
 end
 
 %%
@@ -262,7 +262,7 @@ if do_plot_final
     plot(p.scale_range_interp, all_feedback_interp, '-k'); hold on
     plot(p.scale_range, all_feedback, '.b');
     plot(p.scale_range_interp(i_max_feedback), max_feedback, '+r'); hold off
-    title(sprintf('Feedback signals\nmax at: %.2f', p.scale_range_interp(i_max_feedback)))
+    title(sprintf('%s\nFeedback signals, max at: %.2f', p.samplename, p.scale_range_interp(i_max_feedback)))
     xlabel('Scale factor for slm height')
     ylabel('Contrast enhancement')
     set(gca, 'fontsize', 14)
@@ -278,7 +278,7 @@ if do_plot_final
     xlabel('Scale factor for slm height')
     ylabel('Signal \sigma')
     legend({'corrected std interp', 'corrected std', 'uncorrected std', 'max'}, 'Location', 'best')
-    title(sprintf('Signal std\nmax at: %.2f', p.scale_range_interp(i_max_signal_std)))
+    title(sprintf('%s\nSignal std, max at: %.2f', p.samplename, p.scale_range_interp(i_max_signal_std)))
     set(gca, 'fontsize', 14)
 end
 
