@@ -17,6 +17,8 @@ p.backlash_piezo_z_um = -10;                        % Backlash compensation move
 
 % SLM pattern settings
 p.slm_rotation_deg = 0;
+p.scale_slm_x = 0.9;
+p.scale_slm_y = 0.5;
 calibrationdata = load("\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\calibration\calibration_matrix_parabola\calibration_values.mat");
 p.offset_center_slm = calibrationdata.sopt.offset_center_slm;
 
@@ -46,7 +48,7 @@ grabSIFrame(hSI, hSICtl);
 hSI.hMotors.motorPosition = p.initial_objective_piezo_um + [0 0 p.backlash_piezo_z_um];
 pause(0.5)
 hSI.hMotors.motorPosition = p.initial_objective_piezo_um;
-set_RT_pattern(slm, p.slm_rotation_deg, p.offset_center_slm, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\pattern-focusshift_x30um_y0um_z0um_λ808nm.mat")
+set_RT_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\slm-patterns\pattern-focusshift_x30um_y0um_z0um_λ808nm.mat")
 hSI.hScan2D.logFileStem = strcat(basefilename, 'xshift');
 fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
 grabSIFrame(hSI, hSICtl);
@@ -55,7 +57,7 @@ grabSIFrame(hSI, hSICtl);
 hSI.hMotors.motorPosition = p.initial_objective_piezo_um + [0 0 p.backlash_piezo_z_um];
 pause(0.5)
 hSI.hMotors.motorPosition = p.initial_objective_piezo_um;
-set_RT_pattern(slm, p.slm_rotation_deg, p.offset_center_slm, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\pattern-focusshift_x0um_y30um_z0um_λ808nm.mat")
+set_RT_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\slm-patterns\pattern-focusshift_x0um_y30um_z0um_λ808nm.mat")
 hSI.hScan2D.logFileStem = strcat(basefilename, 'yshift');
 fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
 grabSIFrame(hSI, hSICtl);
@@ -64,7 +66,7 @@ grabSIFrame(hSI, hSICtl);
 hSI.hMotors.motorPosition = p.initial_objective_piezo_um + [0 0 -30] + [0 0 p.backlash_piezo_z_um];
 pause(0.5)
 hSI.hMotors.motorPosition = p.initial_objective_piezo_um + [0 0 -30];
-set_RT_pattern(slm, p.slm_rotation_deg, p.offset_center_slm, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\pattern-focusshift_x0um_y0um_z30um_λ808nm.mat")
+set_RT_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\slm-patterns\pattern-focusshift_x0um_y0um_z30um_λ808nm.mat")
 hSI.hScan2D.logFileStem = strcat(basefilename, 'zshift_with_obj_zshift');
 fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
 grabSIFrame(hSI, hSICtl);
@@ -76,13 +78,24 @@ slm.setRect(1, [0 0 1 1]); slm.setData(1, 255*rand(300)); slm.update
 
 
 %% Functions
-function set_RT_pattern(slm, slm_rotation_deg, offset_center_slm, matpath)
+function set_RT_pattern(slm, p, matpath)
     patterndata = load(matpath);                        % Load pattern data
     SLM_pattern_rad = patterndata.phase_SLM;            % Pattern in rad
     SLM_pattern_gv = SLM_pattern_rad * 255 / (2*pi);    % Pattern in gray value
-    SLM_pattern_gv_rot = imrotate(SLM_pattern_gv, slm_rotation_deg, "bilinear", "crop"); % Rotate
-    slm.setRect(1, [offset_center_slm(1) offset_center_slm(2) 1 1]);
-    slm.setData(1, SLM_pattern_gv_rot); slm.update;
+    SLM_pattern_gv_rot = imrotate(SLM_pattern_gv, p.slm_rotation_deg, "bilinear", "crop"); % Rotate
+
+    % Prepare scaled SLM pattern (slm pattern must be square!)
+    Nslmpattern = size(SLM_pattern_gv_rot, 2);
+    x_slmpattern = linspace(-1, 1, Nslmpattern);
+    y_slmpattern = x_slmpattern';
+    xq = x_slmpattern * p.scale_slm_x;
+    yq = y_slmpattern * p.scale_slm_y;
+    
+    extrapval = 0;
+    SLM_pattern_gv_rot_scaled = interp2(x_slmpattern, y_slmpattern, SLM_pattern_gv_rot, xq, yq, 'bilinear', extrapval);
+
+    slm.setRect(1, [p.offset_center_slm(1) p.offset_center_slm(2) 1 1]);
+    slm.setData(1, SLM_pattern_gv_rot_scaled); slm.update;
 end
 
 
