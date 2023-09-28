@@ -6,7 +6,7 @@ offset_center_slm = calibrationdata.sopt.offset_center_slm;
 
 %% Load pattern Bottom
 slm_rotation_deg = 2.7;
-set_RT_pattern(slm, slm_rotation_deg, offset_center_slm, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\pattern-0.5uL-tube-bottom-λ808.0nm.mat")
+set_RT_pattern(slm, slm_rotation_deg, offset_center_slm, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\slm-patterns\pattern-0.5uL-tube-bottom-λ808.0nm.mat")
 
 %% Load pattern Center
 slm_rotation_deg = 2.7;

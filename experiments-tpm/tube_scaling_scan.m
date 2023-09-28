@@ -16,6 +16,9 @@ p.scale_range = linspace(0.80, 1.00, num_scales);
 p.samplename = 'tube500nL-side-scalescan';
 p.sampleid = 'DCOX-2023-8-A';
 
+filename_slmpattern = ...
+    "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\slm-patterns\pattern-0.5uL-tube-side-λ808.0nm.mat";
+
 p.truncate = false;                         % Truncate Zernike modes at circle edge
 p.pattern_patch_id = 1;
 p.feedback_func = @contrast_enhancement;
@@ -81,7 +84,7 @@ coord_y = coord_x';
 
 % Fetch SLM pattern data
 disp('Loading pattern...')
-patterndata = load(replace("\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\slm-patterns\pattern-0.5uL-tube-side-λ808.0nm.mat", '\', filesep));
+patterndata = load(replace(filename_slmpattern, '\', filesep));
 
 % Coords for rescaling pattern
 phase_SLM_rot_gv = 255 / (2*pi) * imrotate(patterndata.phase_SLM, slm_rotation_deg, "bilinear", "crop");
