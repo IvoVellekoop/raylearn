@@ -1,9 +1,9 @@
 close all;
 
-bottom_scan = load('/mnt/bmpi/Data/Daniel Cox/ExperimentalData/raylearn-data/TPM/adaptive-optics/13-Sep-2023-tube500nL-bottom-scalescan/tube_angle_scan_739142.682120_tube500nL-bottom-scalescan/tube_angle_scan_739142.682120_tube500nL-bottom-scalescan_angle_scan.mat');
-center_scan = load('/mnt/bmpi/Data/Daniel Cox/ExperimentalData/raylearn-data/TPM/adaptive-optics/14-Sep-2023-tube500nL-center-scalescan/tube_angle_scan_739143.647739_tube500nL-center-scalescan/tube_angle_scan_739143.647739_tube500nL-center-scalescan_angle_scan.mat');
-top_scan = load('/mnt/bmpi/Data/Daniel Cox/ExperimentalData/raylearn-data/TPM/adaptive-optics/14-Sep-2023-tube500nL-top-scalescan/tube_angle_scan_739143.673928_tube500nL-top-scalescan/tube_angle_scan_739143.673928_tube500nL-top-scalescan_angle_scan.mat');
-side_scan = load('/mnt/bmpi/Data/Daniel Cox/ExperimentalData/raylearn-data/TPM/adaptive-optics/14-Sep-2023-tube500nL-side-scalescan/tube_scale_scan_739143.739276_tube500nL-side-scalescan/tube_scale_scan_739143.739276_tube500nL-side-scalescan_angle_scan.mat');
+bottom_scan = load('/mnt/bmpi/Data/Daniel Cox/ExperimentalData/raylearn-data/TPM/adaptive-optics/27-Sep-2023-tube500nL-bottom-scalescan/tube_scale_scan_739156.565932_tube500nL-bottom-scalescan/tube_scale_scan_739156.565932_tube500nL-bottom-scalescan_angle_scan.mat');
+center_scan = load('/mnt/bmpi/Data/Daniel Cox/ExperimentalData/raylearn-data/TPM/adaptive-optics/27-Sep-2023-tube500nL-center-scalescan/tube_scale_scan_739156.610481_tube500nL-center-scalescan/tube_scale_scan_739156.610481_tube500nL-center-scalescan_angle_scan.mat');
+top_scan = load('/mnt/bmpi/Data/Daniel Cox/ExperimentalData/raylearn-data/TPM/adaptive-optics/27-Sep-2023-tube500nL-top-scalescan/tube_scale_scan_739156.652694_tube500nL-top-scalescan/tube_scale_scan_739156.652694_tube500nL-top-scalescan_angle_scan.mat');
+side_scan = load('/mnt/bmpi/Data/Daniel Cox/ExperimentalData/raylearn-data/TPM/adaptive-optics/27-Sep-2023-tube500nL-side-scalescan/tube_scale_scan_739156.696890_tube500nL-side-scalescan/tube_scale_scan_739156.696890_tube500nL-side-scalescan_angle_scan.mat');
 clc;
 
 figure; gca; hold on
@@ -16,7 +16,7 @@ plot_scan_flat(center_scan);
 plot_scan_flat(top_scan);
 plot_scan_flat(side_scan);
 hold off
-legend
+legend('Location', 'NorthWest')
 xlabel('SLM scale')
 ylabel('signal \sigma')
 title('Effect of scaling the pattern')
@@ -29,7 +29,7 @@ plot_scan_contrast(center_scan);
 plot_scan_contrast(top_scan);
 plot_scan_contrast(side_scan);
 hold off
-legend
+legend('Location', 'NorthWest')
 xlabel('SLM scale')
 ylabel('contrast enhancement \eta_\sigma')
 title('Effect of scaling the pattern')
@@ -45,5 +45,5 @@ function plot_scan_flat(scan)
 end
 
 function plot_scan_contrast(scan)
-    plot(scan.p.scale_range, scan.all_signal_std_corrected ./ mean(scan.all_signal_std_flat), '.-', 'DisplayName', scan.p.samplename(11:end-10))
+    plot(scan.p.scale_range, scan.all_signal_std_corrected ./ median(scan.all_signal_std_flat), '.-', 'DisplayName', scan.p.samplename(11:end-10))
 end
