@@ -97,7 +97,7 @@ print(f'RMS wavefront error: {RMS_wavefront_error_rad:.2f} rad')
 
 
 # Save file
-matpath_out = str(dirs['localdata'].joinpath('raylearn-data/TPM/pattern-focusshift_'
+matpath_out = str(dirs['localdata'].joinpath('raylearn-data/TPM/slm-patterns/pattern-focusshift_'
     + f'x{x_focus_shift_m * 1e6:.0f}um_'
     + f'y{y_focus_shift_m * 1e6:.0f}um_'
     + f'z{z_focus_shift_m * 1e6:.0f}um_'
