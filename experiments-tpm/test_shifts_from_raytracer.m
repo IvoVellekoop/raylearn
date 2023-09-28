@@ -17,8 +17,8 @@ p.backlash_piezo_z_um = -10;                        % Backlash compensation move
 
 % SLM pattern settings
 p.slm_rotation_deg = 0;
-p.scale_slm_x = 0.9;
-p.scale_slm_y = 0.5;
+p.scale_slm_x = 0.9827;
+p.scale_slm_y = 0.9557;
 calibrationdata = load("\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\calibration\calibration_matrix_parabola\calibration_values.mat");
 p.offset_center_slm = calibrationdata.sopt.offset_center_slm;
 
@@ -70,6 +70,10 @@ set_RT_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalDat
 hSI.hScan2D.logFileStem = strcat(basefilename, 'zshift_with_obj_zshift');
 fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
 grabSIFrame(hSI, hSICtl);
+
+%% Bring piezo stage back
+hSI.hMotors.motorPosition = p.initial_objective_piezo_um + [0 0 p.backlash_piezo_z_um];
+pause(0.5)
 hSI.hMotors.motorPosition = p.initial_objective_piezo_um;
 
 
