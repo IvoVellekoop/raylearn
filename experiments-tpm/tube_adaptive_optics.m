@@ -14,7 +14,7 @@ force_reset = 0;
 p.samplename = 'tube-500nL-bottom';
 p.sampleid = 'DCOX-2024-8-A';
 
-p.slm_rotation_deg = 3.4;                   % Can be found with an SLM coordinate calibration
+p.slm_rotation_deg = 3.4;                   % Can be found with a calibration
 p.scale_slm_x = 0.9827;                     % Scale SLM 'canvas' by this amount in x
 p.scale_slm_y = 0.9557;                     % Scale SLM 'canvas' by this amount in y
 p.truncate = false;                         % Truncate Zernike modes at circle edge
