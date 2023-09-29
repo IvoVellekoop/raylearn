@@ -11,10 +11,10 @@ do_save_plot_scan = 0;
 force_reset = 0;
 
 % Other settings
-p.samplename = 'tube500nL-side';
-p.sampleid = 'DCOX-2023-8-C';
+p.samplename = 'tube-500nL-bottom';
+p.sampleid = 'DCOX-2024-8-A';
 
-p.slm_rotation_deg = 0;                   % Can be found with an SLM coordinate calibration
+p.slm_rotation_deg = 3.4;                   % Can be found with an SLM coordinate calibration
 p.scale_slm_x = 0.9827;                     % Scale SLM 'canvas' by this amount in x
 p.scale_slm_y = 0.9557;                     % Scale SLM 'canvas' by this amount in y
 p.truncate = false;                         % Truncate Zernike modes at circle edge
@@ -23,8 +23,8 @@ p.feedback_func = @(frames)(var(frames, [], [1 2 3]));
 p.upscale_factor = 40;                      % How much the final scan should be bicubically upscaled
 
 % Image acquisition
-p.zstep_um = 1.4;                           % Size of a z-step for the volume acquisition
-p.num_zslices = 9;                          % Number of z-slices per volume acquisition
+p.zstep_um = 1.5;                           % Size of a z-step for the volume acquisition
+p.num_zslices = 10;                         % Number of z-slices per volume acquisition
 p.z_backlash_distance_um = -10;             % Backlash distance piezo (must be negative!)
 assert(p.z_backlash_distance_um < 0, 'Z backlash distance must be negative.')
 
@@ -32,16 +32,16 @@ assert(p.z_backlash_distance_um < 0, 'Z backlash distance must be negative.')
 filename_gif = "tube_adaptive_optics.gif";  % Specify the output file name of gif animation
 delaytime_gif = 0.05;
 
-% Define test range astigmatism
-p.min_amp_mode1 = 24;                       % Min radians (0 to edge max)
-p.max_amp_mode1 = 44;                       % Max radians (0 to edge max)
-p.num_patterns_mode1 = 15;                  % Number of amplitudes to test
+% Define test range mode 1
+p.min_amp_mode1 = 18;                       % Min radians (0 to edge max)
+p.max_amp_mode1 = 30;                       % Max radians (0 to edge max)
+p.num_patterns_mode1 = 13;                  % Number of amplitudes to test
 p.phase_range_mode1 = linspace(p.min_amp_mode1, p.max_amp_mode1, p.num_patterns_mode1);
 
-% Define test range spherical aberrations
-p.min_amp_mode2 = -8;                       % Min radians (0 to edge max)
-p.max_amp_mode2 = 8;                        % Max radians (0 to edge max)
-p.num_patterns_mode2 = 12;                  % Number of amplitudes to test
+% Define test range mode 2
+p.min_amp_mode2 = -7;                       % Min radians (0 to edge max)
+p.max_amp_mode2 = 7;                        % Max radians (0 to edge max)
+p.num_patterns_mode2 = 10;                  % Number of amplitudes to test
 p.phase_range_mode2 = linspace(p.min_amp_mode2, p.max_amp_mode2, p.num_patterns_mode2);
 
 %% === Initialize fake/real hardware ===
@@ -57,7 +57,7 @@ if office_mode
     hSICtl = struct();
     grabSIFrame = @(hSI, hSICtl)(rand(128));
 
-    system_aberration_pattern = 0;
+    p.system_aberration_pattern = 0;
 
     % Fake aberrations
     fake_amplitude_mode1 = 22;
@@ -70,8 +70,8 @@ else
     calibrationdata = load("\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\calibration\calibration_matrix_parabola\calibration_values.mat");
     offset_center_slm = calibrationdata.sopt.offset_center_slm;
 
-    system_aberration_data = load("\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\adaptive-optics\28-Sep-2023-system-aberration\tube_ao_739157.585029_system-aberration\tube_ao_739157.585029_system-aberration_optimal_pattern.mat");
-    system_aberration_pattern = system_aberration_data.slm_pattern_gv_optimal;
+    p.system_aberration_data = load("\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\adaptive-optics\28-Sep-2023-system-aberration\tube_ao_739157.585029_system-aberration\tube_ao_739157.585029_system-aberration_optimal_pattern.mat");
+    p.system_aberration_pattern = p.system_aberration_data.slm_pattern_gv_optimal;
 
     % Random pattern on SLM
     slm.setData(p.pattern_patch_id, 255*rand(300));
@@ -143,6 +143,9 @@ p.piezo_center_um = hSI.hMotors.motorPosition;
 p.piezo_start_um = p.piezo_center_um(3) - p.zstep_um * p.num_zslices/2;
 p.piezo_range_um = p.piezo_start_um + (0:p.num_zslices-1) * p.zstep_um;
 
+frames_flatslm = [];
+frames_ao = [];
+
 %% === Scan Zernike modes ===
 starttime = now;
 count = 1;
@@ -152,7 +155,7 @@ for i_mode2 = 1:p.num_patterns_mode2                  % Scan mode 2
         phase_amp_mode1 = p.phase_range_mode1(i_mode1);
 
         slm_pattern_2pi = phase_amp_mode1.*p.Zcart_mode1 + phase_amp_mode2.*p.Zcart_mode2;
-        slm_pattern_gv = (128/pi) * slm_pattern_2pi + system_aberration_pattern;
+        slm_pattern_gv = (128/pi) * slm_pattern_2pi + p.system_aberration_pattern;
 
 
         if office_mode
@@ -337,7 +340,7 @@ if do_plot_final
     % Plot optimal SLM pattern
     subplot(2,2,3)
     imagesc(angle(exp(1i .* slm_pattern_2pi_optimal)))
-    title('Phase pattern optimized by AO')
+    title('Phase pattern optimized by AO (rad)')
     xticklabels([])
     yticklabels([])
     axis image

@@ -7,18 +7,18 @@
 abort_if_required(hSI, hSICtl)
 
 % Scan settings
-hSI.hStackManager.numSlices = 80;                   % Number of z-slices
-hSI.hStackManager.stackZStepSize = 0.25;            % Step size in um
+hSI.hStackManager.numSlices = 60;                   % Number of z-slices
+hSI.hStackManager.stackZStepSize = 0.333;           % Step size in um
 hSI.hChannels.loggingEnable = true;                 % True = Enable save
-hSICtl.hModel.hRoiManager.scanZoomFactor = 12;      % Zoom
+hSICtl.hModel.hRoiManager.scanZoomFactor = 10;      % Zoom
 pmt_gain_V = 0.60;                                  % PMT gain in Volt
 p = struct();
 p.backlash_piezo_z_um = -10;                        % Backlash compensation movement piezo
 
 % SLM pattern settings
 p.slm_rotation_deg = 0;
-p.scale_slm_x = 0.9827;
-p.scale_slm_y = 0.9557;
+p.scale_slm_x = 0.9852;
+p.scale_slm_y = 0.9737;
 calibrationdata = load("\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\calibration\calibration_matrix_parabola\calibration_values.mat");
 p.offset_center_slm = calibrationdata.sopt.offset_center_slm;
 
@@ -28,7 +28,7 @@ p.zstep = hSI.hStackManager.stackZStepSize;
 p.initial_objective_piezo_um = hSI.hMotors.motorPosition;
 
 basefilename = sprintf('beads-zoom%i-zstep%.3fum-', p.zoom, p.zstep);
-savedir = ['C:\LocalData\raylearn-data\TPM\TPM-3D-scans\' sprintf('%s_beads_testshift', date)];
+savedir = ['C:\LocalData\raylearn-data\TPM\TPM-3D-scans\' sprintf('%s_beads_testshift_xscale%f_yscale%f', date, p.scale_slm_x, p.scale_slm_y)];
 
 % Save directory
 mkdir(savedir);

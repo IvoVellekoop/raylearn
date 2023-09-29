@@ -23,9 +23,9 @@ p.z_backlash_distance_um = -10;             % Backlash distance piezo (must be n
 assert(p.z_backlash_distance_um < 0, 'Z backlash distance must be negative.')
 
 % Define test range astigmatism
-p.min_angle_deg = -12;                      % Min tube angle in degree
-p.max_angle_deg =  12;                      % Max tube angle in degree
-p.num_angles = 41;                          % Number of angles to test
+p.min_angle_deg = -10;                      % Min tube angle in degree
+p.max_angle_deg =  10;                      % Max tube angle in degree
+p.num_angles = 31;                          % Number of angles to test
 p.angle_range = linspace(p.min_angle_deg, p.max_angle_deg, p.num_angles);
 p.upscale_factor = 40;
 
