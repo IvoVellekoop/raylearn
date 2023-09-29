@@ -179,7 +179,7 @@ slm.setRect(1, [0 0 1 1]); slm.setData(1, 255*rand(300)); slm.update
 
 function set_RT_pattern(slm, p, matpath)
     patterndata = load(matpath);                        % Load pattern data
-    SLM_pattern_rad = patterndata.phase_SLM;            % Pattern in rad
+    SLM_pattern_rad = -patterndata.phase_SLM';          % Pattern in rad
     SLM_pattern_gv = SLM_pattern_rad * 255 / (2*pi);    % Pattern in gray value
     SLM_pattern_gv_rot = imrotate(SLM_pattern_gv, p.slm_rotation_deg, "bilinear", "crop"); % Rotate
 
@@ -200,10 +200,13 @@ function set_RT_pattern(slm, p, matpath)
 end
 
 
-function set_AO_pattern(slm, offset_center_slm, matpath)
+function set_AO_pattern(slm, p, matpath)
     patterndata = load(matpath);
-    slm.setRect(1, [offset_center_slm(1) offset_center_slm(2) 1 1]);
-    slm.setData(1, patterndata.slm_pattern_gv_optimal); slm.update
+
+    SLM_pattern_gv_rot_scaled_bg = patterndata.slm_pattern_gv_optimal + p.system_aberration_pattern;
+    
+    slm.setRect(1, [p.offset_center_slm(1) p.offset_center_slm(2) 1 1]);
+    slm.setData(1, SLM_pattern_gv_rot_scaled_bg); slm.update
 end
 
 

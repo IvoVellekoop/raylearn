@@ -311,7 +311,7 @@ end
 
 % Compute optimal pattern
 slm_pattern_2pi_optimal = phase_amp_mode1_optimal.*p.Zcart_mode1 + phase_amp_mode2_optimal.*p.Zcart_mode2;
-slm_pattern_gv_optimal = (128/pi) * slm_pattern_2pi_optimal;
+slm_pattern_gv_optimal = (128/pi) * slm_pattern_2pi_optimal;    % Includes rotation and scale, but not background correction
 
 if do_plot_final
     fig_final = figure;
