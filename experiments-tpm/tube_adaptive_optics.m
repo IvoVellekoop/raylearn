@@ -15,6 +15,8 @@ p.samplename = 'tube500nL-side';
 p.sampleid = 'DCOX-2023-8-C';
 
 p.slm_rotation_deg = 0;                   % Can be found with an SLM coordinate calibration
+p.scale_slm_x = 0.9827;                     % Scale SLM 'canvas' by this amount in x
+p.scale_slm_y = 0.9557;                     % Scale SLM 'canvas' by this amount in y
 p.truncate = false;                         % Truncate Zernike modes at circle edge
 p.pattern_patch_id = 1;
 p.feedback_func = @(frames)(var(frames, [], [1 2 3]));
@@ -55,6 +57,8 @@ if office_mode
     hSICtl = struct();
     grabSIFrame = @(hSI, hSICtl)(rand(128));
 
+    system_aberration_pattern = 0;
+
     % Fake aberrations
     fake_amplitude_mode1 = 22;
     fake_amplitude_mode2 = 2;
@@ -65,6 +69,9 @@ else
     end
     calibrationdata = load("\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\calibration\calibration_matrix_parabola\calibration_values.mat");
     offset_center_slm = calibrationdata.sopt.offset_center_slm;
+
+    system_aberration_data = load("\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\adaptive-optics\28-Sep-2023-system-aberration\tube_ao_739157.585029_system-aberration\tube_ao_739157.585029_system-aberration_optimal_pattern.mat");
+    system_aberration_pattern = system_aberration_data.slm_pattern_gv_optimal;
 
     % Random pattern on SLM
     slm.setData(p.pattern_patch_id, 255*rand(300));
@@ -96,8 +103,20 @@ coord_x = linspace(-1, 1, slm_size(1));
 coord_y = coord_x';
 
 % Generate aligned astigmatism and z
-p.Zcart_mode1 = imrotate(zernfun_cart(coord_x, coord_y, 2, 2, p.truncate), p.slm_rotation_deg, "bilinear", "crop");
-p.Zcart_mode2 = imrotate(zernfun_cart(coord_x, coord_y, 4, 4, p.truncate), p.slm_rotation_deg, "bilinear", "crop");
+p.Zcart_mode1_unscaled = imrotate(zernfun_cart(coord_x, coord_y, 2, 2, p.truncate), p.slm_rotation_deg, "bilinear", "crop");
+p.Zcart_mode2_unscaled = imrotate(zernfun_cart(coord_x, coord_y, 4, 4, p.truncate), p.slm_rotation_deg, "bilinear", "crop");
+
+% Prepare scaled SLM pattern (slm pattern must be square!)
+x_slmpattern = linspace(-1, 1, slm_size(1));
+y_slmpattern = x_slmpattern';
+xq = x_slmpattern * p.scale_slm_x;
+yq = y_slmpattern * p.scale_slm_y;
+
+extrapval = 0;
+p.Zcart_mode1 = interp2(x_slmpattern, y_slmpattern, p.Zcart_mode1_unscaled, xq, yq, 'bilinear', extrapval);
+p.Zcart_mode2 = interp2(x_slmpattern, y_slmpattern, p.Zcart_mode2_unscaled, xq, yq, 'bilinear', extrapval);
+
+
 
 % Initialize feedback
 all_feedback = zeros(p.num_patterns_mode1, p.num_patterns_mode2);
@@ -133,7 +152,8 @@ for i_mode2 = 1:p.num_patterns_mode2                  % Scan mode 2
         phase_amp_mode1 = p.phase_range_mode1(i_mode1);
 
         slm_pattern_2pi = phase_amp_mode1.*p.Zcart_mode1 + phase_amp_mode2.*p.Zcart_mode2;
-        slm_pattern_gv = (128/pi) * slm_pattern_2pi;
+        slm_pattern_gv = (128/pi) * slm_pattern_2pi + system_aberration_pattern;
+
 
         if office_mode
             secret_pattern = fake_amplitude_mode1 .* p.Zcart_mode1 + fake_amplitude_mode2 .* p.Zcart_mode2;
