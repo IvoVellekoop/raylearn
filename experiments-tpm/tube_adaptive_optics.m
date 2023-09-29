@@ -67,8 +67,8 @@ else
         close all; clear; clc
         setup_raylearn_exptpm
     end
-    calibrationdata = load("\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\calibration\calibration_matrix_parabola\calibration_values.mat");
-    offset_center_slm = calibrationdata.sopt.offset_center_slm;
+    p.calibrationdata = load("\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\calibration\calibration_matrix_parabola\calibration_values.mat");
+    offset_center_slm = p.calibrationdata.sopt.offset_center_slm;
 
     p.system_aberration_data = load("\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\adaptive-optics\28-Sep-2023-system-aberration\tube_ao_739157.585029_system-aberration\tube_ao_739157.585029_system-aberration_optimal_pattern.mat");
     p.system_aberration_pattern = p.system_aberration_data.slm_pattern_gv_optimal;
