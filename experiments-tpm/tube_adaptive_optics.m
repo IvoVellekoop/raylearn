@@ -11,10 +11,11 @@ do_save_plot_scan = 0;
 force_reset = 0;
 
 % Other settings
-p.samplename = 'tube-500nL-bottom';
+p.samplename = 'tube-500nL-side';
 p.sampleid = 'DCOX-2024-8-A';
 
-p.slm_rotation_deg = 3.4;                   % Can be found with a calibration
+outputSingleScan(daqs(1), 0.6)              % Gain
+p.slm_rotation_deg = 3.2;                   % Can be found with a calibration
 p.scale_slm_x = 0.9827;                     % Scale SLM 'canvas' by this amount in x
 p.scale_slm_y = 0.9557;                     % Scale SLM 'canvas' by this amount in y
 p.truncate = false;                         % Truncate Zernike modes at circle edge
@@ -34,15 +35,15 @@ delaytime_gif = 0.05;
 
 % Define test range mode 1
 p.mode1j = 4;                               % Zernike mode j
-p.min_amp_mode1 = 18;                       % Min radians (0 to edge max)
-p.max_amp_mode1 = 30;                       % Max radians (0 to edge max)
-p.num_patterns_mode1 = 13;                  % Number of amplitudes to test
+p.min_amp_mode1 = 26;                       % Min radians (0 to edge max)
+p.max_amp_mode1 = 40;                       % Max radians (0 to edge max)
+p.num_patterns_mode1 = 14;                  % Number of amplitudes to test
 p.phase_range_mode1 = linspace(p.min_amp_mode1, p.max_amp_mode1, p.num_patterns_mode1);
 
 % Define test range mode 2
-p.mode2j = 12;                              % Zernike mode j
-p.min_amp_mode2 = -7;                       % Min radians (0 to edge max)
-p.max_amp_mode2 = 7;                        % Max radians (0 to edge max)
+p.mode2j = 11;                              % Zernike mode j
+p.min_amp_mode2 = -6;                       % Min radians (0 to edge max)
+p.max_amp_mode2 = 6;                        % Max radians (0 to edge max)
 p.num_patterns_mode2 = 10;                  % Number of amplitudes to test
 p.phase_range_mode2 = linspace(p.min_amp_mode2, p.max_amp_mode2, p.num_patterns_mode2);
 
@@ -81,6 +82,7 @@ else
 
     abort_if_required(hSI, hSICtl)
     hSI.hStackManager.numSlices = 1;        % One slice per grab
+    p.zoom = hSICtl.hModel.hRoiManager.scanZoomFactor;    % Get zoom
 end
 
 %% === Prepare save === %%
@@ -107,7 +109,7 @@ coord_x = linspace(-1, 1, slm_size(1));
 coord_y = coord_x';
 
 % Generate rotated zernike modes
-zern_modes = zernike_order(N_modes);
+zern_modes = zernike_order(max(p.mode1j, p.mode2j));
 p.mode1n = zern_modes(p.mode1j).n;
 p.mode1m = zern_modes(p.mode1j).m;
 p.mode2n = zern_modes(p.mode2j).n;

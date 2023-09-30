@@ -5,10 +5,10 @@
 abort_if_required(hSI, hSICtl)
 
 % Scan settings
-p.slm_rotation_deg = 3.4;                   % Can be found with a calibration
+p.slm_rotation_deg = 3.2;                   % Can be found with a calibration
 p.scale_slm_x = 0.9827;                     % Scale SLM 'canvas' by this amount in x
 p.scale_slm_y = 0.9557;                     % Scale SLM 'canvas' by this amount in y
-hSI.hStackManager.numSlices = 172;
+hSI.hStackManager.numSlices = 173;
 hSI.hStackManager.stackZStepSize = 1;
 hSI.hChannels.loggingEnable = true;                 % True = Enable save
 
@@ -39,30 +39,30 @@ grabSIFrame(hSI, hSICtl);
 
 %% ===== AO 1 ===== %%
 %% Adaptive optics top pattern
-set_AO_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\adaptive-optics\05-Sep-2023-tube500nL-top\tube_ao_739134.619924_tube500nL-top\tube_ao_739134.619924_tube500nL-top_optimal_pattern.mat")
+set_AO_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\adaptive-optics\30-Sep-2023-tube-500nL-top\tube_ao_739159.554324_tube-500nL-top\tube_ao_739159.554324_tube-500nL-top_optimal_pattern.mat")
 hSI.hScan2D.logFileStem = strcat(basefilename, 'top-AO-1');
 fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
 grabSIFrame(hSI, hSICtl);
 
 %% Adaptive optics bottom pattern
-set_AO_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\adaptive-optics\05-Sep-2023-tube500nL-bottom\tube_ao_739134.524176_tube500nL-bottom\tube_ao_739134.524176_tube500nL-bottom_optimal_pattern.mat")
+set_AO_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\adaptive-optics\30-Sep-2023-tube-500nL-bottom\tube_ao_739159.638038_tube-500nL-bottom\tube_ao_739159.638038_tube-500nL-bottom_optimal_pattern.mat")
 hSI.hScan2D.logFileStem = strcat(basefilename, 'bottom-AO-1');
 fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
 grabSIFrame(hSI, hSICtl);
 
 %% Adaptive optics center pattern
-set_AO_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\adaptive-optics\06-Sep-2023-tube500nL-center\tube_ao_739135.438888_tube500nL-center\tube_ao_739135.438888_tube500nL-center_optimal_pattern.mat")
+set_AO_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\adaptive-optics\30-Sep-2023-tube-500nL-center\tube_ao_739159.681107_tube-500nL-center\tube_ao_739159.681107_tube-500nL-center_optimal_pattern.mat")
 hSI.hScan2D.logFileStem = strcat(basefilename, 'center-AO-1');
 fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
 grabSIFrame(hSI, hSICtl);
 
 %% Adaptive optics side pattern
-set_AO_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\adaptive-optics\06-Sep-2023-tube500nL-side\tube_ao_739135.560600_tube500nL-side\tube_ao_739135.560600_tube500nL-side_optimal_pattern.mat")
+set_AO_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\adaptive-optics\30-Sep-2023-tube-500nL-side\tube_ao_739159.729111_tube-500nL-side\tube_ao_739159.729111_tube-500nL-side_optimal_pattern.mat")
 hSI.hScan2D.logFileStem = strcat(basefilename, 'side-AO-1');
 fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
 grabSIFrame(hSI, hSICtl);
 
-%% No correction
+%% No correction 2
 slm.setRect(1, [0 0 1 1]); slm.setData(1, 0); slm.update
 hSI.hScan2D.logFileStem = strcat(basefilename, 'no-correction-2');
 fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
@@ -70,104 +70,92 @@ grabSIFrame(hSI, hSICtl);
 
 %% ===== RT 1 ===== %%
 %% Ray traced top pattern
-set_RT_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\pattern-0.5uL-tube-top-λ808.0nm.mat")
+set_RT_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\slm-patterns\pattern-0.5uL-tube-top-λ808.0nm.mat")
 hSI.hScan2D.logFileStem = strcat(basefilename, 'top-RT-1');
 fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
 grabSIFrame(hSI, hSICtl);
 
 %% Ray traced bottom pattern
-set_RT_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\pattern-0.5uL-tube-bottom-λ808.0nm.mat")
+set_RT_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\slm-patterns\pattern-0.5uL-tube-bottom-λ808.0nm.mat")
 hSI.hScan2D.logFileStem = strcat(basefilename, 'bottom-RT-1');
 fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
 grabSIFrame(hSI, hSICtl);
 
 %% Ray traced center pattern
-set_RT_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\pattern-0.5uL-tube-center-λ808.0nm.mat")
+set_RT_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\slm-patterns\pattern-0.5uL-tube-center-λ808.0nm.mat")
 hSI.hScan2D.logFileStem = strcat(basefilename, 'center-RT-1');
 fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
 grabSIFrame(hSI, hSICtl);
 
 %% Ray traced side pattern
-set_RT_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\pattern-0.5uL-tube-side-λ808.0nm.mat")
+set_RT_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\slm-patterns\pattern-0.5uL-tube-side-λ808.0nm.mat")
 hSI.hScan2D.logFileStem = strcat(basefilename, 'side-RT-1');
 fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
 grabSIFrame(hSI, hSICtl);
 
-%% Ray traced side2 pattern
-set_RT_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\pattern-0.5uL-tube-side2-λ808.0nm.mat")
-hSI.hScan2D.logFileStem = strcat(basefilename, 'side2-RT-1');
-fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
-grabSIFrame(hSI, hSICtl);
-
-%% No correction
+%% No correction 3
 slm.setRect(1, [0 0 1 1]); slm.setData(1, 0); slm.update
 hSI.hScan2D.logFileStem = strcat(basefilename, 'no-correction-3');
 fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
 grabSIFrame(hSI, hSICtl);
 
 %% ===== AO 2 ===== %%
-%% Adaptive optics top pattern
-set_AO_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\adaptive-optics\05-Sep-2023-tube500nL-top\tube_ao_739134.619924_tube500nL-top\tube_ao_739134.619924_tube500nL-top_optimal_pattern.mat")
+%% Adaptive optics top pattern 2
+set_AO_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\adaptive-optics\30-Sep-2023-tube-500nL-top\tube_ao_739159.554324_tube-500nL-top\tube_ao_739159.554324_tube-500nL-top_optimal_pattern.mat")
 hSI.hScan2D.logFileStem = strcat(basefilename, 'top-AO-2');
 fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
 grabSIFrame(hSI, hSICtl);
 
-%% Adaptive optics bottom pattern
-set_AO_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\adaptive-optics\05-Sep-2023-tube500nL-bottom\tube_ao_739134.524176_tube500nL-bottom\tube_ao_739134.524176_tube500nL-bottom_optimal_pattern.mat")
+%% Adaptive optics bottom pattern 2
+set_AO_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\adaptive-optics\30-Sep-2023-tube-500nL-bottom\tube_ao_739159.638038_tube-500nL-bottom\tube_ao_739159.638038_tube-500nL-bottom_optimal_pattern.mat")
 hSI.hScan2D.logFileStem = strcat(basefilename, 'bottom-AO-2');
 fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
 grabSIFrame(hSI, hSICtl);
 
-%% Adaptive optics center pattern
-set_AO_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\adaptive-optics\06-Sep-2023-tube500nL-center\tube_ao_739135.438888_tube500nL-center\tube_ao_739135.438888_tube500nL-center_optimal_pattern.mat")
+%% Adaptive optics center pattern 2
+set_AO_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\adaptive-optics\30-Sep-2023-tube-500nL-center\tube_ao_739159.681107_tube-500nL-center\tube_ao_739159.681107_tube-500nL-center_optimal_pattern.mat")
 hSI.hScan2D.logFileStem = strcat(basefilename, 'center-AO-2');
 fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
 grabSIFrame(hSI, hSICtl);
 
-%% Adaptive optics side pattern
-set_AO_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\adaptive-optics\06-Sep-2023-tube500nL-side\tube_ao_739135.560600_tube500nL-side\tube_ao_739135.560600_tube500nL-side_optimal_pattern.mat")
+%% Adaptive optics side pattern 2
+set_AO_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\adaptive-optics\30-Sep-2023-tube-500nL-side\tube_ao_739159.729111_tube-500nL-side\tube_ao_739159.729111_tube-500nL-side_optimal_pattern.mat")
 hSI.hScan2D.logFileStem = strcat(basefilename, 'side-AO-2');
 fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
 grabSIFrame(hSI, hSICtl);
 
-%% No correction
+%% No correction 4
 slm.setRect(1, [0 0 1 1]); slm.setData(1, 0); slm.update
 hSI.hScan2D.logFileStem = strcat(basefilename, 'no-correction-4');
 fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
 grabSIFrame(hSI, hSICtl);
 
 %% ===== RT 2 ===== %%
-%% Ray traced top pattern
-set_RT_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\pattern-0.5uL-tube-top-λ808.0nm.mat")
+%% Ray traced top pattern 2
+set_RT_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\slm-patterns\pattern-0.5uL-tube-top-λ808.0nm.mat")
 hSI.hScan2D.logFileStem = strcat(basefilename, 'top-RT-2');
 fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
 grabSIFrame(hSI, hSICtl);
 
-%% Ray traced bottom pattern
-set_RT_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\pattern-0.5uL-tube-bottom-λ808.0nm.mat")
+%% Ray traced bottom pattern 2
+set_RT_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\slm-patterns\pattern-0.5uL-tube-bottom-λ808.0nm.mat")
 hSI.hScan2D.logFileStem = strcat(basefilename, 'bottom-RT-2');
 fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
 grabSIFrame(hSI, hSICtl);
 
-%% Ray traced center pattern
-set_RT_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\pattern-0.5uL-tube-center-λ808.0nm.mat")
+%% Ray traced center pattern 2
+set_RT_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\slm-patterns\pattern-0.5uL-tube-center-λ808.0nm.mat")
 hSI.hScan2D.logFileStem = strcat(basefilename, 'center-RT-2');
 fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
 grabSIFrame(hSI, hSICtl);
 
-%% Ray traced side pattern
-set_RT_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\pattern-0.5uL-tube-side-λ808.0nm.mat")
+%% Ray traced side pattern 2
+set_RT_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\TPM\slm-patterns\pattern-0.5uL-tube-side-λ808.0nm.mat")
 hSI.hScan2D.logFileStem = strcat(basefilename, 'side-RT-2');
 fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
 grabSIFrame(hSI, hSICtl);
 
-%% Ray traced side2 pattern
-set_RT_pattern(slm, p, "\\ad.utwente.nl\TNW\BMPI\Data\Daniel Cox\ExperimentalData\raylearn-data\pattern-0.5uL-tube-side2-λ808.0nm.mat")
-hSI.hScan2D.logFileStem = strcat(basefilename, 'side2-RT-2');
-fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
-grabSIFrame(hSI, hSICtl);
-
-%% No correction
+%% No correction 5
 slm.setRect(1, [0 0 1 1]); slm.setData(1, 0); slm.update
 hSI.hScan2D.logFileStem = strcat(basefilename, 'no-correction-5');
 fprintf('Start measurement %s\n', hSI.hScan2D.logFileStem)
