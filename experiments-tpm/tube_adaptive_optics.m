@@ -33,12 +33,14 @@ filename_gif = "tube_adaptive_optics.gif";  % Specify the output file name of gi
 delaytime_gif = 0.05;
 
 % Define test range mode 1
+p.mode1j = 4;                               % Zernike mode j
 p.min_amp_mode1 = 18;                       % Min radians (0 to edge max)
 p.max_amp_mode1 = 30;                       % Max radians (0 to edge max)
 p.num_patterns_mode1 = 13;                  % Number of amplitudes to test
 p.phase_range_mode1 = linspace(p.min_amp_mode1, p.max_amp_mode1, p.num_patterns_mode1);
 
 % Define test range mode 2
+p.mode2j = 12;                              % Zernike mode j
 p.min_amp_mode2 = -7;                       % Min radians (0 to edge max)
 p.max_amp_mode2 = 7;                        % Max radians (0 to edge max)
 p.num_patterns_mode2 = 10;                  % Number of amplitudes to test
@@ -81,6 +83,7 @@ else
     hSI.hStackManager.numSlices = 1;        % One slice per grab
 end
 
+%% === Prepare save === %%
 if do_save
     % Script path, revision and date&time
     p.script_name = mfilename('fullpath');
@@ -97,14 +100,20 @@ if do_save
     fprintf('\nSave Directory: %s\n', p.savedir)
 end
 
+%% === Initialization === %%
 % Initialize coords
 slm_size = slm.getSize;
 coord_x = linspace(-1, 1, slm_size(1));
 coord_y = coord_x';
 
-% Generate aligned astigmatism and z
-p.Zcart_mode1_unscaled = imrotate(zernfun_cart(coord_x, coord_y, 2, 2, p.truncate), p.slm_rotation_deg, "bilinear", "crop");
-p.Zcart_mode2_unscaled = imrotate(zernfun_cart(coord_x, coord_y, 4, 4, p.truncate), p.slm_rotation_deg, "bilinear", "crop");
+% Generate rotated zernike modes
+zern_modes = zernike_order(N_modes);
+p.mode1n = zern_modes(p.mode1j).n;
+p.mode1m = zern_modes(p.mode1j).m;
+p.mode2n = zern_modes(p.mode2j).n;
+p.mode2m = zern_modes(p.mode2j).m;
+p.Zcart_mode1_unscaled = imrotate(zernfun_cart(coord_x, coord_y, p.mode1n, p.mode1m, p.truncate), p.slm_rotation_deg, "bilinear", "crop");
+p.Zcart_mode2_unscaled = imrotate(zernfun_cart(coord_x, coord_y, p.mode2n, p.mode2m, p.truncate), p.slm_rotation_deg, "bilinear", "crop");
 
 % Prepare scaled SLM pattern (slm pattern must be square!)
 x_slmpattern = linspace(-1, 1, slm_size(1));
@@ -117,9 +126,10 @@ p.Zcart_mode1 = interp2(x_slmpattern, y_slmpattern, p.Zcart_mode1_unscaled, xq, 
 p.Zcart_mode2 = interp2(x_slmpattern, y_slmpattern, p.Zcart_mode2_unscaled, xq, yq, 'bilinear', extrapval);
 
 
-
 % Initialize feedback
 all_feedback = zeros(p.num_patterns_mode1, p.num_patterns_mode2);
+all_feedback_ao = zeros(p.num_patterns_mode1, p.num_patterns_mode2);
+all_feedback_flat = zeros(p.num_patterns_mode1, p.num_patterns_mode2);
 
 if do_plot_scan
     fig_scan = figure;
@@ -206,8 +216,12 @@ for i_mode2 = 1:p.num_patterns_mode2                  % Scan mode 2
             slm.update
         end
 
-        feedback = p.feedback_func(frames_ao - frames_dark_mean) ./ p.feedback_func(frames_flatslm - frames_dark_mean);
+        feedback_ao = p.feedback_func(frames_ao - frames_dark_mean);
+        feedback_flat = p.feedback_func(frames_flatslm - frames_dark_mean);
+        feedback = feedback_ao ./ feedback_flat;
         all_feedback(i_mode1, i_mode2) = feedback;
+        all_feedback_ao(i_mode1, i_mode2) = feedback_ao;
+        all_feedback_flat(i_mode1, i_mode2) = feedback_flat;
 
         if do_plot_scan
             figure(fig_scan)
@@ -366,6 +380,7 @@ if do_save
     savepath = fullfile(p.savedir, sprintf('%s_optimal_pattern.mat', p.savename));
     disp('Saving...')
     save(savepath, '-v7.3', 'p', 'all_feedback', 'all_feedback_upscaled', ...
+        'all_feedback_ao', 'all_feedback_flat', ...
         'phase_amp_mode1_optimal', 'phase_amp_mode2_optimal', ...
         'slm_pattern_2pi_optimal', 'slm_pattern_gv_optimal')
     fprintf('\nSaved optimized pattern to:\n%s\n', savepath)
