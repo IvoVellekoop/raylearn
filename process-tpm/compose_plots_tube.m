@@ -13,19 +13,18 @@ if forcereset || ~exist('dirs', 'var')
 end
 
 saveprops.do_save = 1;
-saveprops.dir = fullfile(dirs.repo, 'plots/3D-scans/21-Aug-2023_tube-500nL-agar');      % Folder for reading and writing plots
+saveprops.dir = fullfile(dirs.repo, 'plots/3D-scans/01-Oct-2023_tube-500nL');      % Folder for reading and writing plots
 saveprops.save_prefix = 'tube-0.5uL-tube-agar';
 mkdir(saveprops.dir);
 
 
 %% Compositions
-compose_plots(saveprops, "_hori-slice", dirs)
-compose_plots(saveprops, "_max-proj", dirs)
+compose_plots(saveprops, "_99.5prctile-proj", dirs)
 
 % Settings per subplot
 function compose_plots(saveprops, suffix, dirs)
     fig = figure;
-    set(fig, 'Position', [10, 500, 1200, 800]);
+    set(fig, 'Position', [10, 500, 1600, 700]);
     colormap inferno
 
     % Global parameters
@@ -33,7 +32,7 @@ function compose_plots(saveprops, suffix, dirs)
     h = w;              % Height subplot (will be forced to square) relative to figure
     
     % SLM inset parameters
-    patterndata = load(fullfile(dirs.expdata, '/raylearn-data/pattern-0.5uL-tube-bottom-λ808.0nm.mat'));
+    patterndata = load(fullfile(dirs.expdata, '/raylearn-data/TPM/slm-patterns/pattern-0.5uL-tube-bottom-λ808.0nm.mat'));
     inset.NA_mask = patterndata.NA_mask_SLM;
     inset.position = [0.008, 0.008, 0.22, 0.22];  % Position (x,y,w,h) relative to subplot height
     inset.cmap = 'twilight';
@@ -44,50 +43,87 @@ function compose_plots(saveprops, suffix, dirs)
 
 
     % No correction
-    s1.title = "no correction";
-    s1.filename = sprintf("tube-500nL-zoom8-zstep1.400um-no-correction-1_00001%s.fig", suffix);
-    s1.pattern_rad = ones(size(inset.NA_mask));
-    s1.savedir = saveprops.dir;
-    s1.position = [1/6-w/2+0.01, 1/2-h/2, w, h];
-    ax1 = place_subplot(fig, s1);
+    s11.title = "no correction";
+    s11.filename = sprintf("tube-500nL-zoom8-zstep0.500um-no-correction-1_00001%s.fig", suffix);
+    s11.pattern_rad = ones(size(inset.NA_mask));
+    s11.savedir = saveprops.dir;
+    s11.position = [0.1-w/2, 0.5-h/2, w, h];
+    ax11 = place_subplot(fig, s11);
     cb = colorbar;
-    place_slm_inset(fig, ax1, s1, inset, [-0.06 0])
-
-    % AO top
-    s2.title = "AO top correction";
-    s2.filename = sprintf("tube-500nL-zoom8-zstep1.400um-top-AO-1_00001%s.fig", suffix);
-    s2.pattern_rad = load_AO_pattern(fullfile(dirs.expdata, ao_dir, '21-Aug-2023-tube500nL-top/tube_ao_739119.626092_tube500nL-top/tube_ao_739119.626092_tube500nL-top_optimal_pattern.mat'));
-    s2.savedir = saveprops.dir;
-    s2.position = [1/2-w/2, 3/4-h/2, w, h];
-    ax2 = place_subplot(fig, s2);
-    place_slm_inset(fig, ax2, s2, inset)
+    ylabel(cb, 'log_{10}(signal)')
+    place_slm_inset(fig, ax11, s11, inset, [0 0])
 
     % RT top
-    s3.title = "RT top correction";
-    s3.filename = sprintf("tube-500nL-zoom8-zstep1.400um-top-RT-1_00001%s.fig", suffix);
-    s3.pattern_rad = load_RT_pattern(fullfile(dirs.expdata, 'raylearn-data/pattern-0.5uL-tube-top-λ808.0nm.mat'));
-    s3.savedir = saveprops.dir;
-    s3.position = [5/6-w/2, 3/4-h/2, w, h];
-    ax3 = place_subplot(fig, s3);
-    place_slm_inset(fig, ax3, s3, inset)
+    s12.title = "RT top correction";
+    s12.filename = sprintf("tube-500nL-zoom8-zstep0.500um-top-RT-1_00001%s.fig", suffix);
+    s12.pattern_rad = load_RT_pattern(fullfile(dirs.expdata, 'raylearn-data/TPM/slm-patterns/pattern-0.5uL-tube-top-λ808.0nm.mat'));
+    s12.savedir = saveprops.dir;
+    s12.position = [0.3-w/2, 0.75-h/2, w, h];
+    ax12 = place_subplot(fig, s12);
+    place_slm_inset(fig, ax12, s12, inset)
 
-    % AO bottom
-    s4.title = "AO bottom correction";
-    s4.filename = sprintf("tube-500nL-zoom8-zstep1.400um-bottom-AO-1_00001%s.fig", suffix);
-    s4.pattern_rad = load_AO_pattern(fullfile(dirs.expdata, ao_dir, '21-Aug-2023-tube500nL-bottom/tube_ao_739119.716406_tube500nL-bottom/tube_ao_739119.716406_tube500nL-bottom_optimal_pattern.mat'));
-    s4.savedir = saveprops.dir;
-    s4.position = [1/2-w/2, 1/4-h/2, w, h];
-    ax4 = place_subplot(fig, s4);
-    place_slm_inset(fig, ax4, s4, inset)
+    % RT center
+    s13.title = "RT center correction";
+    s13.filename = sprintf("tube-500nL-zoom8-zstep0.500um-center-RT-1_00001%s.fig", suffix);
+    s13.pattern_rad = load_RT_pattern(fullfile(dirs.expdata, 'raylearn-data/TPM/slm-patterns/pattern-0.5uL-tube-center-λ808.0nm.mat'));
+    s13.savedir = saveprops.dir;
+    s13.position = [0.5-w/2, 0.75-h/2, w, h];
+    ax13 = place_subplot(fig, s13);
+    place_slm_inset(fig, ax13, s13, inset)
 
     % RT bottom
-    s5.title = "RT bottom correction";
-    s5.filename = sprintf("tube-500nL-zoom8-zstep1.400um-bottom-RT-1_00001%s.fig", suffix);
-    s5.pattern_rad = load_RT_pattern(fullfile(dirs.expdata, 'raylearn-data/pattern-0.5uL-tube-bottom-λ808.0nm.mat'));
-    s5.savedir = saveprops.dir;
-    s5.position = [5/6-w/2, 1/4-h/2, w, h];
-    ax5 = place_subplot(fig, s5);
-    place_slm_inset(fig, ax5, s5, inset)
+    s14.title = "RT bottom correction";
+    s14.filename = sprintf("tube-500nL-zoom8-zstep0.500um-bottom-RT-1_00001%s.fig", suffix);
+    s14.pattern_rad = load_RT_pattern(fullfile(dirs.expdata, 'raylearn-data/TPM/slm-patterns/pattern-0.5uL-tube-bottom-λ808.0nm.mat'));
+    s14.savedir = saveprops.dir;
+    s14.position = [0.7-w/2, 0.75-h/2, w, h];
+    ax14 = place_subplot(fig, s14);
+    place_slm_inset(fig, ax14, s14, inset)
+
+    % RT side
+    s15.title = "RT side correction";
+    s15.filename = sprintf("tube-500nL-zoom8-zstep0.500um-side-RT-1_00001%s.fig", suffix);
+    s15.pattern_rad = load_RT_pattern(fullfile(dirs.expdata, 'raylearn-data/TPM/slm-patterns/pattern-0.5uL-tube-side-λ808.0nm.mat'));
+    s15.savedir = saveprops.dir;
+    s15.position = [0.9-w/2, 0.75-h/2, w, h];
+    ax15 = place_subplot(fig, s15);
+    place_slm_inset(fig, ax15, s15, inset)
+
+    % AO top
+    s22.title = "AO top correction";
+    s22.filename = sprintf("tube-500nL-zoom8-zstep0.500um-top-AO-1_00001%s.fig", suffix);
+    s22.pattern_rad = load_AO_pattern(fullfile(dirs.expdata, ao_dir, '30-Sep-2023-tube-500nL-top/tube_ao_739159.554324_tube-500nL-top/tube_ao_739159.554324_tube-500nL-top_optimal_pattern.mat'));
+    s22.savedir = saveprops.dir;
+    s22.position = [0.3-w/2, 0.25-h/2, w, h];
+    ax22 = place_subplot(fig, s22);
+    place_slm_inset(fig, ax22, s22, inset)
+
+    % AO center
+    s23.title = "AO center correction";
+    s23.filename = sprintf("tube-500nL-zoom8-zstep0.500um-center-AO-1_00001%s.fig", suffix);
+    s23.pattern_rad = load_AO_pattern(fullfile(dirs.expdata, ao_dir, '30-Sep-2023-tube-500nL-center/tube_ao_739159.681107_tube-500nL-center/tube_ao_739159.681107_tube-500nL-center_optimal_pattern.mat'));
+    s23.savedir = saveprops.dir;
+    s23.position = [0.5-w/2, 0.25-h/2, w, h];
+    ax23 = place_subplot(fig, s23);
+    place_slm_inset(fig, ax23, s23, inset)
+
+    % AO bottom
+    s24.title = "AO bottom correction";
+    s24.filename = sprintf("tube-500nL-zoom8-zstep0.500um-bottom-AO-1_00001%s.fig", suffix);
+    s24.pattern_rad = load_AO_pattern(fullfile(dirs.expdata, ao_dir, '30-Sep-2023-tube-500nL-bottom/tube_ao_739159.638038_tube-500nL-bottom/tube_ao_739159.638038_tube-500nL-bottom_optimal_pattern.mat'));
+    s24.savedir = saveprops.dir;
+    s24.position = [0.7-w/2, 0.25-h/2, w, h];
+    ax24 = place_subplot(fig, s24);
+    place_slm_inset(fig, ax24, s24, inset)
+
+    % AO side
+    s25.title = "AO side correction";
+    s25.filename = sprintf("tube-500nL-zoom8-zstep0.500um-side-AO-1_00001%s.fig", suffix);
+    s25.pattern_rad = load_AO_pattern(fullfile(dirs.expdata, ao_dir, '30-Sep-2023-tube-500nL-side/tube_ao_739159.729111_tube-500nL-side/tube_ao_739159.729111_tube-500nL-side_optimal_pattern.mat'));
+    s25.savedir = saveprops.dir;
+    s25.position = [0.9-w/2, 0.25-h/2, w, h];
+    ax25 = place_subplot(fig, s25);
+    place_slm_inset(fig, ax25, s25, inset)
 
     movegui('center')
 
@@ -147,11 +183,21 @@ end
 
 function pattern_rad = load_RT_pattern(matpath)
     patterndata = load(matpath);
-    pattern_rad = flip(patterndata.pathlength_SLM);
+    pattern_rad = -patterndata.phase_SLM';
 end
 
 
 function pattern_rad = load_AO_pattern(matpath)
     patterndata = load(matpath);
-    pattern_rad = patterndata.slm_pattern_2pi_optimal;
+    p = patterndata.p;
+
+    % Generate uncalibrated zernike modes
+    slm_pattern_size = size(patterndata.slm_pattern_2pi_optimal);
+    coord_x = linspace(-1, 1, slm_pattern_size(1));
+    coord_y = coord_x';
+    Zcart_mode1 = zernfun_cart(coord_x, coord_y, p.mode1n, p.mode1m, p.truncate);
+    Zcart_mode2 = zernfun_cart(coord_x, coord_y, p.mode2n, p.mode2m, p.truncate);
+
+    % Compose AO pattern
+    pattern_rad = patterndata.phase_amp_mode1_optimal .* Zcart_mode1 + patterndata.phase_amp_mode2_optimal .* Zcart_mode2;
 end
