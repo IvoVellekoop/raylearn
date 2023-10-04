@@ -30,6 +30,14 @@ function compose_plots(saveprops, suffix, dirs)
     % Global parameters
     w = 0.42;           % Width  subplot (will be forced to square) relative to figure
     h = w;              % Height subplot (will be forced to square) relative to figure
+
+    global_props = struct();
+    global_props.title.FontSize = 13;
+
+    % Focus marker properties
+    global_props.focus_marker.MarkerSize = 14;
+    global_props.focus_marker.LineWidth = 1.75;
+    global_props.focus_marker.Color = [0 1 1];
     
     % SLM inset parameters
     patterndata = load(fullfile(dirs.expdata, '/raylearn-data/TPM/slm-patterns/pattern-0.5uL-tube-bottom-λ808.0nm.mat'));
@@ -43,86 +51,108 @@ function compose_plots(saveprops, suffix, dirs)
 
 
     % No correction
-    s11.title = "no correction";
+    s11.titlestr = "a. no correction";
     s11.filename = sprintf("tube-500nL-zoom8-zstep0.500um-no-correction-1_00001%s.fig", suffix);
     s11.pattern_rad = ones(size(inset.NA_mask));
     s11.savedir = saveprops.dir;
     s11.position = [0.1-w/2, 0.5-h/2, w, h];
-    ax11 = place_subplot(fig, s11);
-    cb = colorbar;
-    ylabel(cb, 'log_{10}(signal)')
+    ax11 = place_subplot(fig, s11, global_props);
+    cb = colorbar(ax11);
+    ylabel(cb, 'log_{10}(PMT signal)')
     place_slm_inset(fig, ax11, s11, inset, [0 0])
 
+    % Create colorbar for phase
+    drawnow
+    pause(1)
+    boxpos = plotboxpos(ax11);
+    ax_cb_phase = axes();
+    imagesc(ax_cb_phase, linspace(0, 2*pi, 256));
+
+    ARfig = fig.Position(4) ./ fig.Position(3);
+    x_cb_phase = boxpos(1) + inset.position(1)*boxpos(4);
+    w_cb_phase = boxpos(4) .* inset.position(3) .* ARfig;
+    ax_cb_phase.Position = [x_cb_phase, 0.26, w_cb_phase, 0.05*h];
+
+    colormap(ax_cb_phase, inset.cmap)                          % Set colormap
+    set(ax_cb_phase, 'XTick', [1 256])
+    set(ax_cb_phase, 'XTickLabel', ["0" "2\pi"])
+    set(ax_cb_phase, 'YTick', [])
+    set(ax_cb_phase, 'FontSize', 12)
+    drawnow
+
+
+    % === RT === %
     % RT top
-    s12.title = "RT top correction";
+    s12.titlestr = "b. RT top correction (ours)";
     s12.filename = sprintf("tube-500nL-zoom8-zstep0.500um-top-RT-1_00001%s.fig", suffix);
     s12.pattern_rad = load_RT_pattern(fullfile(dirs.expdata, 'raylearn-data/TPM/slm-patterns/pattern-0.5uL-tube-top-λ808.0nm.mat'));
     s12.savedir = saveprops.dir;
     s12.position = [0.3-w/2, 0.75-h/2, w, h];
-    ax12 = place_subplot(fig, s12);
+    ax12 = place_subplot(fig, s12, global_props);
     place_slm_inset(fig, ax12, s12, inset)
 
     % RT center
-    s13.title = "RT center correction";
+    s13.titlestr = "c. RT center correction (ours)";
     s13.filename = sprintf("tube-500nL-zoom8-zstep0.500um-center-RT-1_00001%s.fig", suffix);
     s13.pattern_rad = load_RT_pattern(fullfile(dirs.expdata, 'raylearn-data/TPM/slm-patterns/pattern-0.5uL-tube-center-λ808.0nm.mat'));
     s13.savedir = saveprops.dir;
     s13.position = [0.5-w/2, 0.75-h/2, w, h];
-    ax13 = place_subplot(fig, s13);
+    ax13 = place_subplot(fig, s13, global_props);
     place_slm_inset(fig, ax13, s13, inset)
 
     % RT bottom
-    s14.title = "RT bottom correction";
+    s14.titlestr = "d. RT bottom correction (ours)";
     s14.filename = sprintf("tube-500nL-zoom8-zstep0.500um-bottom-RT-1_00001%s.fig", suffix);
     s14.pattern_rad = load_RT_pattern(fullfile(dirs.expdata, 'raylearn-data/TPM/slm-patterns/pattern-0.5uL-tube-bottom-λ808.0nm.mat'));
     s14.savedir = saveprops.dir;
     s14.position = [0.7-w/2, 0.75-h/2, w, h];
-    ax14 = place_subplot(fig, s14);
+    ax14 = place_subplot(fig, s14, global_props);
     place_slm_inset(fig, ax14, s14, inset)
 
     % RT side
-    s15.title = "RT side correction";
+    s15.titlestr = "e. RT side correction (ours)";
     s15.filename = sprintf("tube-500nL-zoom8-zstep0.500um-side-RT-1_00001%s.fig", suffix);
     s15.pattern_rad = load_RT_pattern(fullfile(dirs.expdata, 'raylearn-data/TPM/slm-patterns/pattern-0.5uL-tube-side-λ808.0nm.mat'));
     s15.savedir = saveprops.dir;
     s15.position = [0.9-w/2, 0.75-h/2, w, h];
-    ax15 = place_subplot(fig, s15);
+    ax15 = place_subplot(fig, s15, global_props);
     place_slm_inset(fig, ax15, s15, inset)
 
+    % === AO === %
     % AO top
-    s22.title = "AO top correction";
+    s22.titlestr = "f. Zernike AO top correction";
     s22.filename = sprintf("tube-500nL-zoom8-zstep0.500um-top-AO-1_00001%s.fig", suffix);
     s22.pattern_rad = load_AO_pattern(fullfile(dirs.expdata, ao_dir, '30-Sep-2023-tube-500nL-top/tube_ao_739159.554324_tube-500nL-top/tube_ao_739159.554324_tube-500nL-top_optimal_pattern.mat'));
     s22.savedir = saveprops.dir;
     s22.position = [0.3-w/2, 0.25-h/2, w, h];
-    ax22 = place_subplot(fig, s22);
+    ax22 = place_subplot(fig, s22, global_props);
     place_slm_inset(fig, ax22, s22, inset)
 
     % AO center
-    s23.title = "AO center correction";
+    s23.titlestr = "g. Zernike AO center correction";
     s23.filename = sprintf("tube-500nL-zoom8-zstep0.500um-center-AO-1_00001%s.fig", suffix);
     s23.pattern_rad = load_AO_pattern(fullfile(dirs.expdata, ao_dir, '30-Sep-2023-tube-500nL-center/tube_ao_739159.681107_tube-500nL-center/tube_ao_739159.681107_tube-500nL-center_optimal_pattern.mat'));
     s23.savedir = saveprops.dir;
     s23.position = [0.5-w/2, 0.25-h/2, w, h];
-    ax23 = place_subplot(fig, s23);
+    ax23 = place_subplot(fig, s23, global_props);
     place_slm_inset(fig, ax23, s23, inset)
 
     % AO bottom
-    s24.title = "AO bottom correction";
+    s24.titlestr = "h. Zernike AO bottom correction";
     s24.filename = sprintf("tube-500nL-zoom8-zstep0.500um-bottom-AO-1_00001%s.fig", suffix);
     s24.pattern_rad = load_AO_pattern(fullfile(dirs.expdata, ao_dir, '30-Sep-2023-tube-500nL-bottom/tube_ao_739159.638038_tube-500nL-bottom/tube_ao_739159.638038_tube-500nL-bottom_optimal_pattern.mat'));
     s24.savedir = saveprops.dir;
     s24.position = [0.7-w/2, 0.25-h/2, w, h];
-    ax24 = place_subplot(fig, s24);
+    ax24 = place_subplot(fig, s24, global_props);
     place_slm_inset(fig, ax24, s24, inset)
 
     % AO side
-    s25.title = "AO side correction";
+    s25.titlestr = "i. Zernike AO side correction";
     s25.filename = sprintf("tube-500nL-zoom8-zstep0.500um-side-AO-1_00001%s.fig", suffix);
     s25.pattern_rad = load_AO_pattern(fullfile(dirs.expdata, ao_dir, '30-Sep-2023-tube-500nL-side/tube_ao_739159.729111_tube-500nL-side/tube_ao_739159.729111_tube-500nL-side_optimal_pattern.mat'));
     s25.savedir = saveprops.dir;
     s25.position = [0.9-w/2, 0.25-h/2, w, h];
-    ax25 = place_subplot(fig, s25);
+    ax25 = place_subplot(fig, s25, global_props);
     place_slm_inset(fig, ax25, s25, inset)
 
     movegui('center')
@@ -137,7 +167,7 @@ end
 
 
 % Plot subplot
-function ax_infig = place_subplot(fig, s)
+function ax_infig = place_subplot(fig, s, global_props)
     filepath = fullfile(s.savedir, s.filename);
     subfig = openfig(filepath);
     ax_separate = subfig.findobj('Type', 'Axes');
@@ -145,8 +175,25 @@ function ax_infig = place_subplot(fig, s)
     close(subfig)                               % Close opened figure
     drawnow
     
-    ax_infig.Title.String = s.title;            % Set title
     set(ax_infig, 'Position', s.position)
+
+    % Title properties
+    ax_infig.Title.String = s.titlestr;
+    field_names = fields(global_props.title);
+    for field_index = 1:numel(field_names)
+        set(ax_infig.Title, field_names{field_index}, global_props.title.(field_names{field_index}));
+    end
+    
+    % Set focus marker properties
+    for child_index = 1:length(ax_infig.Children)
+        child = ax_infig.Children(child_index);
+        if isa(child, 'matlab.graphics.chart.primitive.Line')
+            field_names = fields(global_props.focus_marker);
+            for field_index = 1:numel(field_names)
+                set(child, field_names{field_index}, global_props.focus_marker.(field_names{field_index}));
+            end
+        end
+    end
     drawnow
     add_scalebar('size', [30, 2], 'text', '30', 'ax', ax_infig)
 
