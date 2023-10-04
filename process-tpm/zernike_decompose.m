@@ -46,6 +46,7 @@ slm_rotation_deg = 0;
 
 rebuilt_pattern = zeros(size(phase_pattern));
 
+starttime = now;
 for j_mode = 1:N_modes
     Zcart = circmask .* imrotate(zernfun_cart(coord_x, coord_y, modes(j_mode).n, modes(j_mode).m, false), slm_rotation_deg, "bilinear", "crop");
     Zcart_normsq = Zcart ./ sum(Zcart(:).^2);
@@ -53,9 +54,9 @@ for j_mode = 1:N_modes
 
     % Verify
     rebuilt_pattern = rebuilt_pattern + (amplitude(j_mode) .* Zcart);
+    eta(j_mode, N_modes, starttime, 'cmd', 'Computing Zernike coefficients...', 4);
 end
 
-disp('bla')
 
 %%
 figure;
