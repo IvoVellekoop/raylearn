@@ -43,9 +43,7 @@ function tiff = load_tiff(tiffpath, calibration_data, loadstr, create_corrected)
     % Load frame info
     tifinfo = imfinfo(tiffpath);         % Get info about image
     tiff.num_of_frames = length(tifinfo);    % Number of frames
-    tiff.framestack_raw = zeros(tifinfo(1).Width, tifinfo(1).Height, tiff.num_of_frames);
-
-    assert(tifinfo(1).Width == tifinfo(1).Height, 'Frames are not square.')
+    tiff.framestack_raw = zeros(tifinfo(1).Height, tifinfo(1).Width, tiff.num_of_frames);
     
     % Retrieve zoom
     tif_scanimage_metadata = tifinfo.Artist;
@@ -57,12 +55,13 @@ function tiff = load_tiff(tiffpath, calibration_data, loadstr, create_corrected)
     scan_resolution_factor = tifinfo(1).Width / calibration_data.scanimage_details.pixels_per_line;
     tiff.pixels_per_um = pixels_per_um_calibration * scan_resolution_factor * tiff.zoom;
 
-    tiff.FOV_um = (tifinfo(1).Width  - 1) ./ tiff.pixels_per_um;            % Field of View (x&y)
+    tiff.FOV_y_um = (tifinfo(1).Width  - 1) ./ tiff.pixels_per_um;          % Field of View y
+    tiff.FOV_x_um = (tifinfo(1).Height  - 1) ./ tiff.pixels_per_um;         % Field of View x
     tiff.stack_depth_um = (tiff.num_of_frames - 1) .* tiff.zstep_um;        % Depth in z
 
     % Define x-, y-, z-range
-    tiff.xrange = [-tiff.FOV_um/2 tiff.FOV_um/2];
-    tiff.yrange = [-tiff.FOV_um/2 tiff.FOV_um/2];
+    tiff.xrange = [-tiff.FOV_x_um/2 tiff.FOV_x_um/2];
+    tiff.yrange = [-tiff.FOV_y_um/2 tiff.FOV_y_um/2];
     tiff.zrange = [-tiff.stack_depth_um/2 tiff.stack_depth_um/2];
     tiff.dimdata = {tiff.xrange, tiff.yrange, tiff.zrange};
     
