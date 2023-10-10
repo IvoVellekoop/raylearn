@@ -78,18 +78,19 @@ function zernike_decomposition(phase_pattern, dirs, titlestr)
     %% Plot zernike decomposition
     % Plot settings
     do_save = 1;
-    subdir = fullfile(dirs.repo, 'plots/sensitivity-plots/');
+    subdir = fullfile(dirs.repo, 'plots/zernike-decompositions/');
     suffix = replace(replace(titlestr, ' ', '-'), '.', '');
     pdffilepath = fullfile([subdir '/zernike-decomposition-tube-500nL-' suffix '.pdf']);
-    fontsize_labels = 14;
-    fontsize_axis = 15;
-    fontsize_title = 16;
+    fontsize_labels = 16;
+    fontsize_axis = 16;
+    fontsize_title = 18;
     
     font_ratio = fontsize_labels/8;
     mkdir(subdir)
     
     % Plot
-    figure;
+    fig = figure;
+    ax = gca();
     bar(amplitude)
     xlabel('Zernike mode j')
     ylabel('Amplitude (rad)')
@@ -101,13 +102,15 @@ function zernike_decomposition(phase_pattern, dirs, titlestr)
     text(12, y_text + 1.5 * font_ratio, "12: 2nd Astigmatism (aligned)", 'FontSize', fontsize_labels)
     text(13, y_text + 0.0 * font_ratio, "13: Primary spherical", 'FontSize', fontsize_labels)
     hold off
-    set(gca, 'FontSize', fontsize_axis)
+    set(ax, 'FontSize', fontsize_axis)
     title(titlestr, 'FontSize', fontsize_title)
     ylim([-5 45])
     
     if do_save
         drawnow
-        fig_resize(430, 1.4);
+        pause(0.1)
+        fig_resize(440, 1.4, 0, fig);
+        pause(0.1)
         save_figtopdf(pdffilepath)
     end
 end

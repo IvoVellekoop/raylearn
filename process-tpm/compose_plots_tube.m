@@ -26,6 +26,7 @@ function compose_plots(saveprops, suffix, dirs)
     fig = figure;
     set(fig, 'Position', [10, 500, 1600, 700]);
     colormap inferno
+    drawnow
 
     % Global parameters
     w = 0.42;           % Width  subplot (will be forced to square) relative to figure
@@ -49,13 +50,25 @@ function compose_plots(saveprops, suffix, dirs)
 
     ao_dir = '/raylearn-data/TPM/adaptive-optics';
 
+    % Brightfield
+    titlestr = "a. Full tube in brightfield";
+    ax_brightfield = axes();
+    img_brightfield = imread(fullfile(dirs.expdata, "/raylearn-data/Zeiss-brightfield/tube-500nL/zeiss-10x-tube-500nL-5b-cropped-scalebar.png"));
+    imagesc(ax_brightfield, img_brightfield)
+    title(ax_brightfield, titlestr, 'FontSize', global_props.title.FontSize)
+    ax_brightfield.Position = [0.1-w/2, 0.75-h/2, w, h];
+    axis image
+    set(ax_brightfield, 'XTick', [])
+    set(ax_brightfield, 'YTick', [])
+    drawnow
+
 
     % No correction
-    s11.titlestr = "a. no correction";
+    s11.titlestr = "f. no correction";
     s11.filename = sprintf("tube-500nL-zoom8-zstep0.500um-no-correction-1_00001%s.fig", suffix);
     s11.pattern_rad = ones(size(inset.NA_mask));
     s11.savedir = saveprops.dir;
-    s11.position = [0.1-w/2, 0.5-h/2, w, h];
+    s11.position = [0.1-w/2, 0.25-h/2, w, h];
     ax11 = place_subplot(fig, s11, global_props);
     cb = colorbar(ax11);
     ylabel(cb, 'log_{10}(PMT signal)')
@@ -66,18 +79,22 @@ function compose_plots(saveprops, suffix, dirs)
     pause(1)
     boxpos = plotboxpos(ax11);
     ax_cb_phase = axes();
-    imagesc(ax_cb_phase, linspace(0, 2*pi, 256));
+    imagesc(ax_cb_phase, linspace(0, 2*pi, 256)');
 
     ARfig = fig.Position(4) ./ fig.Position(3);
-    x_cb_phase = boxpos(1) + inset.position(1)*boxpos(4);
-    w_cb_phase = boxpos(4) .* inset.position(3) .* ARfig;
-    ax_cb_phase.Position = [x_cb_phase, 0.26, w_cb_phase, 0.05*h];
+    x_cb_phase = boxpos(1) + 0.045;
+    h_cb_phase = boxpos(4) .* inset.position(4) .* ARfig;
+    ax_cb_phase.Position = [x_cb_phase, 0.05, 0.025*h, h_cb_phase*2];
 
     colormap(ax_cb_phase, inset.cmap)                          % Set colormap
-    set(ax_cb_phase, 'XTick', [1 256])
-    set(ax_cb_phase, 'XTickLabel', ["0" "2\pi"])
-    set(ax_cb_phase, 'YTick', [])
+    set(ax_cb_phase, 'YColor', 'k')
+    set(ax_cb_phase, 'YTick', [1 256])
+    set(ax_cb_phase, 'YTickLabel', ["\color[rgb]{1,1,1}0" "\color[rgb]{1,1,1}2\pi"])
+    set(ax_cb_phase, 'YAxisLocation', 'right')
+    set(ax_cb_phase, 'YDir', 'normal')
+    set(ax_cb_phase, 'XTick', [])
     set(ax_cb_phase, 'FontSize', 12)
+    set(ax_cb_phase, 'LineWidth', 0.01)
     drawnow
 
 
@@ -120,7 +137,7 @@ function compose_plots(saveprops, suffix, dirs)
 
     % === AO === %
     % AO top
-    s22.titlestr = "f. Zernike AO top correction";
+    s22.titlestr = "g. Zernike AO top correction";
     s22.filename = sprintf("tube-500nL-zoom8-zstep0.500um-top-AO-1_00001%s.fig", suffix);
     s22.pattern_rad = load_AO_pattern(fullfile(dirs.expdata, ao_dir, '30-Sep-2023-tube-500nL-top/tube_ao_739159.554324_tube-500nL-top/tube_ao_739159.554324_tube-500nL-top_optimal_pattern.mat'));
     s22.savedir = saveprops.dir;
@@ -129,7 +146,7 @@ function compose_plots(saveprops, suffix, dirs)
     place_slm_inset(fig, ax22, s22, inset)
 
     % AO center
-    s23.titlestr = "g. Zernike AO center correction";
+    s23.titlestr = "h. Zernike AO center correction";
     s23.filename = sprintf("tube-500nL-zoom8-zstep0.500um-center-AO-1_00001%s.fig", suffix);
     s23.pattern_rad = load_AO_pattern(fullfile(dirs.expdata, ao_dir, '30-Sep-2023-tube-500nL-center/tube_ao_739159.681107_tube-500nL-center/tube_ao_739159.681107_tube-500nL-center_optimal_pattern.mat'));
     s23.savedir = saveprops.dir;
@@ -138,7 +155,7 @@ function compose_plots(saveprops, suffix, dirs)
     place_slm_inset(fig, ax23, s23, inset)
 
     % AO bottom
-    s24.titlestr = "h. Zernike AO bottom correction";
+    s24.titlestr = "i. Zernike AO bottom correction";
     s24.filename = sprintf("tube-500nL-zoom8-zstep0.500um-bottom-AO-1_00001%s.fig", suffix);
     s24.pattern_rad = load_AO_pattern(fullfile(dirs.expdata, ao_dir, '30-Sep-2023-tube-500nL-bottom/tube_ao_739159.638038_tube-500nL-bottom/tube_ao_739159.638038_tube-500nL-bottom_optimal_pattern.mat'));
     s24.savedir = saveprops.dir;
@@ -147,7 +164,7 @@ function compose_plots(saveprops, suffix, dirs)
     place_slm_inset(fig, ax24, s24, inset)
 
     % AO side
-    s25.titlestr = "i. Zernike AO side correction";
+    s25.titlestr = "j. Zernike AO side correction";
     s25.filename = sprintf("tube-500nL-zoom8-zstep0.500um-side-AO-1_00001%s.fig", suffix);
     s25.pattern_rad = load_AO_pattern(fullfile(dirs.expdata, ao_dir, '30-Sep-2023-tube-500nL-side/tube_ao_739159.729111_tube-500nL-side/tube_ao_739159.729111_tube-500nL-side_optimal_pattern.mat'));
     s25.savedir = saveprops.dir;
