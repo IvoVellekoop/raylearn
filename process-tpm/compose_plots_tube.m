@@ -36,9 +36,9 @@ function compose_plots(saveprops, suffix, dirs)
     global_props.title.FontSize = 13;
 
     % Focus marker properties
-    global_props.focus_marker.MarkerSize = 14;
-    global_props.focus_marker.LineWidth = 1.75;
-    global_props.focus_marker.Color = [0 1 1];
+    global_props.focus_marker.MarkerSize = 15;
+    global_props.focus_marker.LineWidth = 2;
+    global_props.focus_marker.Color = [0.5 1 1];
     
     % SLM inset parameters
     patterndata = load(fullfile(dirs.expdata, '/raylearn-data/TPM/slm-patterns/pattern-0.5uL-tube-bottom-λ808.0nm.mat'));
@@ -51,7 +51,7 @@ function compose_plots(saveprops, suffix, dirs)
     ao_dir = '/raylearn-data/TPM/adaptive-optics';
 
     % Brightfield
-    titlestr = "a. Full tube in brightfield";
+    titlestr = "a. Full tube in bright field";
     ax_brightfield = axes();
     img_brightfield = imread(fullfile(dirs.expdata, "/raylearn-data/Zeiss-brightfield/tube-500nL/zeiss-10x-tube-500nL-5b-cropped-scalebar.png"));
     imagesc(ax_brightfield, img_brightfield)
@@ -60,6 +60,12 @@ function compose_plots(saveprops, suffix, dirs)
     axis image
     set(ax_brightfield, 'XTick', [])
     set(ax_brightfield, 'YTick', [])
+    pixel_size_um = 0.62799;
+    w_rectangle = 148.07/pixel_size_um;
+    h_rectangle = 175/pixel_size_um;
+    x_rectangle = size(img_brightfield, 2)/2 - w_rectangle/2;
+    y_rectangle = size(img_brightfield, 1)/2 - h_rectangle/2;
+    rectangle('Position', [397 370 w_rectangle h_rectangle], 'EdgeColor', [1 0 0])
     drawnow
 
 

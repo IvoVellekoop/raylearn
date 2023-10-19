@@ -11,29 +11,31 @@ if forcereset || ~exist('dirs', 'var')
     dirconfig_raylearn
 end
 
+N_modes = 36;
+all_amplitudes = zeros(N_modes, 4);
+
 
 % Top
 pattern_data = load('/home/dani/LocalData/raylearn-data/TPM/slm-patterns/pattern-0.5uL-tube-top-λ808.0nm.mat'); titlestr = 'a. RT top';
 phase_pattern = -(pattern_data.phase_SLM)';                  % Unwrapped phase pattern
-zernike_decomposition(phase_pattern, dirs, titlestr)
+all_amplitudes(:, 1) = zernike_decomposition(phase_pattern, dirs, titlestr, N_modes);
 
 % Center
 pattern_data = load('/home/dani/LocalData/raylearn-data/TPM/slm-patterns/pattern-0.5uL-tube-center-λ808.0nm.mat'); titlestr = 'b. RT center';
 phase_pattern = -(pattern_data.phase_SLM)';                  % Unwrapped phase pattern
-zernike_decomposition(phase_pattern, dirs, titlestr)
+all_amplitudes(:, 2) = zernike_decomposition(phase_pattern, dirs, titlestr, N_modes);
 
 % Bottom
 pattern_data = load('/home/dani/LocalData/raylearn-data/TPM/slm-patterns/pattern-0.5uL-tube-bottom-λ808.0nm.mat'); titlestr = 'c. RT bottom';
 phase_pattern = -(pattern_data.phase_SLM)';                  % Unwrapped phase pattern
-zernike_decomposition(phase_pattern, dirs, titlestr)
+all_amplitudes(:, 3) = zernike_decomposition(phase_pattern, dirs, titlestr, N_modes);
 
 % Side
 pattern_data = load('/home/dani/LocalData/raylearn-data/TPM/slm-patterns/pattern-0.5uL-tube-side-λ808.0nm.mat'); titlestr = 'd. RT side';
 phase_pattern = -(pattern_data.phase_SLM)';                  % Unwrapped phase pattern
-zernike_decomposition(phase_pattern, dirs, titlestr)
+all_amplitudes(:, 4) = zernike_decomposition(phase_pattern, dirs, titlestr, N_modes);
 
-function zernike_decomposition(phase_pattern, dirs, titlestr)
-    N_modes = 36;
+function amplitude = zernike_decomposition(phase_pattern, dirs, titlestr, N_modes)
     
     % Initialization
     amplitude = zeros(N_modes, 1);
