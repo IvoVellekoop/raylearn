@@ -83,7 +83,7 @@ Running/debugging the python files in VS Code:
 2. View → Command palette → search for *Python: Select Interpreter* → pick the option corresponding to the *raylearn* anaconda environment.
 3. Open a Python file, go to Run → Start Debugging → when asked for *Debug Configuration*, pick *Python File*.
 
-You can try one of the examples (e.g. example_one_lens.py or example_rotating_cylinder.py) and go to Run → Start Debugging (Default shortcut: F5).
+You can try one of the examples (e.g. example_one_lens.py or example_rotating_cylinder.py) and go to Run → Start Debugging (Default shortcut: F5). The script compute-glass-tube-pattern.py is used to compute phase correction patterns for various focus locations inside a glass tube.
 
 A few tips on debugging:
 
