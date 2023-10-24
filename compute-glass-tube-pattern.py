@@ -10,15 +10,34 @@ from plot_functions import format_prefix
 from vector_functions import cartesian3d
 from interpolate_shader import interpolate_shader
 from ray_plane import CoordPlane, translate
-from testing import MSE
+from testing import MSE, weighted_mean
 from tpm import TPM
 from sample_tube import SampleTube
 from dirconfig_raylearn import dirs
 
 
 # Compute and save a phase correction pattern for specified location and wavelength
-def compute_glass_tube_pattern(desired_focus_location_from_tube_center_m, focus_location_label,
-                               do_plot_backtrace, do_plot_phase_pattern):
+def compute_glass_tube_pattern(
+    desired_focus_location_from_tube_center_m, focus_location_label,
+    remove_tilt, minimize_defocus_iterations, do_plot_backtrace, do_plot_phase_pattern):
+    '''
+    Compute a phase correction pattern for a glass tube
+
+    Input
+    -----
+        desired_focus_location_from_tube_center_m
+            Vector. Desired focus location in tube with respect to tube center in meters.
+        focus_location_label
+            String. Label to indicate the focus location. Used for filename.
+        remove_tilt
+            Boolean. Remove mean tilt from pattern if True.
+        remove_defocus_iterations
+            Integer. How many iterations to minimize defocus. Skip defocus minimization if 0.
+        do_plot_backtrace
+            Boolean. Plot backtrace rays if True.
+        do_plot_phase_pattern
+            Boolean. Plot final phase pattern if True.
+    '''
 
     # === Initialization === #
     # Initialize global coordinate system
@@ -40,6 +59,8 @@ def compute_glass_tube_pattern(desired_focus_location_from_tube_center_m, focus_
     tpm.sample.n_inside = 1.3290                # Water inside the tube @808nm, 25degC
     tpm.sample.n_outside = 1.3290               # Water between tube and slide @808nm, 25degC
 
+    # NA radius on the SLM, used for defocus optimization and tilt removal
+    NA_radius_slm = (tpm.f5 / tpm.f7) * tpm.fobj1 * tpm.obj1_NA / tpm.slm_height_m
 
     # === Prepare defocus optimization === #
     tpm.backtrace_Nx = 100                      # Number of rays for defocus optimalization
@@ -54,11 +75,10 @@ def compute_glass_tube_pattern(desired_focus_location_from_tube_center_m, focus_
             {'lr': 2.0e-5, 'params': [tpm.sample_zshift]},
         ], lr=1.0e-5)
 
-    iterations = 200
-    errors = torch.zeros(iterations)
+    errors = torch.zeros(minimize_defocus_iterations)
 
     # Iterable for optimization loop
-    trange = tqdm(range(iterations), desc='error: -')
+    trange = tqdm(range(minimize_defocus_iterations), desc='error: -')
 
     for t in trange:
         # Update all dependent values
@@ -77,15 +97,9 @@ def compute_glass_tube_pattern(desired_focus_location_from_tube_center_m, focus_
         # Raytrace back to SLM
         backrays_at_slm = tpm.backtrace()
 
-        # Extract position and directio of rays
-        position_xy_at_slm = tpm.slm_plane.transform_points(backrays_at_slm.position_m)
+        # Direction and NA mask of rays on SLM
         direction_xy_at_slm = tpm.slm_plane.transform_direction(backrays_at_slm.direction)
-        direction_xy_at_slm.retain_grad()
-
-        # Compute mask of ray coords within NA circle
-        radius_at_slm = position_xy_at_slm.pow(2).sum(dim=-1, keepdim=True).sqrt()
-        NA_radius_slm = (tpm.f5 / tpm.f7) * tpm.fobj1 * tpm.obj1_NA / tpm.slm_height_m
-        NA_mask_for_obj_optim = NA_radius_slm > radius_at_slm
+        NA_mask_for_obj_optim = compute_NA_mask(tpm.slm_plane, backrays_at_slm, NA_radius_slm)
 
         # Compute error from xy-direction
         error = MSE(direction_xy_at_slm * NA_mask_for_obj_optim, 0)
@@ -114,11 +128,26 @@ def compute_glass_tube_pattern(desired_focus_location_from_tube_center_m, focus_
     # tpm.update()          #### Why does this mess it up?
     backrays_at_slm = tpm.backtrace()
 
-    # Propagate to screen and compute screen coordinates
+    # Remove tilt
+    if remove_tilt:
+        # Compute mask of ray coords within NA circle
+        NA_mask = compute_NA_mask(tpm.slm_plane, backrays_at_slm, NA_radius_slm)
+        mean_direction = weighted_mean(backrays_at_slm.direction, NA_mask.expand_as(backrays_at_slm.direction), dim=(-3, -2))
+
+        # Compute mean tilt pattern, with z as optical axis, based on mean ray direction within NA
+        tilt_m = (
+                backrays_at_slm.position_m[:, :, 0] * mean_direction[0] / mean_direction[2]
+                + backrays_at_slm.position_m[:, :, 1] * mean_direction[1] / mean_direction[2]
+            ).unsqueeze(-1)
+
+    else:
+        tilt_m = 0
+
+    # Compute screen coordinates and pathlength with mean tilt subtracted
     coords = tpm.slm_plane.transform_rays(backrays_at_slm).detach()
+    pathlength_to_slm_at_coords = backrays_at_slm.pathlength_m.detach() + tilt_m
 
     # Compute field with interpolate_shader
-    pathlength_to_slm_at_coords = backrays_at_slm.pathlength_m.detach()
     data = torch.cat((coords, pathlength_to_slm_at_coords), 2)
     slm_edge = 0.5                                      # Center to top of pattern, in slm heights
     extent = (-slm_edge, slm_edge, -slm_edge, slm_edge)
@@ -181,6 +210,7 @@ def compute_glass_tube_pattern(desired_focus_location_from_tube_center_m, focus_
         'field_SLM': field_SLM,
         'phase_SLM': phase_SLM,
         'obj1_zshift': tpm.obj1_zshift.detach().numpy(),
+        'sample_zshift': tpm.sample_zshift.detach().numpy(),
         'wavelength_m': wavelength_m,
         'obj1_NA': tpm.obj1_NA,
         'slm_height_m': tpm.slm_height_m,
@@ -195,6 +225,13 @@ def compute_glass_tube_pattern(desired_focus_location_from_tube_center_m, focus_
     print(f'Saved to {matpath_out}')
 
 
+def compute_NA_mask(plane, rays, NA_radius):
+    '''Compute boolean mask for positions inside NA circle.'''
+    position = plane.transform_points(rays.position_m)
+    radius_at_slm = position.pow(2).sum(dim=-1, keepdim=True).sqrt()
+    return NA_radius > radius_at_slm
+
+
 # === Settings === #
 # General settings
 do_plot_backtrace = False
@@ -205,23 +242,47 @@ do_plot_phase_pattern = False
 compute_glass_tube_pattern(
     desired_focus_location_from_tube_center_m=tensor((0., 0., 51e-6,)),
     focus_location_label='bottom',
+    remove_tilt=True,
+    minimize_defocus_iterations=200,
     do_plot_backtrace=do_plot_backtrace,
     do_plot_phase_pattern=do_plot_phase_pattern)
 
 compute_glass_tube_pattern(
     desired_focus_location_from_tube_center_m=tensor((0., 0., 0.,)),
     focus_location_label='center',
+    remove_tilt=True,
+    minimize_defocus_iterations=200,
+    do_plot_backtrace=do_plot_backtrace,
+    do_plot_phase_pattern=do_plot_phase_pattern)
+
+compute_glass_tube_pattern(
+    desired_focus_location_from_tube_center_m=tensor((0., 0., 0.,)),
+    focus_location_label='center-with-defocus',
+    remove_tilt=True,
+    minimize_defocus_iterations=0,
     do_plot_backtrace=do_plot_backtrace,
     do_plot_phase_pattern=do_plot_phase_pattern)
 
 compute_glass_tube_pattern(
     desired_focus_location_from_tube_center_m=tensor((0., 0., -51e-6,)),
     focus_location_label='top',
+    remove_tilt=True,
+    minimize_defocus_iterations=200,
+    do_plot_backtrace=do_plot_backtrace,
+    do_plot_phase_pattern=do_plot_phase_pattern)
+
+compute_glass_tube_pattern(
+    desired_focus_location_from_tube_center_m=tensor((0., 53.25e-6, 0.,)),
+    focus_location_label='side',
+    remove_tilt=True,
+    minimize_defocus_iterations=200,
     do_plot_backtrace=do_plot_backtrace,
     do_plot_phase_pattern=do_plot_phase_pattern)
 
 compute_glass_tube_pattern(
     desired_focus_location_from_tube_center_m=tensor((0., 53.25e-6, 0.,)),
     focus_location_label='side-with-tilt',
+    remove_tilt=False,
+    minimize_defocus_iterations=200,
     do_plot_backtrace=do_plot_backtrace,
     do_plot_phase_pattern=do_plot_phase_pattern)
