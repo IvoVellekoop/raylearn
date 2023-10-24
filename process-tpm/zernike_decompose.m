@@ -17,26 +17,23 @@ all_amplitudes = zeros(N_modes, 4);
 
 % Top
 pattern_data = load('/home/dani/LocalData/raylearn-data/TPM/slm-patterns/pattern-0.5uL-tube-top-λ808.0nm.mat'); titlestr = 'a. RT top';
-phase_pattern = -(pattern_data.phase_SLM)';                  % Unwrapped phase pattern
-all_amplitudes(:, 1) = zernike_decomposition(phase_pattern, dirs, titlestr, N_modes);
+all_amplitudes(:, 1) = zernike_decomposition(pattern_data, dirs, titlestr, N_modes);
 
 % Center
 pattern_data = load('/home/dani/LocalData/raylearn-data/TPM/slm-patterns/pattern-0.5uL-tube-center-λ808.0nm.mat'); titlestr = 'b. RT center';
-phase_pattern = -(pattern_data.phase_SLM)';                  % Unwrapped phase pattern
-all_amplitudes(:, 2) = zernike_decomposition(phase_pattern, dirs, titlestr, N_modes);
+all_amplitudes(:, 2) = zernike_decomposition(pattern_data, dirs, titlestr, N_modes);
 
 % Bottom
 pattern_data = load('/home/dani/LocalData/raylearn-data/TPM/slm-patterns/pattern-0.5uL-tube-bottom-λ808.0nm.mat'); titlestr = 'c. RT bottom';
-phase_pattern = -(pattern_data.phase_SLM)';                  % Unwrapped phase pattern
-all_amplitudes(:, 3) = zernike_decomposition(phase_pattern, dirs, titlestr, N_modes);
+all_amplitudes(:, 3) = zernike_decomposition(pattern_data, dirs, titlestr, N_modes);
 
 % Side
 pattern_data = load('/home/dani/LocalData/raylearn-data/TPM/slm-patterns/pattern-0.5uL-tube-side-λ808.0nm.mat'); titlestr = 'd. RT side';
-phase_pattern = -(pattern_data.phase_SLM)';                  % Unwrapped phase pattern
-all_amplitudes(:, 4) = zernike_decomposition(phase_pattern, dirs, titlestr, N_modes);
+all_amplitudes(:, 4) = zernike_decomposition(pattern_data, dirs, titlestr, N_modes);
 
-function amplitude = zernike_decomposition(phase_pattern, dirs, titlestr, N_modes)
-    
+function amplitude = zernike_decomposition(pattern_data, dirs, titlestr, N_modes)
+    phase_pattern = -(pattern_data.phase_SLM)';                  % Unwrapped phase pattern
+
     % Initialization
     amplitude = zeros(N_modes, 1);
     modes = zernike_order(N_modes);
@@ -48,6 +45,8 @@ function amplitude = zernike_decomposition(phase_pattern, dirs, titlestr, N_mode
     circmask = (coord_x.^2 + coord_y.^2) < 1;
     phase_pattern_circ = phase_pattern .* circmask;
     slm_rotation_deg = 0;
+
+    separate_patterns = [];
     
     % Compute Zernike amplitudes and test them
     starttime = now;
@@ -58,6 +57,7 @@ function amplitude = zernike_decomposition(phase_pattern, dirs, titlestr, N_mode
     
         % Verify
         rebuilt_pattern = rebuilt_pattern + (amplitude(j_mode) .* Zcart);
+        separate_patterns(:, :, j_mode) = (amplitude(j_mode) .* Zcart);
 %         eta(j_mode, N_modes, starttime, 'cmd', 'Computing Zernike coefficients...', 5);
 
 %         max(Zcart(:) - min(Zcart(:)))
@@ -66,6 +66,7 @@ function amplitude = zernike_decomposition(phase_pattern, dirs, titlestr, N_mode
     
     
     %% Plot patterns
+    disp(titlestr)
     figure;
     imagesc(rebuilt_pattern);
     correlation = sum(phase_pattern_circ(:) .* rebuilt_pattern(:)) / sum(phase_pattern_circ(:).^2);
@@ -76,6 +77,53 @@ function amplitude = zernike_decomposition(phase_pattern, dirs, titlestr, N_mode
     imagesc(phase_pattern_circ)
     title('Original pattern')
     colorbar
+
+    %% Overlap coefficient
+    % Compute gaussian field amplitude
+    wavelength = 808e-9;    % Vacuum wavelength
+    n_2 = 1.3290;           % Refractive index of focus medium @ 808nm, https://refractiveindex.info/?shelf=main&book=H2O&page=Hale
+    f_obj1 = 12.5e-3;       % Objective focal length
+    W_m_at_SLM = 5.9e-3;    % Beam profile gaussian width (= c-coefficient from gaussian fit) at SLM in meter
+    W_m = 2 * W_m_at_SLM;   % Beam profile gaussian width at back pupil in meter, note: magnification 2x from SLM to back pupil
+    x_max = 9.2e-6 * 1152;  % Half-height of the SLM, projected onto objective back pupil (factor 2x)
+    x_m = linspace(-x_max, x_max, size(phase_pattern_circ, 1));
+    y_m = x_m';
+    r2_m2 = x_m.*x_m + y_m.*y_m;
+    field_amplitude = exp(-r2_m2 ./ (W_m.^2)) .* pattern_data.NA_mask_SLM;
+
+    % Compute fields
+    field_original = exp(1i * phase_pattern_circ) .* field_amplitude;
+    separate_patterns_lowfreq = sum(separate_patterns(:,:,1:6), 3);
+    phase_low_11 = separate_patterns_lowfreq + separate_patterns(:,:,11);
+    phase_low_12 = separate_patterns_lowfreq + separate_patterns(:,:,12);
+    field_low_11 = exp(1i * (phase_low_11)) .* field_amplitude;
+    field_low_12 = exp(1i * (phase_low_12)) .* field_amplitude;
+    field_rebuilt = exp(1i * (rebuilt_pattern)) .* field_amplitude;
+
+    phase_normalized_inner_prod_11 = sum(phase_pattern_circ(:) .* phase_low_11(:)) / sum(phase_pattern_circ(:).^2)
+    phase_normalized_inner_prod_12 = sum(phase_pattern_circ(:) .* phase_low_12(:)) / sum(phase_pattern_circ(:).^2)
+    phase_normalized_inner_prod_rebuilt = sum(phase_pattern_circ(:) .* rebuilt_pattern(:)) / sum(phase_pattern_circ(:).^2)
+    
+    % Compute k-vector
+    k0 = 2*pi / wavelength;
+    k_xy = k0 * sqrt(r2_m2) ./ f_obj1;  % k-vector (x,y)-component
+    kz_2 = sqrt((k0*n_2)^2 - k_xy.^2);  % k-vector z-component
+
+    % Compute overlap coefficient, optimized for defocus
+    zmin_m = -3e-6;
+    zmax_m =  3e-6;
+    zstep_m = 0.1e-6;
+    [c_D_optimal, z_D_optimal, i_D_optimal, E_D_optimal, c_D_scan, z_D_scan] = ...
+        field_corr_optimal_defocus(field_original, field_low_11, kz_2, zmin_m, zmax_m, zstep_m);
+    overlap_with_field_11 = abs(c_D_optimal).^2
+
+    [c_D_optimal, z_D_optimal, i_D_optimal, E_D_optimal, c_D_scan, z_D_scan] = ...
+        field_corr_optimal_defocus(field_original, field_low_12, kz_2, zmin_m, zmax_m, zstep_m);
+    overlap_with_field_12 = abs(c_D_optimal).^2
+
+    [c_D_optimal, z_D_optimal, i_D_optimal, E_D_optimal, c_D_scan, z_D_scan] = ...
+        field_corr_optimal_defocus(field_original, field_rebuilt, kz_2, zmin_m, zmax_m, zstep_m);
+    overlap_with_rebuilt = abs(c_D_optimal).^2
     
     %% Plot zernike decomposition
     % Plot settings
