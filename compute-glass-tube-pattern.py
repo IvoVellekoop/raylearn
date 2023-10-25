@@ -1,3 +1,11 @@
+'''
+Compute glass tube pattern.
+
+This script computes phase correction patterns for several different locations inside a glass tube,
+and saves those patterns as mat files. It optionally removes almost all defocus and tilt. Not
+perfectly all, due to a slight bias from the way in which ray information is sampled.
+'''
+
 import torch
 from torch import tensor
 import numpy as np
@@ -10,7 +18,7 @@ from plot_functions import format_prefix
 from vector_functions import cartesian3d
 from interpolate_shader import interpolate_shader
 from ray_plane import CoordPlane, translate
-from testing import MSE, weighted_mean
+from testing import weighted_mean
 from tpm import TPM
 from sample_tube import SampleTube
 from dirconfig_raylearn import dirs
@@ -102,7 +110,7 @@ def compute_glass_tube_pattern(
         NA_mask_for_obj_optim = compute_NA_mask(tpm.slm_plane, backrays_at_slm, NA_radius_slm)
 
         # Compute error from xy-direction
-        error = MSE(direction_xy_at_slm * NA_mask_for_obj_optim, 0)
+        error = direction_xy_at_slm[NA_mask_for_obj_optim.expand_as(direction_xy_at_slm)].std()
         error_value = error.detach().item()
         errors[t] = error_value
 
@@ -167,7 +175,7 @@ def compute_glass_tube_pattern(
         fig_phase_pattern = plt.figure(dpi=200, figsize=(6, 5.5))
         plt.imshow(np.angle(field_SLM), extent=extent, vmin=-np.pi, vmax=np.pi,
                 cmap='twilight', interpolation='nearest')
-        plt.title('Phase pattern, ' + f'λ={format_prefix(wavelength_m)}m')
+        plt.title(f'Phase pattern for {focus_location_label}, λ={format_prefix(wavelength_m)}m')
 
         # Draw a circle to indicate NA
         N_verts_NA_circle = 200
