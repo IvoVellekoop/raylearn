@@ -10,14 +10,18 @@ torch.set_default_tensor_type('torch.DoubleTensor')
 machine_epsilon_f64 = 2**-52
 
 
-def comparetensors(a, b, error=1000):
+def comparetensors(a, b, error=1000.0, error_in_meps=True):
     """
     Check whether torch tensors are of equal value within defined error range.
 
     Required precision of computed answers: error x float64 (a.k.a. double) machine epsilon.
     """
-    # return torch.all(torch.abs(a - b) < (error * machine_epsilon_f64))
-    return torch.all(torch.abs(a - b) < (error * machine_epsilon_f64))
+    if error_in_meps:
+        margin = error * machine_epsilon_f64
+    else:
+        margin = error
+
+    return torch.all(torch.abs(a - b) < margin)
 
 
 def checkunitvector(a, error=1000):
