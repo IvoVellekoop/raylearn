@@ -1,6 +1,11 @@
 """
-Functions to compute refractive index
+Functions to compute refractive index.
+Note: since most sources express their wavelengths in micrometers, these functions do too.
 """
+
+import numpy as np
+import pandas as pd
+from torch import tensor
 
 
 def refractive_index_sellmeier(wavelength_um, B, C):
@@ -60,5 +65,26 @@ def refractive_index_cauchy(wavelength_um, A, B, C):
 
 def refractive_index_csv(wavelength_um, csv_path):
     """
-    
+    Compute refractive index by linearly interpolating values from csv file.
+    The header row must be: 'wavelength_um,n'. The rest of the file must contain numeric values
+    only. Start and end wavelengths may be arbitrary.
+
+    Example
+    -------
+        wavelength_um,n
+        0.25,1.589
+        0.26,1.582
+
+    Input
+    -----
+        wavelength_um   Tensor of any shape. Wavelength in micrometers (µm)
+        csv_path        String. File path of csv file.
+
+    Output
+    ------
+        refractive index at requested wavelength
     """
+
+    df = pd.read_csv(csv_path)
+    refractive_index = np.interp(wavelength_um, df['wavelength_um'], df['n'])
+    return tensor(refractive_index)

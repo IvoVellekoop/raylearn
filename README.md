@@ -38,7 +38,7 @@ and then activate it:
 ```
 conda create -n raylearn -c pytorch pytorch
 conda activate raylearn
-conda install scipy numpy matplotlib h5py sympy tqdm imageio pytest flake8 autopep8 pyopengl
+conda install scipy numpy matplotlib pandas h5py sympy tqdm imageio pytest flake8 autopep8 pyopengl
 conda install -c conda-forge pyglfw hdf5storage
 ```
 

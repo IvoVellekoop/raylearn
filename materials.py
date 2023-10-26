@@ -5,8 +5,9 @@ Define material properties as functions, classes, or values.
 """
 
 from torch import tensor
-from refractive_index import refractive_index_sellmeier, refractive_index_cauchy
+from refractive_index import refractive_index_csv, refractive_index_sellmeier, refractive_index_cauchy
 from vector_functions import ensure_tensor
+from dirconfig_raylearn import dirs
 
 
 def n_water(wavelength_m):
@@ -58,3 +59,15 @@ def n_collagen(wavelength_m):
     B = 19476e-6            # in µm²
     C = -1131066900e-12     # in µm⁴
     return refractive_index_cauchy(wavelength_um, A, B, C)
+
+
+def n_SodaLimeGlass(wavelength_m):
+    """
+    Get refractive index of soda lime glass at specified wavelengths (in m).
+    """
+
+    wavelength_um = ensure_tensor(wavelength_m * 1e6)
+    assert((wavelength_um > 0.249).all())       # Check valid wavelength range
+    assert((wavelength_um < 1.8).all())         # Check valid wavelength range
+    csvpath = dirs['repo'].joinpath('data/n-sodalime-vogt2016.csv')
+    return refractive_index_csv(wavelength_um, csvpath)

@@ -2,7 +2,7 @@
 
 import torch
 from torch import tensor
-from materials import n_water, n_PBS
+from materials import n_water, n_PBS, n_SodaLimeGlass
 from testing import comparetensors
 
 
@@ -27,7 +27,20 @@ def test_PBS():
     et al. 2019, DOI:10.3390/app9061145].
     """
     precision = 1e-4                # Require 4 decimals of precision
-    wavelength_m = 589.3e-9         # Refractive index n_D
-    n_literature = 1.3348
+    wavelength_m = 589.3e-9         # Wavelength _D
+    n_literature = 1.3348           # Refractive index n_D
     n_compute = n_PBS(wavelength_m)
+    assert(comparetensors(n_literature, n_compute, error=precision, error_in_meps=False))
+
+
+def test_SodaLimeGlass():
+    """
+    Test refractive index of Soda Lime Glass. Literature value taken from [Vogt 2016,
+    10.1109/JPHOTOV.2015.2498043].
+    See also: https://refractiveindex.info/?shelf=glass&book=soda-lime&page=Vogt-10ppm
+    """
+    precision = 1e-3                            # Require 3 decimals of precision
+    wavelength_m = tensor((305e-9, 800e-9))     # Wavelength
+    n_literature = tensor((1.555, 1.508))       # Refractive index
+    n_compute = n_SodaLimeGlass(wavelength_m)
     assert(comparetensors(n_literature, n_compute, error=precision, error_in_meps=False))
