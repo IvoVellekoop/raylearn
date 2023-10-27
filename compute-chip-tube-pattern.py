@@ -27,7 +27,7 @@ from dirconfig_raylearn import dirs
 
 # Compute and save a phase correction pattern for specified location and wavelength
 def compute_glass_tube_pattern(
-        desired_focus_location_m, focus_location_label, remove_tilt,
+        wavelengths_m, desired_focus_location_m, focus_location_label, remove_tilt,
         minimize_defocus_iterations, do_plot_backtrace, do_plot_phase_pattern):
     '''
     Compute a phase correction pattern for a glass tube
@@ -52,175 +52,178 @@ def compute_glass_tube_pattern(
     # Initialize global coordinate system
     origin, x, y, z = cartesian3d()
 
-    # Initilize TPM
-    tpm = TPM()
+    for wavelength_m in wavelengths_m:
 
-    wavelength_m = 950e-9                       # Wavelength to compute phase from pathlength
+        # Initilize TPM
+        tpm = TPM()
 
-    # Initialize standard tube properties
-    # (Note: parameter scans may override these)
-    tpm.sample = SampleLumenChip()
-    tpm.sample.wavelength_m = wavelength_m
-    tpm.sample.tube_yaw = 0.0                   # Rotate tube 90 deg
-    #### Note! When the shader interpolator is fixed and doesn't transpose anymore, recheck
+        # Initialize standard tube properties
+        # (Note: parameter scans may override these)
+        tpm.sample = SampleLumenChip()
+        tpm.sample.wavelength_m = wavelength_m
+        tpm.sample.tube_yaw = 0.0                   # Rotate tube 90 deg
+        #### Note! When the shader interpolator is fixed and doesn't transpose anymore, recheck
 
-    # NA radius on the SLM, used for defocus optimization and tilt removal
-    NA_radius_slm = (tpm.f5 / tpm.f7) * tpm.fobj1 * tpm.obj1_NA / tpm.slm_height_m
+        # NA radius on the SLM, used for defocus optimization and tilt removal
+        NA_radius_slm = (tpm.f5 / tpm.f7) * tpm.fobj1 * tpm.obj1_NA / tpm.slm_height_m
 
-    # === Prepare defocus optimization === #
-    tpm.backtrace_Nx = 100                      # Number of rays for defocus optimalization
-    tpm.backtrace_Ny = 100
+        # === Prepare defocus optimization === #
+        tpm.backtrace_Nx = 100                      # Number of rays for defocus optimalization
+        tpm.backtrace_Ny = 100
 
-    # Initial sample z-shift, will be optimized for defocus
-    tpm.sample_zshift = tensor((0.0,), requires_grad=True)
+        # Initial sample z-shift, will be optimized for defocus
+        tpm.sample_zshift = tensor((0.0,), requires_grad=True)
 
-    # Define optimizer
-    optimizer = torch.optim.Adam([
-            {'lr': 2.0e-5, 'params': [tpm.sample_zshift]},
-        ], lr=1.0e-5)
+        # Define optimizer
+        optimizer = torch.optim.Adam([
+                {'lr': 2.0e-5, 'params': [tpm.sample_zshift]},
+            ], lr=1.0e-5)
 
-    errors = torch.zeros(minimize_defocus_iterations)
+        errors = torch.zeros(minimize_defocus_iterations)
 
-    # Iterable for optimization loop
-    trange = tqdm(range(minimize_defocus_iterations), desc='error: -')
+        # Iterable for optimization loop
+        trange = tqdm(range(minimize_defocus_iterations), desc='error: -')
 
-    for t in trange:
-        # Update all dependent values
+        for t in trange:
+            # Update all dependent values
+            tpm.update()
+            tpm.sample.desired_focus_plane = CoordPlane(
+                tpm.sample_plane.position_m + desired_focus_location_m,
+                -x, y)
+
+            # Raytrace back to SLM
+            backrays_at_slm = tpm.backtrace()
+
+            # Direction and NA mask of rays on SLM
+            direction_xy_at_slm = tpm.slm_plane.transform_direction(backrays_at_slm.direction)
+            NA_mask_for_obj_optim = compute_NA_mask(tpm.slm_plane, backrays_at_slm, NA_radius_slm)
+
+            # Compute error from xy-direction
+            error = direction_xy_at_slm[NA_mask_for_obj_optim.expand_as(direction_xy_at_slm)].std()
+            error_value = error.detach().item()
+            errors[t] = error_value
+
+            trange.desc = f'error: {error_value:<8.3g}' \
+                + f'sample z-shift: {format_prefix(tpm.sample_zshift, "8.3f")}m'
+
+            # Gradient descent step
+            error.backward()
+            optimizer.step()
+            optimizer.zero_grad()
+
+            # Plot rays
+            if t % 10 == 0 and t < 70 and do_plot_backtrace:
+                plt.gca().clear()
+                tpm.rays = tpm.backrays
+                viewplane = CoordPlane(origin, z, x)
+                tpm.plot(plt.gca(), viewplane=viewplane, fraction=0.005)
+                plt.draw()
+                plt.pause(1e-3)
+
+        # === Prepare pattern interpolation === #
         tpm.update()
         tpm.sample.desired_focus_plane = CoordPlane(
             tpm.sample_plane.position_m + desired_focus_location_m,
             -x, y)
-
-        # Raytrace back to SLM
+        tpm.backtrace_Nx = 500                      # Number of rays for pattern interpolation
+        tpm.backtrace_Ny = 500
         backrays_at_slm = tpm.backtrace()
 
-        # Direction and NA mask of rays on SLM
-        direction_xy_at_slm = tpm.slm_plane.transform_direction(backrays_at_slm.direction)
-        NA_mask_for_obj_optim = compute_NA_mask(tpm.slm_plane, backrays_at_slm, NA_radius_slm)
+        # Remove tilt
+        if remove_tilt:
+            # Compute mask of ray coords within NA circle
+            NA_mask = compute_NA_mask(tpm.slm_plane, backrays_at_slm, NA_radius_slm)
+            mean_direction = weighted_mean(backrays_at_slm.direction, NA_mask.expand_as(backrays_at_slm.direction), dim=(-3, -2))
 
-        # Compute error from xy-direction
-        error = direction_xy_at_slm[NA_mask_for_obj_optim.expand_as(direction_xy_at_slm)].std()
-        error_value = error.detach().item()
-        errors[t] = error_value
+            # Compute mean tilt pattern, with z as opt. axis, based on mean ray direction within NA
+            tilt_m = (
+                    backrays_at_slm.position_m[:, :, 0] * mean_direction[0] / mean_direction[2]
+                    + backrays_at_slm.position_m[:, :, 1] * mean_direction[1] / mean_direction[2]
+                ).unsqueeze(-1)
 
-        trange.desc = f'error: {error_value:<8.3g}' \
-            + f'sample z-shift: {format_prefix(tpm.sample_zshift, "8.3f")}m'
+        else:
+            tilt_m = 0
 
-        # Gradient descent step
-        error.backward()
-        optimizer.step()
-        optimizer.zero_grad()
+        # Compute screen coordinates and pathlength with mean tilt subtracted
+        coords = tpm.slm_plane.transform_rays(backrays_at_slm).detach()
+        pathlength_to_slm_at_coords = backrays_at_slm.pathlength_m.detach() + tilt_m
 
-        # Plot rays
-        if t % 10 == 0 and t < 70 and do_plot_backtrace:
-            plt.gca().clear()
-            tpm.rays = tpm.backrays
-            viewplane = CoordPlane(origin, z, x)
-            tpm.plot(plt.gca(), viewplane=viewplane, fraction=0.005)
-            plt.draw()
-            plt.pause(1e-3)
+        # Compute field with interpolate_shader
+        data = torch.cat((coords, pathlength_to_slm_at_coords), 2)
+        slm_edge = 0.5                              # Center to top of pattern, in slm heights
+        extent = (-slm_edge, slm_edge, -slm_edge, slm_edge)
+        field_SLM, phase_SLM = interpolate_shader(
+            data.detach().numpy(),
+            npoints=(tpm.slm_height_pixels, tpm.slm_height_pixels),
+            limits=extent,
+            wavelength_m=wavelength_m,
+            )
 
-    # === Prepare pattern interpolation === #
-    tpm.update()
-    tpm.sample.desired_focus_plane = CoordPlane(
-        tpm.sample_plane.position_m + desired_focus_location_m,
-        -x, y)
-    tpm.backtrace_Nx = 500                      # Number of rays for pattern interpolation
-    tpm.backtrace_Ny = 500
-    backrays_at_slm = tpm.backtrace()
+        NA_radius_slm = (tpm.f5 / tpm.f7) * tpm.fobj1 * tpm.obj1_NA / tpm.slm_height_m
 
-    # Remove tilt
-    if remove_tilt:
-        # Compute mask of ray coords within NA circle
-        NA_mask = compute_NA_mask(tpm.slm_plane, backrays_at_slm, NA_radius_slm)
-        mean_direction = weighted_mean(backrays_at_slm.direction, NA_mask.expand_as(backrays_at_slm.direction), dim=(-3, -2))
+        path_out = \
+            str(dirs['localdata'].joinpath('raylearn-data/TPM/slm-patterns/pattern-chip-'
+                + f'{focus_location_label}-λ{format_prefix(wavelength_m)}m'))
 
-        # Compute mean tilt pattern, with z as optical axis, based on mean ray direction within NA
-        tilt_m = (
-                backrays_at_slm.position_m[:, :, 0] * mean_direction[0] / mean_direction[2]
-                + backrays_at_slm.position_m[:, :, 1] * mean_direction[1] / mean_direction[2]
-            ).unsqueeze(-1)
+        # Plot
+        if do_plot_phase_pattern:
+            # Plot SLM phase correction pattern
+            fig_phase_pattern = plt.figure(dpi=200, figsize=(6, 5.5))
+            plt.imshow(np.angle(field_SLM), extent=extent, vmin=-np.pi, vmax=np.pi,
+                    cmap='twilight', interpolation='nearest')
+            plt.title(f'Phase pattern for {focus_location_label}, λ={format_prefix(wavelength_m)}m')
 
-    else:
-        tilt_m = 0
+            # Draw a circle to indicate NA
+            N_verts_NA_circle = 200
+            theta_vert_NA_circle = np.linspace(0, 2*np.pi, N_verts_NA_circle)
+            x_NA_circle = NA_radius_slm * np.cos(theta_vert_NA_circle)
+            y_NA_circle = NA_radius_slm * np.sin(theta_vert_NA_circle)
+            plt.plot(x_NA_circle, y_NA_circle, '--g', linewidth=2.5, label=f'NA={tpm.obj1_NA}')
+            plt.legend(loc='upper right')
 
-    # Compute screen coordinates and pathlength with mean tilt subtracted
-    coords = tpm.slm_plane.transform_rays(backrays_at_slm).detach()
-    pathlength_to_slm_at_coords = backrays_at_slm.pathlength_m.detach() + tilt_m
+            plt.xticks(())
+            plt.yticks(())
 
-    # Compute field with interpolate_shader
-    data = torch.cat((coords, pathlength_to_slm_at_coords), 2)
-    slm_edge = 0.5                                      # Center to top of pattern, in slm heights
-    extent = (-slm_edge, slm_edge, -slm_edge, slm_edge)
-    field_SLM, phase_SLM = interpolate_shader(
-        data.detach().numpy(),
-        npoints=(tpm.slm_height_pixels, tpm.slm_height_pixels),
-        limits=extent,
-        wavelength_m=wavelength_m,
-        )
+            divider = make_axes_locatable(plt.gca())
+            cax = divider.append_axes("right", size="5%", pad=0.1)      # Colobar Axes
+            colorbar = plt.colorbar(ticks=[-np.pi, 0, np.pi], label='Phase', cax=cax)
+            colorbar.ax.set_yticklabels(['−π', '0', '+π'])
+            plt.savefig(path_out + '.png')
+            plt.show()
 
-    NA_radius_slm = (tpm.f5 / tpm.f7) * tpm.fobj1 * tpm.obj1_NA / tpm.slm_height_m
+        # Compute NA mask
+        Mx = tpm.slm_height_pixels
+        My = tpm.slm_height_pixels
+        x_lin_SLM = torch.linspace(-0.5, 0.5, Mx).view(Mx, 1) * (Mx != 1)
+        y_lin_SLM = torch.linspace(-0.5, 0.5, My).view(1, My) * (My != 1)
+        NA_mask_SLM = NA_radius_slm > (x_lin_SLM * x_lin_SLM + y_lin_SLM * y_lin_SLM).sqrt()
 
-    # Plot
-    if do_plot_phase_pattern:
-        # Plot SLM phase correction pattern
-        fig_phase_pattern = plt.figure(dpi=200, figsize=(6, 5.5))
-        plt.imshow(np.angle(field_SLM), extent=extent, vmin=-np.pi, vmax=np.pi,
-                   cmap='twilight', interpolation='nearest')
-        plt.title(f'Phase pattern for {focus_location_label}, λ={format_prefix(wavelength_m)}m')
+        # Compute RMS wavefront error
+        phase_SLM_t = tensor(phase_SLM)
+        phase_SLM_t_m = phase_SLM_t - phase_SLM_t.mean()        # Subtract mean
+        RMS_wavefront_error_rad = ((phase_SLM_t_m * NA_mask_SLM).pow(2).sum() / NA_mask_SLM.sum()).sqrt()
+        print(f'RMS wavefront error: {RMS_wavefront_error_rad:.2f} rad')
 
-        # Draw a circle to indicate NA
-        N_verts_NA_circle = 200
-        theta_vert_NA_circle = np.linspace(0, 2*np.pi, N_verts_NA_circle)
-        x_NA_circle = NA_radius_slm * np.cos(theta_vert_NA_circle)
-        y_NA_circle = NA_radius_slm * np.sin(theta_vert_NA_circle)
-        plt.plot(x_NA_circle, y_NA_circle, '--g', linewidth=2.5, label=f'NA={tpm.obj1_NA}')
-        plt.legend(loc='upper right')
+        # Save file
+        mdict = {
+            'focus_location_label': focus_location_label,
+            'field_SLM': field_SLM,
+            'phase_SLM': phase_SLM,
+            'obj1_zshift': tpm.obj1_zshift.detach().numpy(),
+            'sample_zshift': tpm.sample_zshift.detach().numpy(),
+            'wavelength_m': wavelength_m,
+            'obj1_NA': tpm.obj1_NA,
+            'slm_height_m': tpm.slm_height_m,
+            'x_lin_SLM': x_lin_SLM.detach().numpy(),
+            'y_lin_SLM': y_lin_SLM.detach().numpy(),
+            'NA_mask_SLM': NA_mask_SLM.detach().numpy(),
+            'RMS_wavefront_error_rad': RMS_wavefront_error_rad.detach().numpy(),
+            'desired_focus_location_m': desired_focus_location_m.numpy(),
+        }
 
-        plt.xticks(())
-        plt.yticks(())
-
-        divider = make_axes_locatable(plt.gca())
-        cax = divider.append_axes("right", size="5%", pad=0.1)      # Colobar Axes
-        colorbar = plt.colorbar(ticks=[-np.pi, 0, np.pi], label='Phase', cax=cax)
-        colorbar.ax.set_yticklabels(['−π', '0', '+π'])
-        plt.show()
-
-    # Compute NA mask
-    Mx = tpm.slm_height_pixels
-    My = tpm.slm_height_pixels
-    x_lin_SLM = torch.linspace(-0.5, 0.5, Mx).view(Mx, 1) * (Mx != 1)
-    y_lin_SLM = torch.linspace(-0.5, 0.5, My).view(1, My) * (My != 1)
-    NA_mask_SLM = NA_radius_slm > (x_lin_SLM * x_lin_SLM + y_lin_SLM * y_lin_SLM).sqrt()
-
-    # Compute RMS wavefront error
-    phase_SLM_t = tensor(phase_SLM)
-    phase_SLM_t_m = phase_SLM_t - phase_SLM_t.mean()        # Subtract mean
-    RMS_wavefront_error_rad = ((phase_SLM_t_m * NA_mask_SLM).pow(2).sum() / NA_mask_SLM.sum()).sqrt()
-    print(f'RMS wavefront error: {RMS_wavefront_error_rad:.2f} rad')
-
-    # Save file
-    matpath_out = \
-        str(dirs['localdata'].joinpath('raylearn-data/TPM/slm-patterns/pattern-chip-'
-            + f'{focus_location_label}-λ{format_prefix(wavelength_m, formatspec=".0f")}m.mat'))
-    mdict = {
-        'focus_location_label': focus_location_label,
-        'field_SLM': field_SLM,
-        'phase_SLM': phase_SLM,
-        'obj1_zshift': tpm.obj1_zshift.detach().numpy(),
-        'sample_zshift': tpm.sample_zshift.detach().numpy(),
-        'wavelength_m': wavelength_m,
-        'obj1_NA': tpm.obj1_NA,
-        'slm_height_m': tpm.slm_height_m,
-        'x_lin_SLM': x_lin_SLM.detach().numpy(),
-        'y_lin_SLM': y_lin_SLM.detach().numpy(),
-        'NA_mask_SLM': NA_mask_SLM.detach().numpy(),
-        'RMS_wavefront_error_rad': RMS_wavefront_error_rad.detach().numpy(),
-        'desired_focus_location_m': desired_focus_location_m.numpy(),
-    }
-
-    matfile_out = hdf5storage.savemat(matpath_out, mdict)
-    print(f'Saved to {matpath_out}')
+        matpath_out = path_out + '.mat'
+        matfile_out = hdf5storage.savemat(matpath_out, mdict)
+        print(f'Saved to {matpath_out}')
 
 
 def compute_NA_mask(plane, rays, NA_radius):
@@ -235,9 +238,11 @@ def compute_NA_mask(plane, rays, NA_radius):
 do_plot_backtrace = False
 do_plot_phase_pattern = True
 
-# Desired focus location relative to exact tube center (in meters)
+wavelengths_m = (720e-9, 1040e-9)
+
 
 compute_glass_tube_pattern(
+    wavelengths_m=wavelengths_m,
     desired_focus_location_m=tensor((0., 0., 180e-6,)),
     focus_location_label='bottom',
     remove_tilt=True,
@@ -246,6 +251,7 @@ compute_glass_tube_pattern(
     do_plot_phase_pattern=do_plot_phase_pattern)
 
 compute_glass_tube_pattern(
+    wavelengths_m=wavelengths_m,
     desired_focus_location_m=tensor((0., 0., 0.,)),
     focus_location_label='center',
     remove_tilt=True,
@@ -254,6 +260,7 @@ compute_glass_tube_pattern(
     do_plot_phase_pattern=do_plot_phase_pattern)
 
 compute_glass_tube_pattern(
+    wavelengths_m=wavelengths_m,
     desired_focus_location_m=tensor((0., 0., 0.,)),
     focus_location_label='center-with-defocus',
     remove_tilt=True,
@@ -262,6 +269,7 @@ compute_glass_tube_pattern(
     do_plot_phase_pattern=do_plot_phase_pattern)
 
 compute_glass_tube_pattern(
+    wavelengths_m=wavelengths_m,
     desired_focus_location_m=tensor((0., 0., -180e-6,)),
     focus_location_label='top',
     remove_tilt=True,
@@ -270,6 +278,7 @@ compute_glass_tube_pattern(
     do_plot_phase_pattern=do_plot_phase_pattern)
 
 compute_glass_tube_pattern(
+    wavelengths_m=wavelengths_m,
     desired_focus_location_m=tensor((0., 180e-6, 0.,)),
     focus_location_label='side',
     remove_tilt=True,
@@ -278,6 +287,7 @@ compute_glass_tube_pattern(
     do_plot_phase_pattern=do_plot_phase_pattern)
 
 compute_glass_tube_pattern(
+    wavelengths_m=wavelengths_m,
     desired_focus_location_m=tensor((0., 180e-6, 0.,)),
     focus_location_label='side-with-tilt',
     remove_tilt=False,
