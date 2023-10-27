@@ -55,7 +55,7 @@ def refractive_index_cauchy(wavelength_um, A, B, C):
     """
 
     # Prepare variables
-    wavelength_pow2 = (wavelength_um * wavelength_um).unsqueeze(-1)     # λ²
+    wavelength_pow2 = (wavelength_um * wavelength_um)                   # λ²
     wavelength_pow4 = wavelength_pow2 * wavelength_pow2                 # λ⁴
 
     # Compute refractive index

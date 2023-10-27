@@ -36,7 +36,7 @@ def n_PBS(wavelength_m):
     """
 
     wavelength_um = ensure_tensor(wavelength_m * 1e6)
-    assert((wavelength_um > 0.450).all())       # Check valid wavelength range
+    assert((wavelength_um > 0.399).all())       # Check valid wavelength range
     assert((wavelength_um < 1.400).all())       # Check valid wavelength range
 
     # Sellmeier coefficients
@@ -46,10 +46,10 @@ def n_PBS(wavelength_m):
     return refractive_index_sellmeier(wavelength_um, B, C)
 
 
-def n_collagen(wavelength_m):
+def n_collagen_fibers(wavelength_m):
     """
-    Compute refractive index of collagen at room temperature for specified wavelengths (in m).
-    Cauchy coefficients from Equation 2 of [Bashkatov et al. 2000, DOI:10.1117/12.405952].
+    Compute refractive index of collagen fibers at room temperature for specified wavelengths (in
+    m).  Cauchy coefficients from Equation 2 of [Bashkatov et al. 2000, DOI:10.1117/12.405952].
     """
 
     wavelength_um = ensure_tensor(wavelength_m * 1e6)
@@ -59,6 +59,15 @@ def n_collagen(wavelength_m):
     B = 19476e-6            # in µm²
     C = -1131066900e-12     # in µm⁴
     return refractive_index_cauchy(wavelength_um, A, B, C)
+
+
+def n_hydrated_collagen(wavelength_m, fiber_fraction):
+    """
+    Compute refractive index of hydrated collagen at room temperature for specified wavelengths (in
+    m) as weighted average of water and collagen.
+    """
+    return fiber_fraction * n_collagen_fibers(wavelength_m) \
+        + (1-fiber_fraction) * n_water(wavelength_m)
 
 
 def n_SodaLimeGlass(wavelength_m):
