@@ -18,8 +18,8 @@ def test_phase_point_source():
     """
 
     # Settings
-    Nx = 50
-    Ny = 50
+    Nx = 100
+    Ny = 100
     num_pixels = 64
     screen_halfsize_m = 2e-3
     source_to_screen_distance_m = 1.0
@@ -41,7 +41,7 @@ def test_phase_point_source():
     # Compute field with interpolate_shader
     pathlength_to_screen = point_source_at_screen.pathlength_m
     data = torch.cat((coords, pathlength_to_screen), 2)
-    field_out = torch.tensor(interpolate_shader(
+    field_out, phase_out = torch.tensor(interpolate_shader(
         data.numpy(),
         npoints=(num_pixels, num_pixels),
         limits=(-screen_halfsize_m, screen_halfsize_m, -screen_halfsize_m, screen_halfsize_m),
@@ -65,4 +65,7 @@ def test_phase_point_source():
     corrcoeff_matrix = np.corrcoef(field_out_analytical.flatten(), field_out.numpy().flatten())
     correlation = np.abs(corrcoeff_matrix[0, 1])
 
-    assert correlation > 0.9999
+    assert correlation > 0.99999
+
+
+#### To Do: add unit test for testing x and y orientation
