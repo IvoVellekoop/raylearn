@@ -64,7 +64,8 @@ def n_collagen_fibers(wavelength_m):
 def n_hydrated_collagen(wavelength_m, fiber_fraction):
     """
     Compute refractive index of hydrated collagen at room temperature for specified wavelengths (in
-    m) as weighted average of water and collagen.
+    m) as weighted average of water and collagen. Explained in e.g. [Leonard and Meek 1997,
+    DOI:10.1016/S0006-3495(97)78784-8].
     """
     return fiber_fraction * n_collagen_fibers(wavelength_m) \
         + (1-fiber_fraction) * n_water(wavelength_m)
