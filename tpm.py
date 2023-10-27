@@ -139,7 +139,6 @@ class TPM(OpticalSystem):
         self.backtrace_source_opening_tan_angle = tensor(1.,)   # Is manually adjusted later
         #### Idea: automatically determine when also compensating for focus?
 
-        self.desired_focus_position_relative_to_sample_plane = tensor((0., 0., 0.))
         self.backtrace_Nx = 300
         self.backtrace_Ny = 300
 
@@ -274,9 +273,7 @@ class TPM(OpticalSystem):
 
         # Place point source at desired focus location
         self.backrays = [point_source(self.sample.desired_focus_plane,
-                         self.backtrace_Nx,
-                         self.backtrace_Ny,
-                         refractive_index=self.sample.n_inside)]
+                         self.backtrace_Nx, self.backtrace_Ny)]
         self.backrays += self.sample.backtrace(self.backrays[-1])
         self.backrays += abbe_lens(self.backrays[-1], self.OBJ1, self.fobj1, n_out=1.0)
         self.backrays += [thin_lens(self.backrays[-1], self.L7, self.f7)]

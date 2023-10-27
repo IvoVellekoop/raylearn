@@ -55,7 +55,8 @@ class SampleTube(OpticalSystem):
 
     def backtrace(self, in_ray):
         rays = []
-        rays += [cylinder_interface(in_ray, self.cyl_plane, self.inner_radius_m, self.n_tube, propagation_sign=1)]
+        rays += [copy_update(in_ray, refractive_index=self.n_inside)]
+        rays += [cylinder_interface(rays[-1], self.cyl_plane, self.inner_radius_m, self.n_tube, propagation_sign=1)]
         rays += [cylinder_interface(rays[-1], self.cyl_plane, self.outer_radius_m, self.n_outside, propagation_sign=1)]
         return rays
 
