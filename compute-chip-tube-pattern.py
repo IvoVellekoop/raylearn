@@ -236,10 +236,19 @@ def compute_NA_mask(plane, rays, NA_radius):
 # === Settings === #
 # General settings
 do_plot_backtrace = False
-do_plot_phase_pattern = True
+do_plot_phase_pattern = False
 
 wavelengths_m = (720e-9, 1040e-9)
 
+
+compute_glass_tube_pattern(
+    wavelengths_m=[w.item() for w in torch.linspace(700e-9, 1100e-9, 41)],
+    desired_focus_location_m=tensor((0., 0., -199e-6,)),
+    focus_location_label='top-edge',
+    remove_tilt=True,
+    minimize_defocus_iterations=200,
+    do_plot_backtrace=do_plot_backtrace,
+    do_plot_phase_pattern=do_plot_phase_pattern)
 
 compute_glass_tube_pattern(
     wavelengths_m=wavelengths_m,
