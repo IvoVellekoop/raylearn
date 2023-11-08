@@ -140,12 +140,14 @@ def compute_glass_tube_pattern(
     if remove_tilt:
         # Compute mask of ray coords within NA circle
         NA_mask = compute_NA_mask(tpm.slm_plane, backrays_at_slm, NA_radius_slm)
-        mean_direction = weighted_mean(backrays_at_slm.direction, NA_mask.expand_as(backrays_at_slm.direction), dim=(-3, -2))
+        D = backrays_at_slm.direction
+        mean_DxDz = weighted_mean(D[:, :, 0] / D[:, :, 2], NA_mask.squeeze())
+        mean_DyDz = weighted_mean(D[:, :, 1] / D[:, :, 2], NA_mask.squeeze())
 
-        # Compute mean tilt pattern, with z as optical axis, based on mean ray direction within NA
+        # Compute mean tilt pattern, with z as opt. axis, based on mean ray direction within NA
         tilt_m = (
-                backrays_at_slm.position_m[:, :, 0] * mean_direction[0] / mean_direction[2]
-                + backrays_at_slm.position_m[:, :, 1] * mean_direction[1] / mean_direction[2]
+                backrays_at_slm.position_m[:, :, 0] * mean_DxDz
+                + backrays_at_slm.position_m[:, :, 1] * mean_DyDz
             ).unsqueeze(-1)
 
     else:
