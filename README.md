@@ -2,6 +2,8 @@
 
 RayLearn is a sequential ray tracer written in PyTorch, capable of both forward and inverse ray tracing. Forward ray tracing can be used to compute ray positions, directions, pathlengths, and phase. Inverse ray tracing can be used to fit multiple model parameters (e.g. the thickness of a slab of glass, or the focal distance of an Abbe sine lens) to a set of input/output rays.
 
+Note: The phase correction patterns from the paper **Model-based aberration corrected microscopy inside a glass tube** can be computed by running `compute-glass-tube-pattern.py`.
+
 ## Installing the required Python packages from Anaconda
 
 1a: Install Anaconda or Miniconda either from the website www.anaconda.com,
