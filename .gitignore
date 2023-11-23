@@ -1,7 +1,7 @@
 # IPython Notebook checkpoints
 .ipynb_checkpoints/
-/ExperimentalData
-/LocalData
+/simulation-data
+/experimental-data
 /plots
 *.asv
 *.m~
