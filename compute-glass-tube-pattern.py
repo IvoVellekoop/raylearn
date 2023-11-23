@@ -39,13 +39,15 @@ def compute_glass_tube_pattern(
             String. Label to indicate the focus location. Used for filename.
         remove_tilt
             Boolean. Remove mean tilt from pattern if True.
-        remove_defocus_iterations
+        minimize_defocus_iterations
             Integer. How many iterations to minimize defocus. Skip defocus minimization if 0.
         do_plot_backtrace
             Boolean. Plot backtrace rays if True.
         do_plot_phase_pattern
             Boolean. Plot final phase pattern if True.
     '''
+
+    print(f'\nStart computing {focus_location_label} pattern...')
 
     # === Initialization === #
     # Initialize global coordinate system
@@ -61,7 +63,8 @@ def compute_glass_tube_pattern(
     # (Note: parameter scans may override these)
     tpm.sample = SampleTube()
     tpm.sample.tube_angle = np.pi / 2           # Rotate tube 90 deg
-    #### Note! When the shader interpolator is fixed and doesn't transpose anymore, recheck
+    #### Note! Currently, the the shader interpolator transposes the output pattern. Recheck tube_angle setting after fix.
+
     tpm.sample.n_tube = 1.5106                  # Schott N-BK7 @808nm
     tpm.sample.n_slide = 1.5170                 # Soda Lime Glass @808nm
     tpm.sample.n_inside = 1.3290                # Water inside the tube @808nm, 25degC
@@ -84,6 +87,9 @@ def compute_glass_tube_pattern(
         ], lr=1.0e-5)
 
     errors = torch.zeros(minimize_defocus_iterations)
+
+    if minimize_defocus_iterations > 0:
+        print('Start minimizing defocus...')
 
     # Iterable for optimization loop
     trange = tqdm(range(minimize_defocus_iterations), desc='error: -')
@@ -212,7 +218,7 @@ def compute_glass_tube_pattern(
 
 
     # Save file
-    matpath_out = str(dirs['localdata'].joinpath('raylearn-data/TPM/slm-patterns/pattern-0.5uL-tube-'
+    matpath_out = str(dirs['simdata'].joinpath('pattern-0.5uL-tube-'
         + f'{focus_location_label}'
         + f'-λ{format_prefix(wavelength_m, formatspec=".0f")}m.mat'))
     mdict = {
@@ -245,10 +251,10 @@ def compute_NA_mask(plane, rays, NA_radius):
 # === Settings === #
 # General settings
 do_plot_backtrace = False
-do_plot_phase_pattern = False
+do_plot_phase_pattern = True
 
-# Desired focus location relative to exact tube center (in meters)
 
+# === Compute phase patterns === #
 compute_glass_tube_pattern(
     desired_focus_location_from_tube_center_m=tensor((0., 0., 51e-6,)),
     focus_location_label='bottom',

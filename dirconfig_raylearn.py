@@ -32,7 +32,7 @@ from pathlib import Path
 dirs = {
     "repo": Path.cwd(),
     "main": Path.cwd().parent,
-    "simdata": Path('//ad.utwente.nl/TNW/BMPI/Data/Daniel Cox/SimulationData'),
-    "expdata": Path('//ad.utwente.nl/TNW/BMPI/Data/Daniel Cox/ExperimentalData'),
-    "localdata": Path.home().joinpath("LocalData"),
+    "simdata": Path.joinpath(Path.cwd(), 'simulation-data'),
+    "expdata": Path.joinpath(Path.cwd(), 'experimental-data'),
+    "localdata": Path.home().joinpath("local-data"),
 }
