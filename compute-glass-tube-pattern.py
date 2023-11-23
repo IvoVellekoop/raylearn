@@ -27,7 +27,7 @@ from dirconfig_raylearn import dirs
 # Compute and save a phase correction pattern for specified location and wavelength
 def compute_glass_tube_pattern(
     desired_focus_location_from_tube_center_m, focus_location_label,
-    remove_tilt, minimize_defocus_iterations, do_plot_backtrace, do_plot_phase_pattern):
+    remove_tilt, minimize_defocus_iterations, do_plot_backtrace, do_plot_phase_pattern, do_save_pattern):
     '''
     Compute a phase correction pattern for a glass tube
 
@@ -218,27 +218,28 @@ def compute_glass_tube_pattern(
 
 
     # Save file
-    matpath_out = str(dirs['simdata'].joinpath('pattern-0.5uL-tube-'
-        + f'{focus_location_label}'
-        + f'-λ{format_prefix(wavelength_m, formatspec=".0f")}m.mat'))
-    mdict = {
-        'focus_location_label': focus_location_label,
-        'field_SLM': field_SLM,
-        'phase_SLM': phase_SLM,
-        'obj1_zshift': tpm.obj1_zshift.detach().numpy(),
-        'sample_zshift': tpm.sample_zshift.detach().numpy(),
-        'wavelength_m': wavelength_m,
-        'obj1_NA': tpm.obj1_NA,
-        'slm_height_m': tpm.slm_height_m,
-        'x_lin_SLM': x_lin_SLM.detach().numpy(),
-        'y_lin_SLM': y_lin_SLM.detach().numpy(),
-        'NA_mask_SLM': NA_mask_SLM.detach().numpy(),
-        'RMS_wavefront_error_rad': RMS_wavefront_error_rad.detach().numpy(),
-        'desired_focus_location_from_tube_center_m': desired_focus_location_from_tube_center_m.numpy(),
-    }
+    if do_save_pattern:
+        matpath_out = str(dirs['simdata'].joinpath('pattern-0.5uL-tube-'
+            + f'{focus_location_label}'
+            + f'-λ{format_prefix(wavelength_m, formatspec=".0f")}m.mat'))
+        mdict = {
+            'focus_location_label': focus_location_label,
+            'field_SLM': field_SLM,
+            'phase_SLM': phase_SLM,
+            'obj1_zshift': tpm.obj1_zshift.detach().numpy(),
+            'sample_zshift': tpm.sample_zshift.detach().numpy(),
+            'wavelength_m': wavelength_m,
+            'obj1_NA': tpm.obj1_NA,
+            'slm_height_m': tpm.slm_height_m,
+            'x_lin_SLM': x_lin_SLM.detach().numpy(),
+            'y_lin_SLM': y_lin_SLM.detach().numpy(),
+            'NA_mask_SLM': NA_mask_SLM.detach().numpy(),
+            'RMS_wavefront_error_rad': RMS_wavefront_error_rad.detach().numpy(),
+            'desired_focus_location_from_tube_center_m': desired_focus_location_from_tube_center_m.numpy(),
+        }
 
-    matfile_out = hdf5storage.savemat(matpath_out, mdict)
-    print(f'Saved to {matpath_out}')
+        matfile_out = hdf5storage.savemat(matpath_out, mdict)
+        print(f'Saved to {matpath_out}')
 
 
 def compute_NA_mask(plane, rays, NA_radius):
@@ -252,6 +253,7 @@ def compute_NA_mask(plane, rays, NA_radius):
 # General settings
 do_plot_backtrace = False
 do_plot_phase_pattern = True
+do_save_pattern = True
 
 
 # === Compute phase patterns === #
@@ -261,7 +263,8 @@ compute_glass_tube_pattern(
     remove_tilt=True,
     minimize_defocus_iterations=200,
     do_plot_backtrace=do_plot_backtrace,
-    do_plot_phase_pattern=do_plot_phase_pattern)
+    do_plot_phase_pattern=do_plot_phase_pattern,
+    do_save_pattern=do_save_pattern)
 
 compute_glass_tube_pattern(
     desired_focus_location_from_tube_center_m=tensor((0., 0., 0.,)),
@@ -269,7 +272,8 @@ compute_glass_tube_pattern(
     remove_tilt=True,
     minimize_defocus_iterations=200,
     do_plot_backtrace=do_plot_backtrace,
-    do_plot_phase_pattern=do_plot_phase_pattern)
+    do_plot_phase_pattern=do_plot_phase_pattern,
+    do_save_pattern=do_save_pattern)
 
 compute_glass_tube_pattern(
     desired_focus_location_from_tube_center_m=tensor((0., 0., 0.,)),
@@ -277,7 +281,8 @@ compute_glass_tube_pattern(
     remove_tilt=True,
     minimize_defocus_iterations=0,
     do_plot_backtrace=do_plot_backtrace,
-    do_plot_phase_pattern=do_plot_phase_pattern)
+    do_plot_phase_pattern=do_plot_phase_pattern,
+    do_save_pattern=do_save_pattern)
 
 compute_glass_tube_pattern(
     desired_focus_location_from_tube_center_m=tensor((0., 0., -51e-6,)),
@@ -285,7 +290,8 @@ compute_glass_tube_pattern(
     remove_tilt=True,
     minimize_defocus_iterations=200,
     do_plot_backtrace=do_plot_backtrace,
-    do_plot_phase_pattern=do_plot_phase_pattern)
+    do_plot_phase_pattern=do_plot_phase_pattern,
+    do_save_pattern=do_save_pattern)
 
 compute_glass_tube_pattern(
     desired_focus_location_from_tube_center_m=tensor((0., 53.25e-6, 0.,)),
@@ -293,7 +299,8 @@ compute_glass_tube_pattern(
     remove_tilt=True,
     minimize_defocus_iterations=200,
     do_plot_backtrace=do_plot_backtrace,
-    do_plot_phase_pattern=do_plot_phase_pattern)
+    do_plot_phase_pattern=do_plot_phase_pattern,
+    do_save_pattern=do_save_pattern)
 
 compute_glass_tube_pattern(
     desired_focus_location_from_tube_center_m=tensor((0., 53.25e-6, 0.,)),
@@ -301,4 +308,5 @@ compute_glass_tube_pattern(
     remove_tilt=False,
     minimize_defocus_iterations=200,
     do_plot_backtrace=do_plot_backtrace,
-    do_plot_phase_pattern=do_plot_phase_pattern)
+    do_plot_phase_pattern=do_plot_phase_pattern,
+    do_save_pattern=do_save_pattern)
